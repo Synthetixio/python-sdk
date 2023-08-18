@@ -77,13 +77,15 @@ class Perps:
 
         if fetch_settlement_strategy:
             settlement_strategy = self.get_settlement_strategy(
-                market_id, settlement_strategy_id)
+                settlement_strategy_id, market_id=market_id)
             order_data['settlement_strategy'] = settlement_strategy
 
         return order_data
 
-    def get_market_summary(self, market_id: int):
+    def get_market_summary(self, market_id: int = None, market_name: str = None):
         """Get the summary of a market"""
+        market_id, market_name = self._resolve_market(market_id, market_name)
+
         skew, size, max_open_interest, current_funding_rate, current_funding_velocity, index_price = self.market_proxy.functions.getMarketSummary(
             market_id).call()
         return {
@@ -95,8 +97,10 @@ class Perps:
             'index_price': index_price
         }
 
-    def get_settlement_strategy(self, market_id: int, settlement_strategy_id: int):
+    def get_settlement_strategy(self, settlement_strategy_id: int, market_id: int = None, market_name: str = None):
         """Get the settlement strategy of a market"""
+        market_id, market_name = self._resolve_market(market_id, market_name)
+
         (
             strategy_type,
             settlement_delay,

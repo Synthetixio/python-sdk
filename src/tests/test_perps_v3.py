@@ -86,7 +86,7 @@ def test_perps_market_summary(snx, logger):
 def test_perps_settlement_strategy(snx, logger):
     """The instance can fetch a settlement strategy"""
     settlement_strategy = snx.perps.get_settlement_strategy(
-        TEST_MARKET_ID, TEST_SETTLEMENT_STRATEGY_ID)
+        TEST_SETTLEMENT_STRATEGY_ID, TEST_MARKET_ID)
 
     logger.info(
         f"id: {TEST_SETTLEMENT_STRATEGY_ID} - settlement strategy: {settlement_strategy}")
