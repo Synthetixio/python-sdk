@@ -276,7 +276,7 @@ class Perps:
         if submit:
             tx_hash = self.snx.execute_transaction(tx_params)
             self.logger.info(
-                f"Transferring {amount} {market_name} for {self.snx.address}")
+                f"Transferring {amount} {market_name} for account {account_id}")
             self.logger.info(f"modify_collateral tx: {tx_hash}")
             return tx_hash
         else:
