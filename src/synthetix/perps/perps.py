@@ -1,9 +1,9 @@
 """Module for interacting with Synthetix Perps V3."""
+from ..utils import ether_to_wei, wei_to_ether
 from .constants import COLLATERALS_BY_ID, COLLATERALS_BY_NAME, PERPS_MARKETS_BY_ID, PERPS_MARKETS_BY_NAME
 from decimal import Decimal
 import time
 import requests
-
 
 class Perps:
     """Class for interacting with Synthetix Perps V3 contracts."""
@@ -65,20 +65,7 @@ class Perps:
         market_ids = self.market_proxy.functions.getMarkets().call()
 
         # TODO: add multicall
-        raw_market_summaries = [self.market_proxy.functions.getMarketSummary(id).call() for id in market_ids]
-        market_summaries = []
-        for id_ind, summary in enumerate(raw_market_summaries):
-            skew, size, max_open_interest, current_funding_rate, current_funding_velocity, index_price = summary
-            market_summaries.append({
-                'market_id': market_ids[id_ind],
-                'market_name': PERPS_MARKETS_BY_ID[market_ids[id_ind]],
-                'skew': skew,
-                'size': size,
-                'max_open_interest': max_open_interest,
-                'current_funding_rate': current_funding_rate,
-                'current_funding_velocity': current_funding_velocity,
-                'index_price': index_price
-            })
+        market_summaries = [self.get_market_summary(market_id) for market_id in market_ids]
 
         markets_by_id = {
             summary['market_id']: summary
@@ -104,11 +91,11 @@ class Perps:
             'settlement_time': settlement_time,
             'market_id': market_id,
             'account_id': account_id,
-            'size_delta': size_delta,
+            'size_delta': wei_to_ether(size_delta),
             'settlement_strategy_id': settlement_strategy_id,
-            'acceptable_price': acceptable_price,
+            'acceptable_price': wei_to_ether(acceptable_price),
             'tracking_code': tracking_code,
-            'referrer': referrer
+            'referrer': referrer,
         }
 
         if fetch_settlement_strategy:
@@ -125,12 +112,14 @@ class Perps:
         skew, size, max_open_interest, current_funding_rate, current_funding_velocity, index_price = self.market_proxy.functions.getMarketSummary(
             market_id).call()
         return {
-            'skew': skew,
-            'size': size,
-            'max_open_interest': max_open_interest,
-            'current_funding_rate': current_funding_rate,
-            'current_funding_velocity': current_funding_velocity,
-            'index_price': index_price
+            'market_id': market_id,
+            'market_name': market_name,
+            'skew': wei_to_ether(skew),
+            'size': wei_to_ether(size),
+            'max_open_interest': wei_to_ether(max_open_interest),
+            'current_funding_rate': wei_to_ether(current_funding_rate),
+            'current_funding_velocity': wei_to_ether(current_funding_velocity),
+            'index_price': wei_to_ether(index_price)
         }
 
     def get_settlement_strategy(self, settlement_strategy_id: int, market_id: int = None, market_name: str = None):
@@ -157,8 +146,8 @@ class Perps:
             'price_verification_contract': price_verification_contract,
             'feed_id': feed_id,
             'url': url,
-            'settlement_reward': settlement_reward,
-            'price_deviation_tolerance': price_deviation_tolerance,
+            'settlement_reward': wei_to_ether(settlement_reward),
+            'price_deviation_tolerance': wei_to_ether(price_deviation_tolerance),
             'disabled': disabled,
         }
 
@@ -189,13 +178,13 @@ class Perps:
             account_id).call()
 
         return {
-            'total_collateral_value': total_collateral_value,
-            'available_margin': available_margin,
-            'withdrawable_margin': withdrawable_margin,
-            'initial_margin_requirement': initial_margin_requirement,
-            'maintenance_margin_requirement': maintenance_margin_requirement,
-            'total_accumulated_liquidation_rewards': total_accumulated_liquidation_rewards,
-            'max_liquidation_reward': max_liquidation_reward,
+            'total_collateral_value': wei_to_ether(total_collateral_value),
+            'available_margin': wei_to_ether(available_margin),
+            'withdrawable_margin': wei_to_ether(withdrawable_margin),
+            'initial_margin_requirement': wei_to_ether(initial_margin_requirement),
+            'maintenance_margin_requirement': wei_to_ether(maintenance_margin_requirement),
+            'total_accumulated_liquidation_rewards': wei_to_ether(total_accumulated_liquidation_rewards),
+            'max_liquidation_reward': wei_to_ether(max_liquidation_reward),
         }
 
     def get_collateral_balances(self, account_id: int = None):
@@ -207,7 +196,7 @@ class Perps:
         for market_id in COLLATERALS_BY_ID:
             balance = self.market_proxy.functions.getCollateralAmount(
                 account_id, market_id).call()
-            collateral_balances[COLLATERALS_BY_ID[market_id]] = balance
+            collateral_balances[COLLATERALS_BY_ID[market_id]] = wei_to_ether(balance)
 
         return collateral_balances
 
@@ -220,9 +209,9 @@ class Perps:
         pnl, accrued_funding, position_size = self.market_proxy.functions.getOpenPosition(
             account_id, market_id).call()
         return {
-            'pnl': pnl,
-            'accrued_funding': accrued_funding,
-            'position_size': position_size
+            'pnl': wei_to_ether(pnl),
+            'accrued_funding': wei_to_ether(accrued_funding),
+            'position_size': wei_to_ether(position_size),
         }
 
     # transactions
@@ -302,7 +291,7 @@ class Perps:
                 "Cannot set both desired_fill_price and max_price_impact")
 
         is_short = -1 if size < 0 else 1
-        size_wei = self.snx.web3.to_wei(abs(size), 'ether') * is_short
+        size_wei = ether_to_wei(abs(size)) * is_short
 
         if desired_fill_price:
             acceptable_price = desired_fill_price
@@ -312,9 +301,8 @@ class Perps:
 
             if not max_price_impact:
                 max_price_impact = self.snx.max_price_impact
-            price_impact = Decimal(1 + is_short*max_price_impact/100)
-            acceptable_price = int(
-                market_summary['index_price'] * price_impact)
+            price_impact = 1 + is_short*max_price_impact/100
+            acceptable_price = market_summary['index_price'] * price_impact
 
         if not account_id:
             account_id = self.default_account_id
@@ -325,7 +313,7 @@ class Perps:
             "accountId": account_id,
             "sizeDelta": size_wei,
             "settlementStrategyId": settlement_strategy_id,
-            "acceptablePrice": acceptable_price,
+            "acceptablePrice": ether_to_wei(acceptable_price),
             "trackingCode": self.snx.tracking_code,
             "referrer": self.snx.referrer
         }
@@ -341,7 +329,7 @@ class Perps:
         if submit:
             tx_hash = self.snx.execute_transaction(tx_params)
             self.logger.info(
-                f"Committing order size {size_wei} to {market_name} ({market_id}) for {self.snx.address}")
+                f"Committing order size {size_wei} ({size}) to {market_name} (id: {market_id}) for account {account_id}")
             self.logger.info(f"commit_order tx: {tx_hash}")
             return tx_hash
         else:
