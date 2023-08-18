@@ -7,6 +7,8 @@ import requests
 
 class Perps:
     """Class for interacting with Synthetix Perps V3 contracts."""
+    # TODO: implement asyncio
+    # TODO: add waiting for transaction receipt
 
     def __init__(self, snx, pyth, default_account_id: int = None):
         self.snx = snx
@@ -24,6 +26,7 @@ class Perps:
             address=account_proxy_address, abi=account_proxy_abi)
 
         self.account_ids = self.get_account_ids()
+        self.markets_by_id, self.markets_by_name = self.get_markets()
 
         if default_account_id:
             self.default_account_id = default_account_id
@@ -33,20 +36,23 @@ class Perps:
     # internals
     def _resolve_market(self, market_id: int, market_name: str, collateral: bool = False):
         """Resolve a market_id or market_name to a market_id and market_name"""
-        if not market_id and not market_name:
+        if market_id is None and market_name is None:
             raise ValueError("Must provide a market_id or market_name")
 
         ID_LOOKUP = COLLATERALS_BY_ID if collateral else PERPS_MARKETS_BY_ID
         NAME_LOOKUP = COLLATERALS_BY_NAME if collateral else PERPS_MARKETS_BY_NAME
 
-        if market_name and not market_id:
+        has_market_id = market_id is not None
+        has_market_name = market_name is not None
+
+        if not has_market_id and has_market_name:
             if market_name not in NAME_LOOKUP:
                 raise ValueError("Invalid market_name")
             market_id = NAME_LOOKUP[market_name]
 
             if market_id == -1:
                 raise ValueError("Invalid market_name")
-        elif market_id and not market_name:
+        elif has_market_id and not has_market_name:
             if market_id not in ID_LOOKUP:
                 raise ValueError("Invalid market_id")
             market_name = ID_LOOKUP[market_id]
@@ -54,6 +60,36 @@ class Perps:
 
     # read
     # TODO: get_market_settings
+    def get_markets(self):
+        """Get all markets and their market summaries"""
+        market_ids = self.market_proxy.functions.getMarkets().call()
+
+        # TODO: add multicall
+        raw_market_summaries = [self.market_proxy.functions.getMarketSummary(id).call() for id in market_ids]
+        market_summaries = []
+        for id_ind, summary in enumerate(raw_market_summaries):
+            skew, size, max_open_interest, current_funding_rate, current_funding_velocity, index_price = summary
+            market_summaries.append({
+                'market_id': market_ids[id_ind],
+                'market_name': PERPS_MARKETS_BY_ID[market_ids[id_ind]],
+                'skew': skew,
+                'size': size,
+                'max_open_interest': max_open_interest,
+                'current_funding_rate': current_funding_rate,
+                'current_funding_velocity': current_funding_velocity,
+                'index_price': index_price
+            })
+
+        markets_by_id = {
+            summary['market_id']: summary
+            for summary in market_summaries
+        }
+        markets_by_name = {
+            summary['market_name']: summary
+            for summary in market_summaries
+        }
+        return markets_by_id, markets_by_name
+
 
     def get_order(self, account_id: int = None, fetch_settlement_strategy: bool = True):
         """Get the open order for an account"""
@@ -149,7 +185,7 @@ class Perps:
             account_id).call()
         withdrawable_margin = self.market_proxy.functions.getWithdrawableMargin(
             account_id).call()
-        initial_margin_requirement, maintenance_margin_requirement = self.market_proxy.functions.getRequiredMargins(
+        initial_margin_requirement, maintenance_margin_requirement, total_accumulated_liquidation_rewards, max_liquidation_reward = self.market_proxy.functions.getRequiredMargins(
             account_id).call()
 
         return {
@@ -157,7 +193,9 @@ class Perps:
             'available_margin': available_margin,
             'withdrawable_margin': withdrawable_margin,
             'initial_margin_requirement': initial_margin_requirement,
-            'maintenance_margin_requirement': maintenance_margin_requirement
+            'maintenance_margin_requirement': maintenance_margin_requirement,
+            'total_accumulated_liquidation_rewards': total_accumulated_liquidation_rewards,
+            'max_liquidation_reward': max_liquidation_reward,
         }
 
     def get_collateral_balances(self, account_id: int = None):
@@ -173,8 +211,9 @@ class Perps:
 
         return collateral_balances
 
-    def get_open_position(self, market_id: int, account_id: int = None):
+    def get_open_position(self, market_id: int = None, market_name: int = None, account_id: int = None):
         """Get the open position for an account"""
+        market_id, market_name = self._resolve_market(market_id, market_name)
         if not account_id:
             account_id = self.default_account_id
 
@@ -187,7 +226,7 @@ class Perps:
         }
 
     # transactions
-    def create_account(self, account_id: int = None, execute_now: bool = False):
+    def create_account(self, account_id: int = None, submit: bool = False):
         """Create a perps account"""
         if not account_id:
             tx_args = []
@@ -202,7 +241,7 @@ class Perps:
             to=market_proxy.address)
         tx_params['data'] = tx_data
 
-        if execute_now:
+        if submit:
             tx_hash = self.snx.execute_transaction(tx_params)
             self.logger.info(f"Creating account for {self.snx.address}")
             self.logger.info(f"create_account tx: {tx_hash}")
@@ -216,7 +255,7 @@ class Perps:
         market_id=None,
         market_name=None,
         account_id: int = None,
-        execute_now: bool = False,
+        submit: bool = False,
     ):
         """Deposit or withdraw collateral from an account"""
         market_id, market_name = self._resolve_market(
@@ -234,7 +273,7 @@ class Perps:
             to=market_proxy.address)
         tx_params['data'] = tx_data
 
-        if execute_now:
+        if submit:
             tx_hash = self.snx.execute_transaction(tx_params)
             self.logger.info(
                 f"Transferring {amount} {market_name} for {self.snx.address}")
@@ -252,7 +291,7 @@ class Perps:
         account_id: int = None,
         desired_fill_price: float = None,
         max_price_impact: float = None,
-        execute_now: bool = False,
+        submit: bool = False,
     ):
         """Commit an order to the orderbook"""
         market_id, market_name = self._resolve_market(market_id, market_name)
@@ -299,7 +338,7 @@ class Perps:
             to=market_proxy.address)
         tx_params['data'] = tx_data
 
-        if execute_now:
+        if submit:
             tx_hash = self.snx.execute_transaction(tx_params)
             self.logger.info(
                 f"Committing order size {size_wei} to {market_name} ({market_id}) for {self.snx.address}")
@@ -308,7 +347,7 @@ class Perps:
         else:
             return tx_params
 
-    def settle(self, account_id: int = None, execute_now: bool = False):
+    def settle(self, account_id: int = None, submit: bool = False):
         if not account_id:
             account_id = self.default_account_id
 
@@ -320,7 +359,7 @@ class Perps:
             to=market_proxy.address)
         tx_params['data'] = tx_data
 
-        if execute_now:
+        if submit:
             tx_hash = self.snx.execute_transaction(tx_params)
             self.logger.info(
                 f"Settling order for account {account_id}")
@@ -329,7 +368,7 @@ class Perps:
         else:
             return tx_params
 
-    def settle_pyth_order(self, account_id: int = None, max_retry: int = 10, retry_delay: int = 2, execute_now: bool = False):
+    def settle_pyth_order(self, account_id: int = None, max_retry: int = 10, retry_delay: int = 2, submit: bool = False):
         if not account_id:
             account_id = self.default_account_id
 
@@ -396,7 +435,7 @@ class Perps:
             to=market_proxy.address, value=1)
         tx_params['data'] = tx_data
 
-        if execute_now:
+        if submit:
             tx_hash = self.snx.execute_transaction(tx_params)
             self.logger.info(
                 f"Settling order for account {account_id}")
