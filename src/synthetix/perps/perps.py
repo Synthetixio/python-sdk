@@ -25,8 +25,8 @@ class Perps:
         self.account_proxy = snx.web3.eth.contract(
             address=account_proxy_address, abi=account_proxy_abi)
 
-        self.account_ids = self.get_account_ids()
-        self.markets_by_id, self.markets_by_name = self.get_markets()
+        self.get_account_ids()
+        self.get_markets()
 
         if default_account_id:
             self.default_account_id = default_account_id
@@ -75,6 +75,7 @@ class Perps:
             summary['market_name']: summary
             for summary in market_summaries
         }
+        self.markets_by_id, self.markets_by_name = markets_by_id, markets_by_name
         return markets_by_id, markets_by_name
 
 
@@ -161,6 +162,7 @@ class Perps:
             self.account_proxy.functions.tokenOfOwnerByIndex(address, i).call()
             for i in range(balance)
         ]
+        self.account_ids = account_ids
         return account_ids
 
     def get_margin_info(self, account_id: int = None):
@@ -256,7 +258,7 @@ class Perps:
         # TODO: check approvals
         market_proxy = self.market_proxy
         tx_data = market_proxy.encodeABI(
-            fn_name='modifyCollateral', args=[account_id, market_id, amount])
+            fn_name='modifyCollateral', args=[account_id, market_id, ether_to_wei(amount)])
 
         tx_params = self.snx._get_tx_params(
             to=market_proxy.address)
