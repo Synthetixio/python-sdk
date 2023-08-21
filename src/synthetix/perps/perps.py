@@ -1,12 +1,14 @@
 """Module for interacting with Synthetix Perps V3."""
+from ..utils import ether_to_wei, wei_to_ether
 from .constants import COLLATERALS_BY_ID, COLLATERALS_BY_NAME, PERPS_MARKETS_BY_ID, PERPS_MARKETS_BY_NAME
 from decimal import Decimal
 import time
 import requests
 
-
 class Perps:
     """Class for interacting with Synthetix Perps V3 contracts."""
+    # TODO: implement asyncio
+    # TODO: add waiting for transaction receipt
 
     def __init__(self, snx, pyth, default_account_id: int = None):
         self.snx = snx
@@ -23,7 +25,8 @@ class Perps:
         self.account_proxy = snx.web3.eth.contract(
             address=account_proxy_address, abi=account_proxy_abi)
 
-        self.account_ids = self.get_account_ids()
+        self.get_account_ids()
+        self.get_markets()
 
         if default_account_id:
             self.default_account_id = default_account_id
@@ -33,20 +36,23 @@ class Perps:
     # internals
     def _resolve_market(self, market_id: int, market_name: str, collateral: bool = False):
         """Resolve a market_id or market_name to a market_id and market_name"""
-        if not market_id and not market_name:
+        if market_id is None and market_name is None:
             raise ValueError("Must provide a market_id or market_name")
 
         ID_LOOKUP = COLLATERALS_BY_ID if collateral else PERPS_MARKETS_BY_ID
         NAME_LOOKUP = COLLATERALS_BY_NAME if collateral else PERPS_MARKETS_BY_NAME
 
-        if market_name and not market_id:
+        has_market_id = market_id is not None
+        has_market_name = market_name is not None
+
+        if not has_market_id and has_market_name:
             if market_name not in NAME_LOOKUP:
                 raise ValueError("Invalid market_name")
             market_id = NAME_LOOKUP[market_name]
 
             if market_id == -1:
                 raise ValueError("Invalid market_name")
-        elif market_id and not market_name:
+        elif has_market_id and not has_market_name:
             if market_id not in ID_LOOKUP:
                 raise ValueError("Invalid market_id")
             market_name = ID_LOOKUP[market_id]
@@ -54,6 +60,24 @@ class Perps:
 
     # read
     # TODO: get_market_settings
+    def get_markets(self):
+        """Get all markets and their market summaries"""
+        market_ids = self.market_proxy.functions.getMarkets().call()
+
+        # TODO: add multicall
+        market_summaries = [self.get_market_summary(market_id) for market_id in market_ids]
+
+        markets_by_id = {
+            summary['market_id']: summary
+            for summary in market_summaries
+        }
+        markets_by_name = {
+            summary['market_name']: summary
+            for summary in market_summaries
+        }
+        self.markets_by_id, self.markets_by_name = markets_by_id, markets_by_name
+        return markets_by_id, markets_by_name
+
 
     def get_order(self, account_id: int = None, fetch_settlement_strategy: bool = True):
         """Get the open order for an account"""
@@ -68,35 +92,41 @@ class Perps:
             'settlement_time': settlement_time,
             'market_id': market_id,
             'account_id': account_id,
-            'size_delta': size_delta,
+            'size_delta': wei_to_ether(size_delta),
             'settlement_strategy_id': settlement_strategy_id,
-            'acceptable_price': acceptable_price,
+            'acceptable_price': wei_to_ether(acceptable_price),
             'tracking_code': tracking_code,
-            'referrer': referrer
+            'referrer': referrer,
         }
 
         if fetch_settlement_strategy:
             settlement_strategy = self.get_settlement_strategy(
-                market_id, settlement_strategy_id)
+                settlement_strategy_id, market_id=market_id)
             order_data['settlement_strategy'] = settlement_strategy
 
         return order_data
 
-    def get_market_summary(self, market_id: int):
+    def get_market_summary(self, market_id: int = None, market_name: str = None):
         """Get the summary of a market"""
+        market_id, market_name = self._resolve_market(market_id, market_name)
+
         skew, size, max_open_interest, current_funding_rate, current_funding_velocity, index_price = self.market_proxy.functions.getMarketSummary(
             market_id).call()
         return {
-            'skew': skew,
-            'size': size,
-            'max_open_interest': max_open_interest,
-            'current_funding_rate': current_funding_rate,
-            'current_funding_velocity': current_funding_velocity,
-            'index_price': index_price
+            'market_id': market_id,
+            'market_name': market_name,
+            'skew': wei_to_ether(skew),
+            'size': wei_to_ether(size),
+            'max_open_interest': wei_to_ether(max_open_interest),
+            'current_funding_rate': wei_to_ether(current_funding_rate),
+            'current_funding_velocity': wei_to_ether(current_funding_velocity),
+            'index_price': wei_to_ether(index_price)
         }
 
-    def get_settlement_strategy(self, market_id: int, settlement_strategy_id: int):
+    def get_settlement_strategy(self, settlement_strategy_id: int, market_id: int = None, market_name: str = None):
         """Get the settlement strategy of a market"""
+        market_id, market_name = self._resolve_market(market_id, market_name)
+
         (
             strategy_type,
             settlement_delay,
@@ -117,8 +147,8 @@ class Perps:
             'price_verification_contract': price_verification_contract,
             'feed_id': feed_id,
             'url': url,
-            'settlement_reward': settlement_reward,
-            'price_deviation_tolerance': price_deviation_tolerance,
+            'settlement_reward': wei_to_ether(settlement_reward),
+            'price_deviation_tolerance': wei_to_ether(price_deviation_tolerance),
             'disabled': disabled,
         }
 
@@ -132,6 +162,7 @@ class Perps:
             self.account_proxy.functions.tokenOfOwnerByIndex(address, i).call()
             for i in range(balance)
         ]
+        self.account_ids = account_ids
         return account_ids
 
     def get_margin_info(self, account_id: int = None):
@@ -145,15 +176,17 @@ class Perps:
             account_id).call()
         withdrawable_margin = self.market_proxy.functions.getWithdrawableMargin(
             account_id).call()
-        initial_margin_requirement, maintenance_margin_requirement = self.market_proxy.functions.getRequiredMargins(
+        initial_margin_requirement, maintenance_margin_requirement, total_accumulated_liquidation_rewards, max_liquidation_reward = self.market_proxy.functions.getRequiredMargins(
             account_id).call()
 
         return {
-            'total_collateral_value': total_collateral_value,
-            'available_margin': available_margin,
-            'withdrawable_margin': withdrawable_margin,
-            'initial_margin_requirement': initial_margin_requirement,
-            'maintenance_margin_requirement': maintenance_margin_requirement
+            'total_collateral_value': wei_to_ether(total_collateral_value),
+            'available_margin': wei_to_ether(available_margin),
+            'withdrawable_margin': wei_to_ether(withdrawable_margin),
+            'initial_margin_requirement': wei_to_ether(initial_margin_requirement),
+            'maintenance_margin_requirement': wei_to_ether(maintenance_margin_requirement),
+            'total_accumulated_liquidation_rewards': wei_to_ether(total_accumulated_liquidation_rewards),
+            'max_liquidation_reward': wei_to_ether(max_liquidation_reward),
         }
 
     def get_collateral_balances(self, account_id: int = None):
@@ -165,25 +198,26 @@ class Perps:
         for market_id in COLLATERALS_BY_ID:
             balance = self.market_proxy.functions.getCollateralAmount(
                 account_id, market_id).call()
-            collateral_balances[COLLATERALS_BY_ID[market_id]] = balance
+            collateral_balances[COLLATERALS_BY_ID[market_id]] = wei_to_ether(balance)
 
         return collateral_balances
 
-    def get_open_position(self, market_id: int, account_id: int = None):
+    def get_open_position(self, market_id: int = None, market_name: int = None, account_id: int = None):
         """Get the open position for an account"""
+        market_id, market_name = self._resolve_market(market_id, market_name)
         if not account_id:
             account_id = self.default_account_id
 
         pnl, accrued_funding, position_size = self.market_proxy.functions.getOpenPosition(
             account_id, market_id).call()
         return {
-            'pnl': pnl,
-            'accrued_funding': accrued_funding,
-            'position_size': position_size
+            'pnl': wei_to_ether(pnl),
+            'accrued_funding': wei_to_ether(accrued_funding),
+            'position_size': wei_to_ether(position_size),
         }
 
     # transactions
-    def create_account(self, account_id: int = None, execute_now: bool = False):
+    def create_account(self, account_id: int = None, submit: bool = False):
         """Create a perps account"""
         if not account_id:
             tx_args = []
@@ -198,7 +232,7 @@ class Perps:
             to=market_proxy.address)
         tx_params['data'] = tx_data
 
-        if execute_now:
+        if submit:
             tx_hash = self.snx.execute_transaction(tx_params)
             self.logger.info(f"Creating account for {self.snx.address}")
             self.logger.info(f"create_account tx: {tx_hash}")
@@ -212,7 +246,7 @@ class Perps:
         market_id=None,
         market_name=None,
         account_id: int = None,
-        execute_now: bool = False,
+        submit: bool = False,
     ):
         """Deposit or withdraw collateral from an account"""
         market_id, market_name = self._resolve_market(
@@ -224,16 +258,16 @@ class Perps:
         # TODO: check approvals
         market_proxy = self.market_proxy
         tx_data = market_proxy.encodeABI(
-            fn_name='modifyCollateral', args=[account_id, market_id, amount])
+            fn_name='modifyCollateral', args=[account_id, market_id, ether_to_wei(amount)])
 
         tx_params = self.snx._get_tx_params(
             to=market_proxy.address)
         tx_params['data'] = tx_data
 
-        if execute_now:
+        if submit:
             tx_hash = self.snx.execute_transaction(tx_params)
             self.logger.info(
-                f"Transferring {amount} {market_name} for {self.snx.address}")
+                f"Transferring {amount} {market_name} for account {account_id}")
             self.logger.info(f"modify_collateral tx: {tx_hash}")
             return tx_hash
         else:
@@ -248,7 +282,7 @@ class Perps:
         account_id: int = None,
         desired_fill_price: float = None,
         max_price_impact: float = None,
-        execute_now: bool = False,
+        submit: bool = False,
     ):
         """Commit an order to the orderbook"""
         market_id, market_name = self._resolve_market(market_id, market_name)
@@ -259,7 +293,7 @@ class Perps:
                 "Cannot set both desired_fill_price and max_price_impact")
 
         is_short = -1 if size < 0 else 1
-        size_wei = self.snx.web3.to_wei(abs(size), 'ether') * is_short
+        size_wei = ether_to_wei(abs(size)) * is_short
 
         if desired_fill_price:
             acceptable_price = desired_fill_price
@@ -269,9 +303,8 @@ class Perps:
 
             if not max_price_impact:
                 max_price_impact = self.snx.max_price_impact
-            price_impact = Decimal(1 + is_short*max_price_impact/100)
-            acceptable_price = int(
-                market_summary['index_price'] * price_impact)
+            price_impact = 1 + is_short*max_price_impact/100
+            acceptable_price = market_summary['index_price'] * price_impact
 
         if not account_id:
             account_id = self.default_account_id
@@ -282,7 +315,7 @@ class Perps:
             "accountId": account_id,
             "sizeDelta": size_wei,
             "settlementStrategyId": settlement_strategy_id,
-            "acceptablePrice": acceptable_price,
+            "acceptablePrice": ether_to_wei(acceptable_price),
             "trackingCode": self.snx.tracking_code,
             "referrer": self.snx.referrer
         }
@@ -295,16 +328,16 @@ class Perps:
             to=market_proxy.address)
         tx_params['data'] = tx_data
 
-        if execute_now:
+        if submit:
             tx_hash = self.snx.execute_transaction(tx_params)
             self.logger.info(
-                f"Committing order size {size_wei} to {market_name} ({market_id}) for {self.snx.address}")
+                f"Committing order size {size_wei} ({size}) to {market_name} (id: {market_id}) for account {account_id}")
             self.logger.info(f"commit_order tx: {tx_hash}")
             return tx_hash
         else:
             return tx_params
 
-    def settle(self, account_id: int = None, execute_now: bool = False):
+    def settle(self, account_id: int = None, submit: bool = False):
         if not account_id:
             account_id = self.default_account_id
 
@@ -316,7 +349,7 @@ class Perps:
             to=market_proxy.address)
         tx_params['data'] = tx_data
 
-        if execute_now:
+        if submit:
             tx_hash = self.snx.execute_transaction(tx_params)
             self.logger.info(
                 f"Settling order for account {account_id}")
@@ -325,7 +358,7 @@ class Perps:
         else:
             return tx_params
 
-    def settle_pyth_order(self, account_id: int = None, max_retry: int = 10, retry_delay: int = 2, execute_now: bool = False):
+    def settle_pyth_order(self, account_id: int = None, max_retry: int = 10, retry_delay: int = 2, submit: bool = False):
         if not account_id:
             account_id = self.default_account_id
 
@@ -392,7 +425,7 @@ class Perps:
             to=market_proxy.address, value=1)
         tx_params['data'] = tx_data
 
-        if execute_now:
+        if submit:
             tx_hash = self.snx.execute_transaction(tx_params)
             self.logger.info(
                 f"Settling order for account {account_id}")

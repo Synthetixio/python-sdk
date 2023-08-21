@@ -19,7 +19,6 @@ def test_susd_balance(snx, logger):
     logger.info(f"Balance: {balance}")
     assert balance is not None
     assert balance['balance'] >= 0
-    assert balance['balance_usd'] >= 0
 
 def test_susd_legacy_balance(snx, logger):
     """The instance has a legacy sUSD balance"""
@@ -27,5 +26,3 @@ def test_susd_legacy_balance(snx, logger):
     logger.info(f"Balance: {balance}")
     assert balance is not None
     assert balance['balance'] >= 0
-    assert balance['balance_usd'] >= 0
-

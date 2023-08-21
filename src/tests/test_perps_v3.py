@@ -16,6 +16,17 @@ def test_perps_module(snx, logger):
     assert snx.perps is not None
     assert snx.perps.market_proxy is not None
     assert snx.perps.account_proxy is not None
+    assert snx.perps.account_ids is not None
+    assert snx.perps.markets_by_id is not None
+    assert snx.perps.markets_by_name is not None
+
+
+def test_perps_markets(snx, logger):
+    markets_by_id, markets_by_name = snx.perps.get_markets()
+    logger.info(f"Markets by id: {markets_by_id}")
+    logger.info(f"Markets by name: {markets_by_name}")
+    assert markets_by_id is not None
+    assert markets_by_name is not None
 
 
 def test_perps_account_fetch(snx, logger):
@@ -86,7 +97,7 @@ def test_perps_market_summary(snx, logger):
 def test_perps_settlement_strategy(snx, logger):
     """The instance can fetch a settlement strategy"""
     settlement_strategy = snx.perps.get_settlement_strategy(
-        TEST_MARKET_ID, TEST_SETTLEMENT_STRATEGY_ID)
+        TEST_SETTLEMENT_STRATEGY_ID, TEST_MARKET_ID)
 
     logger.info(
         f"id: {TEST_SETTLEMENT_STRATEGY_ID} - settlement strategy: {settlement_strategy}")

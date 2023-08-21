@@ -1283,6 +1283,16 @@
           "internalType": "uint256",
           "name": "requiredMaintenanceMargin",
           "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "totalAccumulatedLiquidationRewards",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "maxLiquidationReward",
+          "type": "uint256"
         }
       ],
       "stateMutability": "view",
@@ -1590,12 +1600,12 @@
       "inputs": [
         {
           "internalType": "uint256",
-          "name": "acceptablePrice",
+          "name": "fillPrice",
           "type": "uint256"
         },
         {
           "internalType": "uint256",
-          "name": "fillPrice",
+          "name": "acceptablePrice",
           "type": "uint256"
         }
       ],
@@ -1719,6 +1729,49 @@
         }
       ],
       "name": "OrderCommitted",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint128",
+          "name": "marketId",
+          "type": "uint128"
+        },
+        {
+          "indexed": true,
+          "internalType": "uint128",
+          "name": "accountId",
+          "type": "uint128"
+        },
+        {
+          "indexed": false,
+          "internalType": "int128",
+          "name": "sizeDelta",
+          "type": "int128"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "acceptablePrice",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "settlementTime",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "trackingCode",
+          "type": "bytes32"
+        }
+      ],
+      "name": "PreviousOrderExpired",
       "type": "event"
     },
     {
@@ -1850,6 +1903,11 @@
           "internalType": "uint256",
           "name": "orderFees",
           "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "fillPrice",
+          "type": "uint256"
         }
       ],
       "stateMutability": "view",
@@ -1918,6 +1976,35 @@
           "internalType": "struct AsyncOrder.Data",
           "name": "order",
           "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint128",
+          "name": "accountId",
+          "type": "uint128"
+        },
+        {
+          "internalType": "uint128",
+          "name": "marketId",
+          "type": "uint128"
+        },
+        {
+          "internalType": "int128",
+          "name": "sizeDelta",
+          "type": "int128"
+        }
+      ],
+      "name": "requiredMarginForOrder",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "requiredMargin",
+          "type": "uint256"
         }
       ],
       "stateMutability": "view",
@@ -2113,6 +2200,12 @@
           "indexed": false,
           "internalType": "int256",
           "name": "pnl",
+          "type": "int256"
+        },
+        {
+          "indexed": false,
+          "internalType": "int256",
+          "name": "accruedFunding",
           "type": "int256"
         },
         {
@@ -2632,6 +2725,12 @@
         {
           "indexed": false,
           "internalType": "uint256",
+          "name": "minimumInitialMarginRatioD18",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
           "name": "liquidationRewardRatioD18",
           "type": "uint256"
         },
@@ -2958,7 +3057,12 @@
         },
         {
           "internalType": "uint256",
-          "name": "maintenanceMarginRatioD18",
+          "name": "minimumInitialMarginRatioD18",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "maintenanceMarginScalarD18",
           "type": "uint256"
         },
         {
@@ -2974,6 +3078,11 @@
         {
           "internalType": "uint256",
           "name": "maxSecondsInLiquidationWindow",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "minimumPositionMargin",
           "type": "uint256"
         }
       ],
@@ -3155,7 +3264,12 @@
         },
         {
           "internalType": "uint256",
-          "name": "maintenanceMarginRatioD18",
+          "name": "minimumInitialMarginRatioD18",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "maintenanceMarginScalarD18",
           "type": "uint256"
         },
         {
@@ -3415,6 +3529,19 @@
           "internalType": "uint256",
           "name": "maxLiquidationRewardUsd",
           "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getMarkets",
+      "outputs": [
+        {
+          "internalType": "uint256[]",
+          "name": "marketIds",
+          "type": "uint256[]"
         }
       ],
       "stateMutability": "view",

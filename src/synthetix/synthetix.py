@@ -9,6 +9,7 @@ from web3.types import TxParams
 from web3.middleware import geth_poa_middleware
 from decimal import Decimal
 from .constants import DEFAULT_NETWORK_ID, DEFAULT_TRACKING_CODE, DEFAULT_SLIPPAGE, DEFAULT_GQL_ENDPOINT_PERPS, DEFAULT_GQL_ENDPOINT_RATES, DEFAULT_PRICE_SERVICE_ENDPOINTS, DEFAULT_REFERRER, DEFAULT_TRACKING_CODE
+from .utils import wei_to_ether
 from .contracts import load_contracts
 from .pyth import Pyth
 from .perps import Perps
@@ -261,5 +262,4 @@ class Synthetix:
 
         balance = token.functions.balanceOf(
             self.address).call()
-        balance_usd = self.web3.from_wei(balance, 'ether')
-        return {"balance": balance, "balance_usd": balance_usd}
+        return {"balance": wei_to_ether(balance)}
