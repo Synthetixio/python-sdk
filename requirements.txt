@@ -8,3 +8,5 @@ autopep8
 pre-commit
 python-dotenv
 pytest
+sphinx
+sphinx-rtd-theme
