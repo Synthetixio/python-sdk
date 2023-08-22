@@ -19,9 +19,8 @@ extensions = [
 
 templates_path = ['_templates']
 exclude_patterns = [
-    '**/constants.py',
+    '**/constants.py', # TODO: Figure out why this doesn't work
 ]
-
 
 
 # -- Options for HTML output -------------------------------------------------
