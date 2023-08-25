@@ -1,7 +1,6 @@
 """Module for interacting with Synthetix Perps V3."""
 from ..utils import ether_to_wei, wei_to_ether
 from .constants import COLLATERALS_BY_ID, COLLATERALS_BY_NAME, PERPS_MARKETS_BY_ID, PERPS_MARKETS_BY_NAME
-from decimal import Decimal
 import time
 import requests
 
@@ -30,8 +29,10 @@ class Perps:
 
         if default_account_id:
             self.default_account_id = default_account_id
-        else:
+        elif len(self.account_ids) > 0:
             self.default_account_id = self.account_ids[0]
+        else:
+            self.default_account_id = None
 
     # internals
     def _resolve_market(self, market_id: int, market_name: str, collateral: bool = False):
@@ -277,8 +278,8 @@ class Perps:
         self,
         size: int,
         settlement_strategy_id: int = 0,
-        market_id=None,
-        market_name=None,
+        market_id: int = None,
+        market_name: str = None,
         account_id: int = None,
         desired_fill_price: float = None,
         max_price_impact: float = None,
