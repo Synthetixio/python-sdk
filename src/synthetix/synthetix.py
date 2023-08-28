@@ -13,6 +13,7 @@ from .utils import wei_to_ether
 from .contracts import load_contracts
 from .pyth import Pyth
 from .perps import Perps
+from .spot import Spot
 # from .alerts import Alerts
 from .queries import Queries
 
@@ -108,6 +109,7 @@ class Synthetix:
             self.network_id, price_service_endpoint=price_service_endpoint)
 
         self.perps = Perps(self, self.pyth, default_account_id)
+        self.spot = Spot(self, self.pyth)
 
     @property
     def web3(self):
