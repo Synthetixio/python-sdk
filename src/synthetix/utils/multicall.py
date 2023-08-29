@@ -10,7 +10,18 @@ def multicall_function(snx, contract, function_name, inputs):
 
     # get the function abi
     func = contract.get_function_by_name(function_name).abi
-    output_types = [i['type'] for i in func['outputs']]
+    raw_output_types = [
+        i['type'] if i['type'] != 'tuple' else [j['type'] for j in i['components']]
+        for i in func['outputs']
+    ]
+
+    # flatten any list output types
+    output_types = []
+    for i in raw_output_types:
+        if isinstance(i, list):
+            output_types.extend(i)
+        else:
+            output_types.append(i)
 
     # create the inputs
     inputs = [
@@ -23,5 +34,5 @@ def multicall_function(snx, contract, function_name, inputs):
     mc_result = [decode(output_types, x[1]) for x in mc_result if x[0] == True]
 
     # if there is only one result, return it as a single value
-    mc_result = [x[0] for x in mc_result if len(x) == 1]
+    mc_result = [x[0] if len(x) == 1 else x for x in mc_result]
     return mc_result
