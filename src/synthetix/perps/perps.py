@@ -1,5 +1,5 @@
 """Module for interacting with Synthetix Perps V3."""
-from ..utils import ether_to_wei, wei_to_ether
+from ..utils import ether_to_wei, wei_to_ether, multicall_function
 from .constants import COLLATERALS_BY_ID, COLLATERALS_BY_NAME, PERPS_MARKETS_BY_ID, PERPS_MARKETS_BY_NAME
 import time
 import requests
@@ -64,9 +64,7 @@ class Perps:
     def get_markets(self):
         """Get all markets and their market summaries"""
         market_ids = self.market_proxy.functions.getMarkets().call()
-
-        # TODO: add multicall
-        market_summaries = [self.get_market_summary(market_id) for market_id in market_ids]
+        market_summaries = self.get_market_summaries(market_ids)
 
         markets_by_id = {
             summary['market_id']: summary
@@ -106,6 +104,33 @@ class Perps:
             order_data['settlement_strategy'] = settlement_strategy
 
         return order_data
+
+    def get_market_summaries(self, market_ids: list[int] = []):
+        """Get the summary for a list of market ids"""
+
+        inputs = [(market_id,) for market_id in market_ids]
+        markets = multicall_function(
+            self.snx, self.market_proxy, 'getMarketSummary', inputs)
+
+        if len(market_ids) != len(markets):
+            raise ValueError("Failed to fetch some market summaries")
+
+        market_summaries = []
+        for ind, market in enumerate(markets):
+            skew, size, max_open_interest, current_funding_rate, current_funding_velocity, index_price = market
+            market_id = market_ids[ind]
+            market_id, market_name = self._resolve_market(market_id, None)
+            market_summaries.append({
+                'market_id': market_id,
+                'market_name': market_name,
+                'skew': wei_to_ether(skew),
+                'size': wei_to_ether(size),
+                'max_open_interest': wei_to_ether(max_open_interest),
+                'current_funding_rate': wei_to_ether(current_funding_rate),
+                'current_funding_velocity': wei_to_ether(current_funding_velocity),
+                'index_price': wei_to_ether(index_price)
+            })
+        return market_summaries
 
     def get_market_summary(self, market_id: int = None, market_name: str = None):
         """Get the summary of a market"""
@@ -159,10 +184,13 @@ class Perps:
             address = self.snx.address
 
         balance = self.account_proxy.functions.balanceOf(address).call()
-        account_ids = [
-            self.account_proxy.functions.tokenOfOwnerByIndex(address, i).call()
-            for i in range(balance)
-        ]
+
+        # multicall the account ids
+        inputs = [(address, i) for i in range(balance)]
+
+        account_ids = multicall_function(
+            self.snx, self.account_proxy, 'tokenOfOwnerByIndex', inputs)
+
         self.account_ids = account_ids
         return account_ids
 

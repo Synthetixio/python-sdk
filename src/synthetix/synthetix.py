@@ -78,7 +78,19 @@ class Synthetix:
             self.provider_class = Web3.WebsocketProvider
         else:
             raise Exception("RPC endpoint is invalid")
+        
+        # set up the web3 instance
+        web3 = Web3(self.provider_class(self.provider_rpc))
 
+        # check if the chain_id matches
+        if web3.eth.chain_id != network_id:
+            raise Exception(
+                "The RPC `chain_id` must match the stored `network_id`")
+        else:
+            web3.middleware_onion.inject(geth_poa_middleware, layer=0)
+            self.nonce = web3.eth.get_transaction_count(self.address)
+
+        self.web3 = web3
         self.network_id = network_id
 
         # init contracts
@@ -110,18 +122,6 @@ class Synthetix:
 
         self.perps = Perps(self, self.pyth, default_account_id)
         self.spot = Spot(self, self.pyth)
-
-    @property
-    def web3(self):
-        w3 = Web3(self.provider_class(self.provider_rpc))
-
-        if w3.eth.chain_id != self.network_id:
-            raise Exception(
-                "The RPC `chain_id` must match the stored `network_id`")
-        else:
-            w3.middleware_onion.inject(geth_poa_middleware, layer=0)
-            self.nonce = w3.eth.get_transaction_count(self.address)
-            return w3
 
     def _load_markets(self):
         """
