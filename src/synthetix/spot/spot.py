@@ -40,19 +40,42 @@ class Spot:
             market_name = SPOT_MARKETS_BY_ID[market_id]
         return market_id, market_name
 
-    # read
     def _get_synth_contract(self, market_id: int = None, market_name: str = None):
         """Create a contract instance for a specified synth"""
         market_id, market_name = self._resolve_market(market_id, market_name)
 
-        market_implementation = self.market_proxy.functions.getSynth(market_id).call()
-        market_contract = self.snx.web3.eth.contract(
-            address=market_implementation, abi=self.snx.contracts['sUSD']['abi'])
+        if market_id == 0:
+            market_implementation = self.snx.contracts['USDProxy']['address']
+        else:
+            market_implementation = self.market_proxy.functions.getSynth(market_id).call()
 
+        market_contract = self.snx.web3.eth.contract(
+            address=market_implementation, abi=self.snx.contracts['USDProxy']['abi'])
         return market_contract
 
-    # TODO: allowance
-    # TODO: balances
+    # read
+    def get_balance(self, address: str = None, market_id: int = None, market_name: str = None):
+        """Get the balance of a spot synth"""
+        market_id, market_name = self._resolve_market(market_id, market_name)
+
+        if address is None:
+            address = self.snx.address
+
+        synth_contract = self._get_synth_contract(market_id)
+        balance = synth_contract.functions.balanceOf(address).call()
+        return wei_to_ether(balance)
+
+    def get_allowance(self, target_address: str, address: str = None, market_id: int = None, market_name: str = None):
+        """Get the allowance for a spot synth for a specified address"""
+        market_id, market_name = self._resolve_market(market_id, market_name)
+
+        if address is None:
+            address = self.snx.address
+
+        synth_contract = self._get_synth_contract(market_id)
+        allowance = synth_contract.functions.allowance(address, target_address).call()
+        return wei_to_ether(allowance)
+
     def get_settlement_strategy(self, settlement_strategy_id: int, market_id: int = None, market_name: str = None):
         """Get the settlement strategy of a market"""
         market_id, market_name = self._resolve_market(market_id, market_name)
@@ -110,8 +133,41 @@ class Spot:
         
         return order_data
 
-
     # transactions
+    def approve(
+        self,
+        target_address: str,
+        amount: int = None,
+        market_id: int = None,
+        market_name: str = None,
+        submit: bool = False
+    ):
+        """Approve an address to spend a spot synth"""
+        market_id, market_name = self._resolve_market(market_id, market_name)
+
+        # fix the amount
+        if amount is None:
+            amount = 2**256 - 1
+        else:
+            amount = ether_to_wei(amount)
+
+        synth_contract = self._get_synth_contract(market_id)
+        tx_data = synth_contract.encodeABI(fn_name='approve', args=[
+            target_address, amount])
+
+        tx_params = self.snx._get_tx_params(
+            to=synth_contract.address)
+        tx_params['data'] = tx_data
+
+        if submit:
+            tx_hash = self.snx.execute_transaction(tx_params)
+            self.logger.info(
+                f"Approving {target_address} to spend {amount / 1e18} {market_name}")
+            self.logger.info(f"approve tx: {tx_hash}")
+            return tx_hash
+        else:
+            return tx_params
+
     def commit_order(
         self,
         side: Literal['buy', 'sell'],
