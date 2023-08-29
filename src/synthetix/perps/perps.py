@@ -1,5 +1,5 @@
 """Module for interacting with Synthetix Perps V3."""
-from ..utils import ether_to_wei, wei_to_ether
+from ..utils import ether_to_wei, wei_to_ether, multicall_function
 from .constants import COLLATERALS_BY_ID, COLLATERALS_BY_NAME, PERPS_MARKETS_BY_ID, PERPS_MARKETS_BY_NAME
 import time
 import requests
@@ -159,10 +159,13 @@ class Perps:
             address = self.snx.address
 
         balance = self.account_proxy.functions.balanceOf(address).call()
-        account_ids = [
-            self.account_proxy.functions.tokenOfOwnerByIndex(address, i).call()
-            for i in range(balance)
-        ]
+
+        # multicall the account ids
+        inputs = [(address, i) for i in range(balance)]
+
+        account_ids = multicall_function(
+            self.snx, self.account_proxy, 'tokenOfOwnerByIndex', inputs)
+
         self.account_ids = account_ids
         return account_ids
 
