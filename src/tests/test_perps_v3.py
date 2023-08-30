@@ -113,6 +113,15 @@ def test_perps_account_collateral_balances(snx, logger):
     assert balances['BTC'] is not None
 
 
+def test_perps_can_liquidate(snx, logger):
+    """The instance can fetch a market summary"""
+    can_liquidate = snx.perps.get_can_liquidate()
+
+    logger.info(f"Account: {snx.perps.default_account_id} - can liquidate: {can_liquidate}")
+    assert can_liquidate is not None
+    assert type(can_liquidate) is bool
+
+
 def test_perps_market_summary(snx, logger):
     """The instance can fetch a market summary"""
     market_summary = snx.perps.get_market_summary(TEST_MARKET_ID)
@@ -224,6 +233,14 @@ def test_perps_settle(snx, logger):
     assert settle['from'] == snx.address
     assert settle['data'] is not None
 
+def test_perps_liquidate(snx, logger):
+    """User can call the static liquidate function"""
+    liquidate = snx.perps.liquidate()
+
+    logger.info(f"Account: {snx.perps.default_account_id} - liquidate: {liquidate}")
+    assert liquidate is not None
+    assert liquidate['from'] == snx.address
+    assert liquidate['data'] is not None
 
 def test_perps_settle_pyth_order(snx, logger):
     """User can prepare a settlement transaction using Pyth"""

@@ -227,11 +227,21 @@ class Perps:
 
         collateral_balances = {}
         for market_id in COLLATERALS_BY_ID:
+            # TODO: add multicall
             balance = self.market_proxy.functions.getCollateralAmount(
                 account_id, market_id).call()
             collateral_balances[COLLATERALS_BY_ID[market_id]] = wei_to_ether(balance)
 
         return collateral_balances
+    
+    def get_can_liquidate(self, account_id: int = None):
+        """Check if an account id is eligible for liquidation"""
+        if not account_id:
+            account_id = self.default_account_id
+
+        can_liquidate = self.market_proxy.functions.canLiquidate(
+            account_id).call()
+        return can_liquidate
 
     def get_open_position(self, market_id: int = None, market_name: int = None, account_id: int = None):
         """Get the open position for an account"""
@@ -248,7 +258,7 @@ class Perps:
         }
 
     def get_open_positions(self, inputs: [(int, int | str)] = []):
-        """Get the open position for a list of accounts and markets"""
+        """Get the open positions for a list of accounts and markets"""
         clean_inputs = []
         for account_id, market in inputs:
             if type(market) is str:
@@ -391,6 +401,36 @@ class Perps:
             return tx_hash
         else:
             return tx_params
+
+    def liquidate(self, account_id: int = None, submit: bool = False, static: bool = False):
+        if not account_id:
+            account_id = self.default_account_id
+
+        if submit and static:
+            raise ValueError(
+                "Cannot submit and use static in the same transaction")
+
+        market_proxy = self.market_proxy
+        if static:
+            liquidation_reward = market_proxy.functions.liquidate(
+                account_id).call()
+            return wei_to_ether(liquidation_reward)
+        else:
+            tx_data = market_proxy.encodeABI(
+                fn_name='liquidate', args=[account_id])
+
+            tx_params = self.snx._get_tx_params(
+                to=market_proxy.address)
+            tx_params['data'] = tx_data
+
+            if submit:
+                tx_hash = self.snx.execute_transaction(tx_params)
+                self.logger.info(
+                    f"Liquidating account {account_id}")
+                self.logger.info(f"liquidate tx: {tx_hash}")
+                return tx_hash
+            else:
+                return tx_params
 
     def settle(self, account_id: int = None, submit: bool = False):
         if not account_id:
