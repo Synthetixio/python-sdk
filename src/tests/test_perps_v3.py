@@ -68,6 +68,39 @@ def test_perps_open_position(snx, logger):
     assert position['accrued_funding'] is not None
     assert position['position_size'] is not None
 
+def test_perps_open_positions_by_id(snx, logger):
+    """The instance can fetch the open position for a list of accounts"""
+    accounts = snx.perps.account_ids[:10]
+    inputs = [(account, 100) for account in accounts]
+
+    positions = snx.perps.get_open_positions(inputs)
+
+    logger.info(f"Address: {snx.address} - inputs: {inputs}")
+    logger.info(f"Address: {snx.address} - positions: {positions}")
+    assert positions is not None
+    assert len(positions) == len(accounts)
+    assert positions[0]['account_id'] is not None
+    assert positions[0]['market_id'] is not None
+    assert positions[0]['pnl'] is not None
+    assert positions[0]['accrued_funding'] is not None
+    assert positions[0]['position_size'] is not None
+
+def test_perps_open_positions_by_name(snx, logger):
+    """The instance can fetch the open position for a list of accounts"""
+    accounts = snx.perps.account_ids[:10]
+    inputs = [(account, 'ETH') for account in accounts]
+
+    positions = snx.perps.get_open_positions(inputs)
+
+    logger.info(f"Address: {snx.address} - inputs: {inputs}")
+    logger.info(f"Address: {snx.address} - positions: {positions}")
+    assert positions is not None
+    assert len(positions) == len(accounts)
+    assert positions[0]['account_id'] is not None
+    assert positions[0]['market_id'] is not None
+    assert positions[0]['pnl'] is not None
+    assert positions[0]['accrued_funding'] is not None
+    assert positions[0]['position_size'] is not None
 
 def test_perps_account_collateral_balances(snx, logger):
     """The instance can fetch collateral balances for an account"""

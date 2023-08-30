@@ -245,6 +245,30 @@ class Perps:
             'position_size': wei_to_ether(position_size),
         }
 
+    def get_open_positions(self, inputs: [(int, int | str)] = []):
+        """Get the open position for a list of accounts and markets"""
+        clean_inputs = []
+        for account_id, market in inputs:
+            if type(market) is str:
+                market_id, market_name = self._resolve_market(None, market)
+            else:
+                market_id, market_name = self._resolve_market(market, None)
+            clean_inputs.append((account_id, market_id))
+
+        open_positions = multicall_function(
+            self.snx, self.market_proxy, 'getOpenPosition', clean_inputs)
+
+        open_positions = [
+            {
+                'account_id': clean_inputs[ind][0],
+                'market_id': clean_inputs[ind][1],
+                'pnl': wei_to_ether(pnl),
+                'accrued_funding': wei_to_ether(accrued_funding),
+                'position_size': wei_to_ether(position_size),
+            } for ind, (pnl, accrued_funding, position_size) in enumerate(open_positions)
+        ]
+        return open_positions
+
     # transactions
     def create_account(self, account_id: int = None, submit: bool = False):
         """Create a perps account"""
