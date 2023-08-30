@@ -114,12 +114,25 @@ def test_perps_account_collateral_balances(snx, logger):
 
 
 def test_perps_can_liquidate(snx, logger):
-    """The instance can fetch a market summary"""
+    """The instance can fetch an accounts liquidation status"""
     can_liquidate = snx.perps.get_can_liquidate()
 
     logger.info(f"Account: {snx.perps.default_account_id} - can liquidate: {can_liquidate}")
     assert can_liquidate is not None
     assert type(can_liquidate) is bool
+
+def test_perps_can_liquidates(snx, logger):
+    """The instance can fetch liquidation status for a list of accounts"""
+    account_ids = snx.perps.account_ids[:10]
+    can_liquidates = snx.perps.get_can_liquidates(account_ids)
+
+    logger.info(f"Accounts: {account_ids} - can liquidate: {can_liquidates}")
+    assert can_liquidates is not None
+    assert type(can_liquidates) is list
+    for can_liquidate in can_liquidates:
+        assert len(can_liquidate) == 2
+        assert type(can_liquidate[0]) is int
+        assert type(can_liquidate[1]) is bool
 
 
 def test_perps_market_summary(snx, logger):

@@ -243,6 +243,19 @@ class Perps:
             account_id).call()
         return can_liquidate
 
+    def get_can_liquidates(self, account_ids: [int] = [None]):
+        """Check if a list of account ids are eligible for liquidation"""
+        account_ids = [(account_id,) for account_id in account_ids]
+        can_liquidates = multicall_function(
+            self.snx, self.market_proxy, 'canLiquidate', account_ids)
+
+        # combine the results with the account ids, return tuples like (account_id, can_liquidate)
+        can_liquidates = [
+            (account_ids[ind][0], can_liquidate)
+            for ind, can_liquidate in enumerate(can_liquidates)
+        ]
+        return can_liquidates
+
     def get_open_position(self, market_id: int = None, market_name: int = None, account_id: int = None):
         """Get the open position for an account"""
         market_id, market_name = self._resolve_market(market_id, market_name)
