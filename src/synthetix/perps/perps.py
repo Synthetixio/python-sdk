@@ -14,25 +14,27 @@ class Perps:
         self.pyth = pyth
         self.logger = snx.logger
 
-        market_proxy_address, market_proxy_abi = snx.contracts[
-            'PerpsMarketProxy']['address'], snx.contracts['PerpsMarketProxy']['abi']
-        account_proxy_address, account_proxy_abi = snx.contracts[
-            'AccountProxy']['address'], snx.contracts['AccountProxy']['abi']
+        # check if perps is deployed on this network
+        if 'PerpsMarketProxy' in snx.contracts:
+            market_proxy_address, market_proxy_abi = snx.contracts[
+                'PerpsMarketProxy']['address'], snx.contracts['PerpsMarketProxy']['abi']
+            account_proxy_address, account_proxy_abi = snx.contracts[
+                'AccountProxy']['address'], snx.contracts['AccountProxy']['abi']
 
-        self.market_proxy = snx.web3.eth.contract(
-            address=market_proxy_address, abi=market_proxy_abi)
-        self.account_proxy = snx.web3.eth.contract(
-            address=account_proxy_address, abi=account_proxy_abi)
+            self.market_proxy = snx.web3.eth.contract(
+                address=market_proxy_address, abi=market_proxy_abi)
+            self.account_proxy = snx.web3.eth.contract(
+                address=account_proxy_address, abi=account_proxy_abi)
 
-        self.get_account_ids()
-        self.get_markets()
+            self.get_account_ids()
+            self.get_markets()
 
-        if default_account_id:
-            self.default_account_id = default_account_id
-        elif len(self.account_ids) > 0:
-            self.default_account_id = self.account_ids[0]
-        else:
-            self.default_account_id = None
+            if default_account_id:
+                self.default_account_id = default_account_id
+            elif len(self.account_ids) > 0:
+                self.default_account_id = self.account_ids[0]
+            else:
+                self.default_account_id = None
 
     # internals
     def _resolve_market(self, market_id: int, market_name: str, collateral: bool = False):
