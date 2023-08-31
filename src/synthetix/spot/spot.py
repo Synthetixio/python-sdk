@@ -12,11 +12,13 @@ class Spot:
         self.pyth = pyth
         self.logger = snx.logger
 
-        market_proxy_address, market_proxy_abi = snx.contracts[
-            'SpotMarketProxy']['address'], snx.contracts['SpotMarketProxy']['abi']
+        # check if spot is deployed on this network
+        if 'PerpsMarketProxy' in snx.contracts:
+            market_proxy_address, market_proxy_abi = snx.contracts[
+                'SpotMarketProxy']['address'], snx.contracts['SpotMarketProxy']['abi']
 
-        self.market_proxy = snx.web3.eth.contract(
-            address=market_proxy_address, abi=market_proxy_abi)
+            self.market_proxy = snx.web3.eth.contract(
+                address=market_proxy_address, abi=market_proxy_abi)
 
     # internals
     def _resolve_market(self, market_id: int, market_name: str):

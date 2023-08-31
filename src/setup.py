@@ -10,6 +10,7 @@ setup(
         "numpy",
         "pandas",
         "requests",
+        "requests_toolbelt",
         "web3>=6.0.0",
         "gql"
     ],

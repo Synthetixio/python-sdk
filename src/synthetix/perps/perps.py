@@ -14,25 +14,27 @@ class Perps:
         self.pyth = pyth
         self.logger = snx.logger
 
-        market_proxy_address, market_proxy_abi = snx.contracts[
-            'PerpsMarketProxy']['address'], snx.contracts['PerpsMarketProxy']['abi']
-        account_proxy_address, account_proxy_abi = snx.contracts[
-            'AccountProxy']['address'], snx.contracts['AccountProxy']['abi']
+        # check if perps is deployed on this network
+        if 'PerpsMarketProxy' in snx.contracts:
+            market_proxy_address, market_proxy_abi = snx.contracts[
+                'PerpsMarketProxy']['address'], snx.contracts['PerpsMarketProxy']['abi']
+            account_proxy_address, account_proxy_abi = snx.contracts[
+                'AccountProxy']['address'], snx.contracts['AccountProxy']['abi']
 
-        self.market_proxy = snx.web3.eth.contract(
-            address=market_proxy_address, abi=market_proxy_abi)
-        self.account_proxy = snx.web3.eth.contract(
-            address=account_proxy_address, abi=account_proxy_abi)
+            self.market_proxy = snx.web3.eth.contract(
+                address=market_proxy_address, abi=market_proxy_abi)
+            self.account_proxy = snx.web3.eth.contract(
+                address=account_proxy_address, abi=account_proxy_abi)
 
-        self.get_account_ids()
-        self.get_markets()
+            self.get_account_ids()
+            self.get_markets()
 
-        if default_account_id:
-            self.default_account_id = default_account_id
-        elif len(self.account_ids) > 0:
-            self.default_account_id = self.account_ids[0]
-        else:
-            self.default_account_id = None
+            if default_account_id:
+                self.default_account_id = default_account_id
+            elif len(self.account_ids) > 0:
+                self.default_account_id = self.account_ids[0]
+            else:
+                self.default_account_id = None
 
     # internals
     def _resolve_market(self, market_id: int, market_name: str, collateral: bool = False):
@@ -225,11 +227,34 @@ class Perps:
 
         collateral_balances = {}
         for market_id in COLLATERALS_BY_ID:
+            # TODO: add multicall
             balance = self.market_proxy.functions.getCollateralAmount(
                 account_id, market_id).call()
             collateral_balances[COLLATERALS_BY_ID[market_id]] = wei_to_ether(balance)
 
         return collateral_balances
+    
+    def get_can_liquidate(self, account_id: int = None):
+        """Check if an account id is eligible for liquidation"""
+        if not account_id:
+            account_id = self.default_account_id
+
+        can_liquidate = self.market_proxy.functions.canLiquidate(
+            account_id).call()
+        return can_liquidate
+
+    def get_can_liquidates(self, account_ids: [int] = [None]):
+        """Check if a list of account ids are eligible for liquidation"""
+        account_ids = [(account_id,) for account_id in account_ids]
+        can_liquidates = multicall_function(
+            self.snx, self.market_proxy, 'canLiquidate', account_ids)
+
+        # combine the results with the account ids, return tuples like (account_id, can_liquidate)
+        can_liquidates = [
+            (account_ids[ind][0], can_liquidate)
+            for ind, can_liquidate in enumerate(can_liquidates)
+        ]
+        return can_liquidates
 
     def get_open_position(self, market_id: int = None, market_name: int = None, account_id: int = None):
         """Get the open position for an account"""
@@ -244,6 +269,30 @@ class Perps:
             'accrued_funding': wei_to_ether(accrued_funding),
             'position_size': wei_to_ether(position_size),
         }
+
+    def get_open_positions(self, inputs: [(int, int | str)] = []):
+        """Get the open positions for a list of accounts and markets"""
+        clean_inputs = []
+        for account_id, market in inputs:
+            if type(market) is str:
+                market_id, market_name = self._resolve_market(None, market)
+            else:
+                market_id, market_name = self._resolve_market(market, None)
+            clean_inputs.append((account_id, market_id))
+
+        open_positions = multicall_function(
+            self.snx, self.market_proxy, 'getOpenPosition', clean_inputs)
+
+        open_positions = [
+            {
+                'account_id': clean_inputs[ind][0],
+                'market_id': clean_inputs[ind][1],
+                'pnl': wei_to_ether(pnl),
+                'accrued_funding': wei_to_ether(accrued_funding),
+                'position_size': wei_to_ether(position_size),
+            } for ind, (pnl, accrued_funding, position_size) in enumerate(open_positions)
+        ]
+        return open_positions
 
     # transactions
     def create_account(self, account_id: int = None, submit: bool = False):
@@ -365,6 +414,36 @@ class Perps:
             return tx_hash
         else:
             return tx_params
+
+    def liquidate(self, account_id: int = None, submit: bool = False, static: bool = False):
+        if not account_id:
+            account_id = self.default_account_id
+
+        if submit and static:
+            raise ValueError(
+                "Cannot submit and use static in the same transaction")
+
+        market_proxy = self.market_proxy
+        if static:
+            liquidation_reward = market_proxy.functions.liquidate(
+                account_id).call()
+            return wei_to_ether(liquidation_reward)
+        else:
+            tx_data = market_proxy.encodeABI(
+                fn_name='liquidate', args=[account_id])
+
+            tx_params = self.snx._get_tx_params(
+                to=market_proxy.address)
+            tx_params['data'] = tx_data
+
+            if submit:
+                tx_hash = self.snx.execute_transaction(tx_params)
+                self.logger.info(
+                    f"Liquidating account {account_id}")
+                self.logger.info(f"liquidate tx: {tx_hash}")
+                return tx_hash
+            else:
+                return tx_params
 
     def settle(self, account_id: int = None, submit: bool = False):
         if not account_id:

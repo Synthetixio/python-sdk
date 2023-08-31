@@ -462,6 +462,12 @@
           "internalType": "uint256",
           "name": "synthMarketId",
           "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "synthTokenAddress",
+          "type": "address"
         }
       ],
       "name": "SynthRegistered",
