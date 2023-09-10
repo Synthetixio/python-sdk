@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # constants
-RPC = os.environ.get('TESTNET_RPC')
+RPC = os.environ.get('BASE_TESTNET_RPC')
 ADDRESS = os.environ.get('ADDRESS')
 
 # fixtures
@@ -16,7 +16,7 @@ def snx(pytestconfig):
     return Synthetix(
         provider_rpc=RPC,
         address=ADDRESS,
-        network_id=420
+        network_id=84531
     )
 
 @pytest.fixture(scope="module")

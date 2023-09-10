@@ -1,6 +1,6 @@
 """Module for interacting with Synthetix Perps V3."""
 from ..utils import ether_to_wei, wei_to_ether
-from ..utils.multicall import multicall_erc7412
+from ..utils.multicall import call_erc7412, multicall_erc7412
 from .constants import COLLATERALS_BY_ID, COLLATERALS_BY_NAME, PERPS_MARKETS_BY_ID, PERPS_MARKETS_BY_NAME
 import time
 import requests
@@ -86,7 +86,8 @@ class Perps:
         if not account_id:
             account_id = self.default_account_id
 
-        order = self.market_proxy.functions.getOrder(account_id).call()
+        order = call_erc7412(
+            self.snx, self.market_proxy, 'getOrder', (account_id,))
         settlement_time, request = order
         market_id, account_id, size_delta, settlement_strategy_id, acceptable_price, tracking_code, referrer = request
 
@@ -138,9 +139,10 @@ class Perps:
     def get_market_summary(self, market_id: int = None, market_name: str = None):
         """Get the summary of a market"""
         market_id, market_name = self._resolve_market(market_id, market_name)
+        
+        skew, size, max_open_interest, current_funding_rate, current_funding_velocity, index_price = call_erc7412(
+            self.snx, self.market_proxy, 'getMarketSummary', market_id)
 
-        skew, size, max_open_interest, current_funding_rate, current_funding_velocity, index_price = self.market_proxy.functions.getMarketSummary(
-            market_id).call()
         return {
             'market_id': market_id,
             'market_name': market_name,
@@ -167,7 +169,9 @@ class Perps:
             settlement_reward,
             price_deviation_tolerance,
             disabled
-        ) = self.market_proxy.functions.getSettlementStrategy(market_id, settlement_strategy_id).call()
+        ) = call_erc7412(
+            self.snx, self.market_proxy, 'getSettlementStrategy', (market_id, settlement_strategy_id))
+
         return {
             'strategy_type': strategy_type,
             'settlement_delay': settlement_delay,
@@ -263,8 +267,8 @@ class Perps:
         if not account_id:
             account_id = self.default_account_id
 
-        pnl, accrued_funding, position_size = self.market_proxy.functions.getOpenPosition(
-            account_id, market_id).call()
+        pnl, accrued_funding, position_size = call_erc7412(
+            self.snx, self.market_proxy, 'getOpenPosition', (account_id, market_id))
         return {
             'pnl': wei_to_ether(pnl),
             'accrued_funding': wei_to_ether(accrued_funding),

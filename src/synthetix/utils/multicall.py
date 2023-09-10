@@ -1,6 +1,7 @@
 import requests
 import base64
 from web3.exceptions import ContractCustomError
+from web3._utils.abi import get_abi_output_types
 from eth_abi import decode, encode
 from eth_utils import encode_hex, decode_hex
 
@@ -9,19 +10,8 @@ ORACLE_DATA_REQUIRED = '0xcf2cabdf'
 
 def decode_result(contract, function_name, result):
     # get the function abi
-    func = contract.get_function_by_name(function_name).abi
-    raw_output_types = [
-        i['type'] if i['type'] != 'tuple' else [j['type'] for j in i['components']]
-        for i in func['outputs']
-    ]
-
-    # flatten any list output types
-    output_types = []
-    for i in raw_output_types:
-        if isinstance(i, list):
-            output_types.extend(i)
-        else:
-            output_types.append(i)
+    func_abi = contract.get_function_by_name(function_name).abi
+    output_types = get_abi_output_types(func_abi)
     
     # decode the result
     return decode(output_types, result)
@@ -136,6 +126,9 @@ def call_erc7412(snx, contract, function_name, args):
         address=snx.contracts['Multicall']['address'],
         abi=snx.contracts['Multicall']['abi']
     )
+
+    # fix args
+    args = args if isinstance(args, (list, tuple)) else (args,)
 
     # prepare the initial calls
     calls = [(
