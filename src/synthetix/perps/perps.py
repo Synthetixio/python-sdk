@@ -1,5 +1,6 @@
 """Module for interacting with Synthetix Perps V3."""
 from ..utils import ether_to_wei, wei_to_ether, multicall_function
+from ..utils.multicall import multicall_erc7412
 from .constants import COLLATERALS_BY_ID, COLLATERALS_BY_NAME, PERPS_MARKETS_BY_ID, PERPS_MARKETS_BY_NAME
 import time
 import requests
@@ -27,7 +28,10 @@ class Perps:
                 address=account_proxy_address, abi=account_proxy_abi)
 
             self.get_account_ids()
-            self.get_markets()
+            try:
+                self.get_markets()
+            except Exception as e:
+                self.logger.warning('Failed to fetch markets')
 
             if default_account_id:
                 self.default_account_id = default_account_id
@@ -52,9 +56,6 @@ class Perps:
             if market_name not in NAME_LOOKUP:
                 raise ValueError("Invalid market_name")
             market_id = NAME_LOOKUP[market_name]
-
-            if market_id == -1:
-                raise ValueError("Invalid market_name")
         elif has_market_id and not has_market_name:
             if market_id not in ID_LOOKUP:
                 raise ValueError("Invalid market_id")
@@ -111,11 +112,11 @@ class Perps:
         """Get the summary for a list of market ids"""
 
         inputs = [(market_id,) for market_id in market_ids]
-        markets = multicall_function(
+        markets = multicall_erc7412(
             self.snx, self.market_proxy, 'getMarketSummary', inputs)
 
         if len(market_ids) != len(markets):
-            raise ValueError("Failed to fetch some market summaries")
+            self.logger.warning("Failed to fetch some market summaries")
 
         market_summaries = []
         for ind, market in enumerate(markets):
