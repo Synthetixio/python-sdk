@@ -11,7 +11,7 @@ setup(
         "pandas",
         "requests",
         "requests_toolbelt",
-        "web3>=6.0.0",
+        "web3>=6.4.0",
         "gql"
     ],
     classifiers=[

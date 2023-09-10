@@ -1,5 +1,5 @@
 """Module for interacting with Synthetix Perps V3."""
-from ..utils import ether_to_wei, wei_to_ether, multicall_function
+from ..utils import ether_to_wei, wei_to_ether
 from ..utils.multicall import multicall_erc7412
 from .constants import COLLATERALS_BY_ID, COLLATERALS_BY_NAME, PERPS_MARKETS_BY_ID, PERPS_MARKETS_BY_NAME
 import time
@@ -46,8 +46,8 @@ class Perps:
         if market_id is None and market_name is None:
             raise ValueError("Must provide a market_id or market_name")
 
-        ID_LOOKUP = COLLATERALS_BY_ID if collateral else PERPS_MARKETS_BY_ID
-        NAME_LOOKUP = COLLATERALS_BY_NAME if collateral else PERPS_MARKETS_BY_NAME
+        ID_LOOKUP = COLLATERALS_BY_ID[self.snx.network_id] if collateral else PERPS_MARKETS_BY_ID[self.snx.network_id]
+        NAME_LOOKUP = COLLATERALS_BY_NAME[self.snx.network_id] if collateral else PERPS_MARKETS_BY_NAME[self.snx.network_id]
 
         has_market_id = market_id is not None
         has_market_name = market_name is not None
@@ -191,7 +191,7 @@ class Perps:
         # multicall the account ids
         inputs = [(address, i) for i in range(balance)]
 
-        account_ids = multicall_function(
+        account_ids = multicall_erc7412(
             self.snx, self.account_proxy, 'tokenOfOwnerByIndex', inputs)
 
         self.account_ids = account_ids
@@ -227,11 +227,11 @@ class Perps:
             account_id = self.default_account_id
 
         collateral_balances = {}
-        for market_id in COLLATERALS_BY_ID:
+        for market_id in COLLATERALS_BY_ID[self.snx.network_id]:
             # TODO: add multicall
             balance = self.market_proxy.functions.getCollateralAmount(
                 account_id, market_id).call()
-            collateral_balances[COLLATERALS_BY_ID[market_id]] = wei_to_ether(balance)
+            collateral_balances[COLLATERALS_BY_ID[self.snx.network_id][market_id]] = wei_to_ether(balance)
 
         return collateral_balances
     
@@ -247,7 +247,7 @@ class Perps:
     def get_can_liquidates(self, account_ids: [int] = [None]):
         """Check if a list of account ids are eligible for liquidation"""
         account_ids = [(account_id,) for account_id in account_ids]
-        can_liquidates = multicall_function(
+        can_liquidates = multicall_erc7412(
             self.snx, self.market_proxy, 'canLiquidate', account_ids)
 
         # combine the results with the account ids, return tuples like (account_id, can_liquidate)
@@ -281,7 +281,7 @@ class Perps:
                 market_id, market_name = self._resolve_market(market, None)
             clean_inputs.append((account_id, market_id))
 
-        open_positions = multicall_function(
+        open_positions = multicall_erc7412(
             self.snx, self.market_proxy, 'getOpenPosition', clean_inputs)
 
         open_positions = [
