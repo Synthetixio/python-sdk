@@ -13,7 +13,7 @@ class Spot:
         self.logger = snx.logger
 
         # check if spot is deployed on this network
-        if 'PerpsMarketProxy' in snx.contracts:
+        if 'SpotMarketProxy' in snx.contracts:
             market_proxy_address, market_proxy_abi = snx.contracts[
                 'SpotMarketProxy']['address'], snx.contracts['SpotMarketProxy']['abi']
 
@@ -51,9 +51,10 @@ class Spot:
         else:
             market_implementation = self.market_proxy.functions.getSynth(market_id).call()
 
-        market_contract = self.snx.web3.eth.contract(
-            address=market_implementation, abi=self.snx.contracts['USDProxy']['abi'])
-        return market_contract
+        return self.snx.web3.eth.contract(
+            address=market_implementation,
+            abi=self.snx.contracts['USDProxy']['abi'],
+        )
 
     # read
     def get_balance(self, address: str = None, market_id: int = None, market_name: str = None):
@@ -148,11 +149,7 @@ class Spot:
         market_id, market_name = self._resolve_market(market_id, market_name)
 
         # fix the amount
-        if amount is None:
-            amount = 2**256 - 1
-        else:
-            amount = ether_to_wei(amount)
-
+        amount = 2**256 - 1 if amount is None else ether_to_wei(amount)
         synth_contract = self._get_synth_contract(market_id)
         tx_data = synth_contract.encodeABI(fn_name='approve', args=[
             target_address, amount])
@@ -215,6 +212,7 @@ class Spot:
             return tx_params
 
     def settle_pyth_order(self, async_order_id: int = None, market_id: int = None, market_name: str = None, max_retry: int = 10, retry_delay: int = 2, submit: bool = False):
+        # sourcery skip: remove-unnecessary-else, swap-if-else-branches
         """Settle a pyth order"""
         # TODO: Update this for spot market
         market_id, market_name = self._resolve_market(market_id, market_name)
@@ -232,7 +230,7 @@ class Spot:
             time.sleep(duration)
         else:
             # TODO: check if expired
-            self.logger.info(f'Order is ready to be settled')
+            self.logger.info('Order is ready to be settled')
 
         # create hex inputs
         feed_id_hex = settlement_strategy['feed_id'].hex()
@@ -257,10 +255,10 @@ class Spot:
                 retry_count += 1
                 if retry_count > max_retry:
                     raise ValueError("Price update data not available")
-                else:
-                    self.logger.info(
-                        "Price update data not available, waiting 2 seconds and retrying")
-                    time.sleep(retry_delay)
+
+                self.logger.info(
+                    "Price update data not available, waiting 2 seconds and retrying")
+                time.sleep(retry_delay)
 
         # encode the extra data
         market_bytes = market_id.to_bytes(32, byteorder='big')

@@ -95,17 +95,17 @@ class Synthetix:
 
         # init contracts
         self.contracts = load_contracts(network_id)
-        self.v2_markets, self.susd_legacy_token, self.susd_token = self._load_markets()
+        self.v2_markets, self.susd_legacy_token, self.susd_token, self.multicall = self._load_contracts()
 
         # init alerts
         # if telegram_token and telegram_channel_name:
         #     self.alerts = Alerts(telegram_token, telegram_channel_name)
 
         # init queries
-        if not gql_endpoint_perps:
+        if not gql_endpoint_perps and self.network_id in DEFAULT_GQL_ENDPOINT_PERPS:
             gql_endpoint_perps = DEFAULT_GQL_ENDPOINT_PERPS[self.network_id]
 
-        if not gql_endpoint_rates:
+        if not gql_endpoint_rates and self.network_id in DEFAULT_GQL_ENDPOINT_RATES:
             gql_endpoint_rates = DEFAULT_GQL_ENDPOINT_RATES[self.network_id]
 
         self.queries = Queries(
@@ -114,7 +114,7 @@ class Synthetix:
             gql_endpoint_rates=gql_endpoint_rates)
 
         # init pyth
-        if not price_service_endpoint:
+        if not price_service_endpoint and self.network_id in DEFAULT_PRICE_SERVICE_ENDPOINTS:
             price_service_endpoint = DEFAULT_PRICE_SERVICE_ENDPOINTS[self.network_id]
 
         self.pyth = Pyth(
@@ -123,9 +123,9 @@ class Synthetix:
         self.perps = Perps(self, self.pyth, default_account_id)
         self.spot = Spot(self, self.pyth)
 
-    def _load_markets(self):
+    def _load_contracts(self):
         """
-        Initializes all market contracts
+        Initializes all necessary contracts
         ...
 
         Attributes
@@ -134,53 +134,73 @@ class Synthetix:
         """
         w3 = self.web3
 
-        data_definition = self.contracts['PerpsV2MarketData']
-        data_address = w3.to_checksum_address(data_definition['address'])
-        data_abi = data_definition['abi']
+        if 'PerpsV2MarketData' in self.contracts:
+            data_definition = self.contracts['PerpsV2MarketData']
+            data_address = w3.to_checksum_address(data_definition['address'])
+            data_abi = data_definition['abi']
 
-        marketdata_contract = w3.eth.contract(data_address, abi=data_abi)
-        allmarketsdata = (
-            marketdata_contract.functions.allProxiedMarketSummaries().call())
+            marketdata_contract = w3.eth.contract(data_address, abi=data_abi)
 
-        markets = {
-            market[2].decode('utf-8').strip("\x00")[1:-4]: {
-                "market_address": market[0],
-                "asset": market[1].decode('utf-8').strip("\x00"),
-                "key": market[2],
-                "maxLeverage": w3.from_wei(market[3], 'ether'),
-                "price": market[4],
-                "marketSize": market[5],
-                "marketSkew": market[6],
-                "marketDebt": market[7],
-                "currentFundingRate": market[8],
-                "currentFundingVelocity": market[9],
-                "takerFee": market[10][0],
-                "makerFee": market[10][1],
-                "takerFeeDelayedOrder": market[10][2],
-                "makerFeeDelayedOrder": market[10][3],
-                "takerFeeOffchainDelayedOrder": market[10][4],
-                "makerFeeOffchainDelayedOrder": market[10][5],
+            try:
+                allmarketsdata = (
+                    marketdata_contract.functions.allProxiedMarketSummaries().call())
+            except Exception as e:
+                allmarketsdata = []
+
+            markets = {
+                market[2].decode('utf-8').strip("\x00")[1:-4]: {
+                    "market_address": market[0],
+                    "asset": market[1].decode('utf-8').strip("\x00"),
+                    "key": market[2],
+                    "maxLeverage": w3.from_wei(market[3], 'ether'),
+                    "price": market[4],
+                    "marketSize": market[5],
+                    "marketSkew": market[6],
+                    "marketDebt": market[7],
+                    "currentFundingRate": market[8],
+                    "currentFundingVelocity": market[9],
+                    "takerFee": market[10][0],
+                    "makerFee": market[10][1],
+                    "takerFeeDelayedOrder": market[10][2],
+                    "makerFeeDelayedOrder": market[10][3],
+                    "takerFeeOffchainDelayedOrder": market[10][4],
+                    "makerFeeOffchainDelayedOrder": market[10][5],
+                }
+                for market in allmarketsdata
             }
-            for market in allmarketsdata
-        }
+        else:
+            markets = {}
 
         # load sUSD legacy contract
-        susd_legacy_definition = self.contracts['sUSD']
-        susd_legacy_address = w3.to_checksum_address(
-            susd_legacy_definition['address'])
-        susd_legacy_abi = susd_legacy_definition['abi']
+        if 'sUSD' in self.contracts:
+                susd_legacy_definition = self.contracts['sUSD']
+                susd_legacy_address = w3.to_checksum_address(
+                    susd_legacy_definition['address'])
 
-        susd_legacy_token = w3.eth.contract(
-            susd_legacy_address, abi=susd_legacy_abi)
+                susd_legacy_token = w3.eth.contract(
+                    susd_legacy_address, abi=susd_legacy_definition['abi'])
+        else:
+            susd_legacy_token = None
 
         # load sUSD contract
-        susd_definition = self.contracts['USDProxy']
-        susd_address = w3.to_checksum_address(susd_definition['address'])
-        susd_abi = susd_definition['abi']
+        if 'USDProxy' in self.contracts:
+            susd_definition = self.contracts['USDProxy']
+            susd_address = w3.to_checksum_address(susd_definition['address'])
 
-        susd_token = w3.eth.contract(susd_address, abi=susd_abi)
+            susd_token = w3.eth.contract(susd_address, abi=susd_definition['abi'])
+        else:
+            susd_token = None
 
-        return markets, susd_legacy_token, susd_token
+        # load multicall contract
+        if 'Multicall' in self.contracts:
+            mc_definition = self.contracts['Multicall']
+            mc_address = w3.to_checksum_address(mc_definition['address'])
+
+            multicall = w3.eth.contract(mc_address, abi=mc_definition['abi'])
+        else:
+            multicall = None
+
+        return markets, susd_legacy_token, susd_token, multicall
 
     def _get_tx_params(
         self, value=0, to=None

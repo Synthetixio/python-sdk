@@ -18,7 +18,8 @@ DEFAULT_GQL_ENDPOINT_RATES = {
 
 DEFAULT_PRICE_SERVICE_ENDPOINTS = {
     10: 'https://xc-mainnet.pyth.network',
-    420: 'https://xc-testnet.pyth.network'
+    420: 'https://xc-testnet.pyth.network',
+    84531: 'https://xc-testnet.pyth.network'
 }
 
 ETH_DECIMAL = Decimal('1e18')

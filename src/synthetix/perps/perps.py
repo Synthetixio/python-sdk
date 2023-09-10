@@ -1,5 +1,6 @@
 """Module for interacting with Synthetix Perps V3."""
-from ..utils import ether_to_wei, wei_to_ether, multicall_function
+from ..utils import ether_to_wei, wei_to_ether
+from ..utils.multicall import call_erc7412, multicall_erc7412
 from .constants import COLLATERALS_BY_ID, COLLATERALS_BY_NAME, PERPS_MARKETS_BY_ID, PERPS_MARKETS_BY_NAME
 import time
 import requests
@@ -27,7 +28,10 @@ class Perps:
                 address=account_proxy_address, abi=account_proxy_abi)
 
             self.get_account_ids()
-            self.get_markets()
+            try:
+                self.get_markets()
+            except Exception as e:
+                self.logger.warning('Failed to fetch markets')
 
             if default_account_id:
                 self.default_account_id = default_account_id
@@ -42,8 +46,8 @@ class Perps:
         if market_id is None and market_name is None:
             raise ValueError("Must provide a market_id or market_name")
 
-        ID_LOOKUP = COLLATERALS_BY_ID if collateral else PERPS_MARKETS_BY_ID
-        NAME_LOOKUP = COLLATERALS_BY_NAME if collateral else PERPS_MARKETS_BY_NAME
+        ID_LOOKUP = COLLATERALS_BY_ID[self.snx.network_id] if collateral else PERPS_MARKETS_BY_ID[self.snx.network_id]
+        NAME_LOOKUP = COLLATERALS_BY_NAME[self.snx.network_id] if collateral else PERPS_MARKETS_BY_NAME[self.snx.network_id]
 
         has_market_id = market_id is not None
         has_market_name = market_name is not None
@@ -52,9 +56,6 @@ class Perps:
             if market_name not in NAME_LOOKUP:
                 raise ValueError("Invalid market_name")
             market_id = NAME_LOOKUP[market_name]
-
-            if market_id == -1:
-                raise ValueError("Invalid market_name")
         elif has_market_id and not has_market_name:
             if market_id not in ID_LOOKUP:
                 raise ValueError("Invalid market_id")
@@ -85,7 +86,8 @@ class Perps:
         if not account_id:
             account_id = self.default_account_id
 
-        order = self.market_proxy.functions.getOrder(account_id).call()
+        order = call_erc7412(
+            self.snx, self.market_proxy, 'getOrder', (account_id,))
         settlement_time, request = order
         market_id, account_id, size_delta, settlement_strategy_id, acceptable_price, tracking_code, referrer = request
 
@@ -111,11 +113,11 @@ class Perps:
         """Get the summary for a list of market ids"""
 
         inputs = [(market_id,) for market_id in market_ids]
-        markets = multicall_function(
+        markets = multicall_erc7412(
             self.snx, self.market_proxy, 'getMarketSummary', inputs)
 
         if len(market_ids) != len(markets):
-            raise ValueError("Failed to fetch some market summaries")
+            self.logger.warning("Failed to fetch some market summaries")
 
         market_summaries = []
         for ind, market in enumerate(markets):
@@ -137,9 +139,10 @@ class Perps:
     def get_market_summary(self, market_id: int = None, market_name: str = None):
         """Get the summary of a market"""
         market_id, market_name = self._resolve_market(market_id, market_name)
+        
+        skew, size, max_open_interest, current_funding_rate, current_funding_velocity, index_price = call_erc7412(
+            self.snx, self.market_proxy, 'getMarketSummary', market_id)
 
-        skew, size, max_open_interest, current_funding_rate, current_funding_velocity, index_price = self.market_proxy.functions.getMarketSummary(
-            market_id).call()
         return {
             'market_id': market_id,
             'market_name': market_name,
@@ -166,7 +169,9 @@ class Perps:
             settlement_reward,
             price_deviation_tolerance,
             disabled
-        ) = self.market_proxy.functions.getSettlementStrategy(market_id, settlement_strategy_id).call()
+        ) = call_erc7412(
+            self.snx, self.market_proxy, 'getSettlementStrategy', (market_id, settlement_strategy_id))
+
         return {
             'strategy_type': strategy_type,
             'settlement_delay': settlement_delay,
@@ -190,7 +195,7 @@ class Perps:
         # multicall the account ids
         inputs = [(address, i) for i in range(balance)]
 
-        account_ids = multicall_function(
+        account_ids = multicall_erc7412(
             self.snx, self.account_proxy, 'tokenOfOwnerByIndex', inputs)
 
         self.account_ids = account_ids
@@ -226,11 +231,11 @@ class Perps:
             account_id = self.default_account_id
 
         collateral_balances = {}
-        for market_id in COLLATERALS_BY_ID:
+        for market_id in COLLATERALS_BY_ID[self.snx.network_id]:
             # TODO: add multicall
             balance = self.market_proxy.functions.getCollateralAmount(
                 account_id, market_id).call()
-            collateral_balances[COLLATERALS_BY_ID[market_id]] = wei_to_ether(balance)
+            collateral_balances[COLLATERALS_BY_ID[self.snx.network_id][market_id]] = wei_to_ether(balance)
 
         return collateral_balances
     
@@ -246,7 +251,7 @@ class Perps:
     def get_can_liquidates(self, account_ids: [int] = [None]):
         """Check if a list of account ids are eligible for liquidation"""
         account_ids = [(account_id,) for account_id in account_ids]
-        can_liquidates = multicall_function(
+        can_liquidates = multicall_erc7412(
             self.snx, self.market_proxy, 'canLiquidate', account_ids)
 
         # combine the results with the account ids, return tuples like (account_id, can_liquidate)
@@ -262,8 +267,8 @@ class Perps:
         if not account_id:
             account_id = self.default_account_id
 
-        pnl, accrued_funding, position_size = self.market_proxy.functions.getOpenPosition(
-            account_id, market_id).call()
+        pnl, accrued_funding, position_size = call_erc7412(
+            self.snx, self.market_proxy, 'getOpenPosition', (account_id, market_id))
         return {
             'pnl': wei_to_ether(pnl),
             'accrued_funding': wei_to_ether(accrued_funding),
@@ -280,7 +285,7 @@ class Perps:
                 market_id, market_name = self._resolve_market(market, None)
             clean_inputs.append((account_id, market_id))
 
-        open_positions = multicall_function(
+        open_positions = multicall_erc7412(
             self.snx, self.market_proxy, 'getOpenPosition', clean_inputs)
 
         open_positions = [
