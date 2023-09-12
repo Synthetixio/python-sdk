@@ -1,6 +1,6 @@
 """Module for interacting with Synthetix Perps V3."""
 from ..utils import ether_to_wei, wei_to_ether
-from ..utils.multicall import call_erc7412, multicall_erc7412
+from ..utils.multicall import call_erc7412, multicall_erc7412, write_erc7412
 from .constants import COLLATERALS_BY_ID, COLLATERALS_BY_NAME, PERPS_MARKETS_BY_ID, PERPS_MARKETS_BY_NAME
 import time
 import requests
@@ -20,7 +20,7 @@ class Perps:
             market_proxy_address, market_proxy_abi = snx.contracts[
                 'PerpsMarketProxy']['address'], snx.contracts['PerpsMarketProxy']['abi']
             account_proxy_address, account_proxy_abi = snx.contracts[
-                'AccountProxy']['address'], snx.contracts['AccountProxy']['abi']
+                'PerpsAccountProxy']['address'], snx.contracts['PerpsAccountProxy']['abi']
 
             self.market_proxy = snx.web3.eth.contract(
                 address=market_proxy_address, abi=market_proxy_abi)
@@ -30,8 +30,8 @@ class Perps:
             self.get_account_ids()
             try:
                 self.get_markets()
-            except Exception as e:
-                self.logger.warning('Failed to fetch markets')
+            except:
+                self.logger.warning("Failed to fetch markets")
 
             if default_account_id:
                 self.default_account_id = default_account_id
@@ -404,12 +404,8 @@ class Perps:
         }
 
         market_proxy = self.market_proxy
-        tx_data = market_proxy.encodeABI(
-            fn_name='commitOrder', args=[tx_args])
-
-        tx_params = self.snx._get_tx_params(
-            to=market_proxy.address)
-        tx_params['data'] = tx_data
+        tx_params = write_erc7412(
+            self.snx, self.market_proxy, 'commitOrder', [tx_args])
 
         if submit:
             tx_hash = self.snx.execute_transaction(tx_params)
@@ -531,14 +527,11 @@ class Perps:
 
         # prepare the transaction
         market_proxy = self.market_proxy
-        tx_data = market_proxy.encodeABI(
-            fn_name='settlePythOrder', args=[price_update_data, extra_data])
-
-        tx_params = self.snx._get_tx_params(
-            to=market_proxy.address, value=1)
-        tx_params['data'] = tx_data
+        tx_params = write_erc7412(
+            self.snx, self.market_proxy, 'settlePythOrder', [price_update_data, extra_data], {'value': 1})
 
         if submit:
+            self.logger.info(f'tx params: {tx_params}')
             tx_hash = self.snx.execute_transaction(tx_params)
             self.logger.info(
                 f"Settling order for account {account_id}")

@@ -9,9 +9,10 @@ from web3.types import TxParams
 from web3.middleware import geth_poa_middleware
 from decimal import Decimal
 from .constants import DEFAULT_NETWORK_ID, DEFAULT_TRACKING_CODE, DEFAULT_SLIPPAGE, DEFAULT_GQL_ENDPOINT_PERPS, DEFAULT_GQL_ENDPOINT_RATES, DEFAULT_PRICE_SERVICE_ENDPOINTS, DEFAULT_REFERRER, DEFAULT_TRACKING_CODE
-from .utils import wei_to_ether
+from .utils import wei_to_ether, ether_to_wei
 from .contracts import load_contracts
 from .pyth import Pyth
+from .core import Core
 from .perps import Perps
 from .spot import Spot
 # from .alerts import Alerts
@@ -27,7 +28,8 @@ class Synthetix:
             address: str = ADDRESS_ZERO,
             private_key: str = None,
             network_id: int = None,
-            default_account_id: int = None,
+            core_account_id: int = None,
+            perps_account_id: int = None,
             tracking_code: str = None,
             referrer: str = None,
             max_price_impact: float = DEFAULT_SLIPPAGE,
@@ -72,7 +74,7 @@ class Synthetix:
         self.provider_rpc = provider_rpc
 
         # init provider
-        if provider_rpc.startswith('https'):
+        if provider_rpc.startswith('http'):
             self.provider_class = Web3.HTTPProvider
         elif provider_rpc.startswith('wss'):
             self.provider_class = Web3.WebsocketProvider
@@ -120,7 +122,8 @@ class Synthetix:
         self.pyth = Pyth(
             self.network_id, price_service_endpoint=price_service_endpoint)
 
-        self.perps = Perps(self, self.pyth, default_account_id)
+        self.core = Core(self, self.pyth, core_account_id)
+        self.perps = Perps(self, self.pyth, perps_account_id)
         self.spot = Spot(self, self.pyth)
 
     def _load_contracts(self):
@@ -285,3 +288,96 @@ class Synthetix:
         balance = token.functions.balanceOf(
             self.address).call()
         return {"balance": wei_to_ether(balance)}
+
+    def get_eth_balance(self, address: str = None) -> dict:
+        """
+        Gets current ETH Balance in wallet
+        ...
+
+        Attributes
+        ----------
+        address : str
+            address of wallet to check
+        Returns
+        ----------
+        Dict: wei and usd ETH balance
+        """
+        if not address:
+            address = self.address
+
+        weth_contract = self.web3.eth.contract(
+            address=self.contracts['WETH']['address'], abi=self.contracts['WETH']['abi'])
+
+        eth_balance = self.web3.eth.get_balance(address)
+        weth_balance = weth_contract.functions.balanceOf(
+            address).call()
+        
+        return {"eth": wei_to_ether(eth_balance), "weth": wei_to_ether(weth_balance)}
+
+    # transactions
+    def approve(
+        self,
+        token_address: str,
+        target_address: str,
+        amount: int = None,
+        submit: bool = False
+    ):
+        """Approve an address to spend an ERC20 token"""
+        # fix the amount
+        amount = 2**256 - 1 if amount is None else ether_to_wei(amount)
+        token_contract = self.web3.eth.contract(
+            address=token_address, abi=self.contracts['USDProxy']['abi'])
+        tx_data = token_contract.encodeABI(fn_name='approve', args=[
+            target_address, amount])
+
+        tx_params = self._get_tx_params(
+            to=token_contract.address)
+        tx_params['data'] = tx_data
+
+        if submit:
+            tx_hash = self.execute_transaction(tx_params)
+            self.logger.info(
+                f"Approving {target_address} to spend {amount / 1e18} {token_address} for {self.address}")
+            self.logger.info(f"approve tx: {tx_hash}")
+            return tx_hash
+        else:
+            return tx_params
+
+    def wrap_eth(self, amount: float, submit: bool = False) -> str:
+        """
+        Wraps ETH into WETH
+        ...
+
+        Attributes
+        ----------
+        amount : float
+            amount of ETH to wrap
+        Returns
+        ----------
+        str: transaction hash
+        """
+        value_wei = ether_to_wei(max(amount, 0))
+        weth_contract = self.web3.eth.contract(
+            address=self.contracts['WETH']['address'], abi=self.contracts['WETH']['abi'])
+
+        if amount < 0:
+            fn_name = 'withdraw'
+            tx_args = [ether_to_wei(abs(amount))]
+        else:
+            fn_name = 'deposit'
+            tx_args = None
+
+        tx_params = self._get_tx_params(
+            value=value_wei,
+            to=weth_contract.address
+        )
+        tx_params['data'] = weth_contract.encodeABI(
+            fn_name=fn_name, args=tx_args)
+
+        if submit:
+            tx_hash = self.execute_transaction(tx_params)
+            self.logger.info(f"Wrapping {amount} ETH for {self.address}")
+            self.logger.info(f"wrap_eth tx: {tx_hash}")
+            return tx_hash
+        else:
+            return tx_params

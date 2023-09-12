@@ -92,7 +92,7 @@ def write_erc7412(snx, contract, function_name, args, tx_params={}):
             fn_name=function_name,
             args=args
         ),
-        0
+        0 if 'value' not in tx_params else tx_params['value']
     )]
 
     while True:
@@ -102,9 +102,17 @@ def write_erc7412(snx, contract, function_name, args, tx_params={}):
             total_value = sum(values)
 
             # create the transaction and do a static call
-            tx_params['value'] = total_value
-            tx = contract.functions.multicallThrough(addresses, data, values).build_transaction(tx_params)
-            return tx
+            tx_params = snx._get_tx_params(value=total_value)
+            tx_params['to'] = contract.address
+            tx_params['data'] = contract.encodeABI(fn_name='multicallThrough', args=[
+                addresses, data, values])
+            
+            print('TX params: ', tx_params)
+
+            estimate = snx.web3.eth.estimate_gas(tx_params)
+
+            # if estimate passes, return the transaction
+            return tx_params
         except Exception as e:
             # check if the error is related to oracle data
             if type(e) is ContractCustomError and e.data.startswith(ORACLE_DATA_REQUIRED):
@@ -115,9 +123,8 @@ def write_erc7412(snx, contract, function_name, args, tx_params={}):
                 to, data, value = make_fulfillment_request(snx, address, price_update_data, decoded_args)
                 calls = calls[:-1] + [(to, data, value)] + calls[-1:]
             else:
-                print('Error is not related to oracle data')
-                print(e)
-                return None
+                snx.logger.error(f'Error is not related to oracle data: {e}')
+                return tx_params
 
 
 def call_erc7412(snx, contract, function_name, args):
