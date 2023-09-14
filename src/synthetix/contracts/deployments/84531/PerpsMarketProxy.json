@@ -3433,11 +3433,6 @@
               "type": "uint256"
             },
             {
-              "internalType": "uint256",
-              "name": "priceDeviationTolerance",
-              "type": "uint256"
-            },
-            {
               "internalType": "bool",
               "name": "disabled",
               "type": "bool"

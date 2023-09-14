@@ -6,7 +6,7 @@ load_dotenv()
 
 # constants
 TEST_MARKET_ID = 100
-TEST_SETTLEMENT_STRATEGY_ID = 0
+TEST_SETTLEMENT_STRATEGY_ID = 1
 
 # tests
 
@@ -165,7 +165,6 @@ def test_perps_settlement_strategy(snx, logger):
     assert settlement_strategy['feed_id'] is not None
     assert settlement_strategy['url'] is not None
     assert settlement_strategy['settlement_reward'] is not None
-    assert settlement_strategy['price_deviation_tolerance'] is not None
     assert settlement_strategy['disabled'] is not None
 
 
@@ -209,7 +208,6 @@ def test_perps_order_with_settlement_strategy(snx, logger):
     assert order['settlement_strategy']['feed_id'] is not None
     assert order['settlement_strategy']['url'] is not None
     assert order['settlement_strategy']['settlement_reward'] is not None
-    assert order['settlement_strategy']['price_deviation_tolerance'] is not None
     assert order['settlement_strategy']['disabled'] is not None
 
 

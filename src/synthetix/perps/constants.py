@@ -8,6 +8,7 @@ COLLATERALS_BY_ID = {
         0: 'sUSD',
         1: 'BTC',
         2: 'ETH',
+        3: 'LINK'
     }
 }
 COLLATERALS_BY_NAME = {network: {v: k for k, v in COLLATERALS_BY_ID[network].items()} for network in COLLATERALS_BY_ID}

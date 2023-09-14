@@ -1,6 +1,6 @@
 """Module for interacting with Synthetix V3 Core."""
 from ..utils import ether_to_wei, wei_to_ether
-from ..utils.multicall import call_erc7412, multicall_erc7412
+from ..utils.multicall import call_erc7412, multicall_erc7412, write_erc7412
 import time
 import requests
 
@@ -32,6 +32,11 @@ class Core:
                 self.default_account_id = None
     
     # read
+    def get_usd_token(self):
+        """Get the USD token address"""
+        usd_token = call_erc7412(self.snx, self.core_proxy, 'getUsdToken', [])
+        return self.snx.web3.to_checksum_address(usd_token)
+    
     def get_account_ids(self, address: str = None):
         """Get the core account_ids owned by an account"""
         if not address:
@@ -53,6 +58,15 @@ class Core:
         pool = self.core_proxy.functions.getMarketPool(market_id).call()
         return pool
 
+    def get_available_collateral(self, account_id: int = None):
+        """Get the available collateral for an account"""
+        if not account_id:
+            account_id = self.default_account_id
+        
+        available_collateral = call_erc7412(
+            self.snx, self.core_proxy, 'getAccountAvailableCollateral', [account_id, self.snx.contracts['WETH']['address']])
+        return wei_to_ether(available_collateral)
+
     # write
     def create_account(self, account_id: int = None, submit: bool = False):
         """Create a core account"""
@@ -61,8 +75,7 @@ class Core:
         else:
             tx_args = [account_id]
 
-        core_proxy = self.core_proxy
-        tx_data = core_proxy.encodeABI(
+        tx_data = self.core_proxy.encodeABI(
             fn_name='createAccount', args=tx_args)
 
         tx_params = self.snx._get_tx_params(
@@ -77,15 +90,14 @@ class Core:
         else:
             return tx_params
 
-    def deposit(self, amount: int, account_id: int = None, submit: bool = False):
+    def deposit(self, amount: float, account_id: int = None, submit: bool = False):
         """Deposit collateral to a core account"""
         if not account_id:
             account_id = self.default_account_id
     
         amount_wei = ether_to_wei(amount)
         
-        core_proxy = self.core_proxy
-        tx_data = core_proxy.encodeABI(
+        tx_data = self.core_proxy.encodeABI(
             fn_name='deposit', args=[account_id, self.snx.contracts['WETH']['address'], amount_wei])        
 
         tx_params = self.snx._get_tx_params(
@@ -99,3 +111,81 @@ class Core:
             return tx_hash
         else:
             return tx_params
+
+    def withdraw(self, amount: float, token_address: str = None, account_id: int = None, submit: bool = False):
+        """Deposit collateral to a core account"""
+        if not account_id:
+            account_id = self.default_account_id
+        
+        if not token_address:
+            token_address = self.get_usd_token()
+    
+        amount_wei = ether_to_wei(amount)
+        
+        tx_args = [
+            account_id,
+            token_address,
+            amount_wei
+        ]
+        
+        tx_params = write_erc7412(
+            self.snx,
+            self.core_proxy,
+            'withdraw',
+            tx_args
+        )
+
+        if submit:
+            tx_hash = self.snx.execute_transaction(tx_params)
+            self.logger.info(f"Withdrawing {amount} {token_address} from account {account_id}")
+            self.logger.info(f"withdraw tx: {tx_hash}")
+            return tx_hash
+        else:
+            return tx_params
+
+    def delegate_collateral(self, amount: float, pool_id: int, leverage: float = 1, account_id: int = None, submit: bool = False):
+        """Delegate collateral to a pool"""
+        # TODO: Allow specifying collateral type
+        if not account_id:
+            account_id = self.default_account_id
+    
+        amount_wei = ether_to_wei(amount)
+        leverage_wei = ether_to_wei(leverage)
+
+        tx_params = write_erc7412(
+            self.snx,
+            self.core_proxy,
+            'delegateCollateral',
+            (account_id, pool_id, self.snx.contracts['WETH']['address'], amount_wei, leverage_wei)
+        )
+
+        if submit:
+            tx_hash = self.snx.execute_transaction(tx_params)
+            self.logger.info(f"Delegating {amount} WETH to pool id {pool_id} for account {account_id}")
+            self.logger.info(f"delegate tx: {tx_hash}")
+            return tx_hash
+        else:
+            return tx_params
+
+    def mint_usd(self, amount: float, pool_id: int, account_id: int = None, submit: bool = False):
+        """Mint USD against a core account"""
+        if not account_id:
+            account_id = self.default_account_id
+    
+        amount_wei = ether_to_wei(amount)
+        
+        tx_params = write_erc7412(
+            self.snx,
+            self.core_proxy,
+            'mintUsd',
+            (account_id, pool_id, self.snx.contracts['WETH']['address'], amount_wei)
+        )
+
+        if submit:
+            tx_hash = self.snx.execute_transaction(tx_params)
+            self.logger.info(f"Minting {amount} sUSD against pool id {pool_id} for account {account_id}")
+            self.logger.info(f"mint tx: {tx_hash}")
+            return tx_hash
+        else:
+            return tx_params
+    

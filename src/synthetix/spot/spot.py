@@ -91,7 +91,6 @@ class Spot:
             feed_id,
             url,
             settlement_reward,
-            price_deviation_tolerance,
             minimum_usd_exchange_amount,
             max_rounding_loss,
             disabled,
@@ -104,7 +103,6 @@ class Spot:
             "feed_id": feed_id,
             "url": url,
             "settlement_reward": settlement_reward,
-            "price_deviation_tolerance": price_deviation_tolerance,
             "minimum_usd_exchange_amount": minimum_usd_exchange_amount,
             "max_rounding_loss": max_rounding_loss,
             "disabled": disabled,
@@ -195,14 +193,8 @@ class Spot:
             0,                      # minimumSettlementAmount
             self.snx.referrer,      # referrer
         ]
-
-        market_proxy = self.market_proxy
-        tx_data = market_proxy.encodeABI(
-            fn_name='commitOrder', args=tx_args)
-
-        tx_params = self.snx._get_tx_params(
-            to=market_proxy.address)
-        tx_params['data'] = tx_data
+        tx_params = write_erc7412(
+            self.snx, self.market_proxy, 'commitOrder', tx_args)
 
         if submit:
             tx_hash = self.snx.execute_transaction(tx_params)

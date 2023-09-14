@@ -30,8 +30,8 @@ class Perps:
             self.get_account_ids()
             try:
                 self.get_markets()
-            except:
-                self.logger.warning("Failed to fetch markets")
+            except Exception as e:
+                self.logger.warning(f"Failed to fetch markets: {e}")
 
             if default_account_id:
                 self.default_account_id = default_account_id
@@ -167,7 +167,6 @@ class Perps:
             feed_id,
             url,
             settlement_reward,
-            price_deviation_tolerance,
             disabled
         ) = call_erc7412(
             self.snx, self.market_proxy, 'getSettlementStrategy', (market_id, settlement_strategy_id))
@@ -181,7 +180,6 @@ class Perps:
             'feed_id': feed_id,
             'url': url,
             'settlement_reward': wei_to_ether(settlement_reward),
-            'price_deviation_tolerance': wei_to_ether(price_deviation_tolerance),
             'disabled': disabled,
         }
 
@@ -206,14 +204,14 @@ class Perps:
         if not account_id:
             account_id = self.default_account_id
 
-        total_collateral_value = self.market_proxy.functions.totalCollateralValue(
-            account_id).call()
-        available_margin = self.market_proxy.functions.getAvailableMargin(
-            account_id).call()
-        withdrawable_margin = self.market_proxy.functions.getWithdrawableMargin(
-            account_id).call()
-        initial_margin_requirement, maintenance_margin_requirement, total_accumulated_liquidation_rewards, max_liquidation_reward = self.market_proxy.functions.getRequiredMargins(
-            account_id).call()
+        total_collateral_value = call_erc7412(
+            self.snx, self.market_proxy, 'totalCollateralValue', (account_id,))
+        available_margin = call_erc7412(
+            self.snx, self.market_proxy, 'getAvailableMargin', (account_id,))
+        withdrawable_margin = call_erc7412(
+            self.snx, self.market_proxy, 'getWithdrawableMargin', (account_id,))
+        initial_margin_requirement, maintenance_margin_requirement, total_accumulated_liquidation_rewards, max_liquidation_reward = call_erc7412(
+            self.snx, self.market_proxy, 'getRequiredMargins', (account_id,))
 
         return {
             'total_collateral_value': wei_to_ether(total_collateral_value),
@@ -244,8 +242,9 @@ class Perps:
         if not account_id:
             account_id = self.default_account_id
 
-        can_liquidate = self.market_proxy.functions.canLiquidate(
-            account_id).call()
+        can_liquidate = call_erc7412(
+            self.snx, self.market_proxy, 'canLiquidate', account_id)
+
         return can_liquidate
 
     def get_can_liquidates(self, account_ids: [int] = [None]):
@@ -343,9 +342,9 @@ class Perps:
         tx_data = market_proxy.encodeABI(
             fn_name='modifyCollateral', args=[account_id, market_id, ether_to_wei(amount)])
 
-        tx_params = self.snx._get_tx_params(
-            to=market_proxy.address)
-        tx_params['data'] = tx_data
+        market_proxy = self.market_proxy
+        tx_params = write_erc7412(
+            self.snx, self.market_proxy, 'modifyCollateral', [account_id, market_id, ether_to_wei(amount)])
 
         if submit:
             tx_hash = self.snx.execute_transaction(tx_params)
@@ -359,7 +358,7 @@ class Perps:
     def commit_order(
         self,
         size: int,
-        settlement_strategy_id: int = 0,
+        settlement_strategy_id: int = 1,
         market_id: int = None,
         market_name: str = None,
         account_id: int = None,
@@ -526,7 +525,6 @@ class Perps:
         self.logger.info(f'extra_data: {extra_data}')
 
         # prepare the transaction
-        market_proxy = self.market_proxy
         tx_params = write_erc7412(
             self.snx, self.market_proxy, 'settlePythOrder', [price_update_data, extra_data], {'value': 1})
 

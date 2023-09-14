@@ -54,6 +54,7 @@ def fetch_pyth_data(snx, error_to_decode):
     output_types_oracle = ['uint8', 'uint64', 'bytes32[]']
     tag, staleness_tolerance, raw_feed_ids = decode(output_types_oracle, data)
     feed_ids = [encode_hex(raw_feed_id) for raw_feed_id in raw_feed_ids]
+    snx.logger.info(f'Fetching data for feed ids: {feed_ids}')
 
     # fetch data from pyth
     url = f"{snx.pyth._price_service_endpoint}/api/latest_vaas"
@@ -106,9 +107,8 @@ def write_erc7412(snx, contract, function_name, args, tx_params={}):
             tx_params['to'] = contract.address
             tx_params['data'] = contract.encodeABI(fn_name='multicallThrough', args=[
                 addresses, data, values])
-            
-            print('TX params: ', tx_params)
 
+            snx.logger.info(f'Simulating new tx: {tx_params}')
             estimate = snx.web3.eth.estimate_gas(tx_params)
 
             # if estimate passes, return the transaction
@@ -124,7 +124,7 @@ def write_erc7412(snx, contract, function_name, args, tx_params={}):
                 calls = calls[:-1] + [(to, data, value)] + calls[-1:]
             else:
                 snx.logger.error(f'Error is not related to oracle data: {e}')
-                return tx_params
+                return None
 
 
 def call_erc7412(snx, contract, function_name, args):
@@ -167,8 +167,7 @@ def call_erc7412(snx, contract, function_name, args):
                 to, data, value = make_fulfillment_request(snx, address, price_update_data, decoded_args)
                 calls = calls[:-1] + [(to, False, value, data)] + calls[-1:]
             else:
-                print('Error is not related to oracle data')
-                print(e)
+                snx.logger.error(f'Error is not related to oracle data: {e}')
                 return None
 
 def multicall_erc7412(snx, contract, function_name, args_list):
@@ -226,6 +225,5 @@ def multicall_erc7412(snx, contract, function_name, args_list):
                 to, data, value = make_fulfillment_request(snx, address, price_update_data, decoded_args)
                 calls = [(to, False, value, data)] + calls
             else:
-                print('Error is not related to oracle data')
-                print(e)
+                snx.logger.error(f'Error is not related to oracle data: {e}')
                 return None
