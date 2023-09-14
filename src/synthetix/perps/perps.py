@@ -402,7 +402,6 @@ class Perps:
             "referrer": self.snx.referrer
         }
 
-        market_proxy = self.market_proxy
         tx_params = write_erc7412(
             self.snx, self.market_proxy, 'commitOrder', [tx_args])
 
@@ -425,16 +424,13 @@ class Perps:
 
         market_proxy = self.market_proxy
         if static:
-            liquidation_reward = market_proxy.functions.liquidate(
-                account_id).call()
+            liquidation_reward = call_erc7412(
+                self.snx, market_proxy, 'liquidate', [account_id])
+
             return wei_to_ether(liquidation_reward)
         else:
-            tx_data = market_proxy.encodeABI(
-                fn_name='liquidate', args=[account_id])
-
-            tx_params = self.snx._get_tx_params(
-                to=market_proxy.address)
-            tx_params['data'] = tx_data
+            tx_params = write_erc7412(
+                self.snx, market_proxy, 'liquidate', [account_id])
 
             if submit:
                 tx_hash = self.snx.execute_transaction(tx_params)
