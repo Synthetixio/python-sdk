@@ -124,8 +124,7 @@ def write_erc7412(snx, contract, function_name, args, tx_params={}):
                 calls = calls[:-1] + [(to, data, value)] + calls[-1:]
             else:
                 snx.logger.error(f'Error is not related to oracle data: {e}')
-                return None
-
+                raise e
 
 def call_erc7412(snx, contract, function_name, args):
     # get a multicall contract
@@ -168,7 +167,7 @@ def call_erc7412(snx, contract, function_name, args):
                 calls = calls[:-1] + [(to, False, value, data)] + calls[-1:]
             else:
                 snx.logger.error(f'Error is not related to oracle data: {e}')
-                return None
+                raise e
 
 def multicall_erc7412(snx, contract, function_name, args_list):
     # get a multicall contract
@@ -226,4 +225,4 @@ def multicall_erc7412(snx, contract, function_name, args_list):
                 calls = [(to, False, value, data)] + calls
             else:
                 snx.logger.error(f'Error is not related to oracle data: {e}')
-                return None
+                raise e
