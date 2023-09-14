@@ -51,6 +51,8 @@ class Synthetix:
         # set default values
         if network_id is None:
             network_id = DEFAULT_NETWORK_ID
+        else:
+            network_id = int(network_id)
 
         if tracking_code:
             self.tracking_code = tracking_code
