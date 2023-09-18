@@ -99,7 +99,7 @@ def write_erc7412(snx, contract, function_name, args, tx_params={}):
                 snx.logger.error(f'Error is not related to oracle data: {e}')
                 raise e
 
-def call_erc7412(snx, contract, function_name, args):
+def call_erc7412(snx, contract, function_name, args, block='latest'):
     # fix args
     args = args if isinstance(args, (list, tuple)) else (args,)
 
@@ -119,7 +119,7 @@ def call_erc7412(snx, contract, function_name, args):
 
             # call it
             tx_params = snx._get_tx_params(value=total_value)
-            call = snx.multicall.functions.aggregate3Value(calls).call(tx_params)
+            call = snx.multicall.functions.aggregate3Value(calls).call(tx_params, block_identifier=block)
 
             # call was successful, decode the result
             decoded_result = decode_result(contract, function_name, call[-1][1])
@@ -137,7 +137,7 @@ def call_erc7412(snx, contract, function_name, args):
                 snx.logger.error(f'Error is not related to oracle data: {e}')
                 raise e
 
-def multicall_erc7412(snx, contract, function_name, args_list):
+def multicall_erc7412(snx, contract, function_name, args_list, block='latest'):
     # check if args is a list of lists or tuples
     # correct the format if it is not
     args_list = [
@@ -162,7 +162,7 @@ def multicall_erc7412(snx, contract, function_name, args_list):
             total_value = sum(i[2] for i in calls)
 
             # call it
-            call = snx.multicall.functions.aggregate3Value(calls).call({'value': total_value})
+            call = snx.multicall.functions.aggregate3Value(calls).call({'value': total_value}, block_identifier=block)
 
             # call was successful, decode the result
             calls_to_decode = call[-num_calls:]
