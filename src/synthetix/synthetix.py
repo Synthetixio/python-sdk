@@ -36,6 +36,7 @@ class Synthetix:
             use_estimate_gas: bool = True,
             gql_endpoint_perps: str = None,
             gql_endpoint_rates: str = None,
+            satsuma_api_key: str = None,
             price_service_endpoint: str = None,
             telegram_token: str = None,
             telegram_channel_name: str = None):
@@ -115,7 +116,8 @@ class Synthetix:
         self.queries = Queries(
             synthetix=self,
             gql_endpoint_perps=gql_endpoint_perps,
-            gql_endpoint_rates=gql_endpoint_rates)
+            gql_endpoint_rates=gql_endpoint_rates,
+            api_key=satsuma_api_key)
 
         # init pyth
         if not price_service_endpoint and self.network_id in DEFAULT_PRICE_SERVICE_ENDPOINTS:
