@@ -197,8 +197,8 @@ class Synthetix:
             susd_token = None
 
         # load multicall contract
-        if 'Multicall' in self.contracts:
-            mc_definition = self.contracts['Multicall']
+        if 'TrustedMulticallForwarder' in self.contracts:
+            mc_definition = self.contracts['TrustedMulticallForwarder']
             mc_address = w3.to_checksum_address(mc_definition['address'])
 
             multicall = w3.eth.contract(mc_address, abi=mc_definition['abi'])
@@ -228,12 +228,13 @@ class Synthetix:
         """
         params: TxParams = {
             'from': self.address,
-            'to': to,
             'chainId': self.network_id,
             'value': value,
             'gasPrice': self.web3.eth.gas_price,
             'nonce': self.nonce
         }
+        if to is not None:
+            params['to'] = to
         return params
 
     def execute_transaction(self, tx_data: dict):

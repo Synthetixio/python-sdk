@@ -16,29 +16,6 @@ def decode_result(contract, function_name, result):
     # decode the result
     return decode(output_types, result)
 
-
-def multicall_function(snx, contract, function_name, inputs):
-    """Multicall a specified function for a list of inputs"""
-    # create a multicall instance
-    multicall_contract = snx.web3.eth.contract(
-        address=snx.contracts['Multicall']['address'],
-        abi=snx.contracts['Multicall']['abi']
-    )
-
-    # create the inputs
-    inputs = [
-        (contract.address, True, contract.encodeABI(fn_name=function_name, args=i))
-        for i in inputs
-    ]
-
-    # call multicall and decode
-    mc_result = multicall_contract.functions.aggregate3(inputs).call()
-    mc_result = [decode_result(contract, function_name, x[1]) for x in mc_result if x[0] == True]
-
-    # if there is only one result, return it as a single value
-    mc_result = [x[0] if len(x) == 1 else x for x in mc_result]
-    return mc_result
-
 # ERC-7412 support
 def fetch_pyth_data(snx, error_to_decode):
     """Decodes an OracleDataRequired error and fetches the data from pyth"""
@@ -89,29 +66,25 @@ def write_erc7412(snx, contract, function_name, args, tx_params={}):
     # prepare the initial call
     calls = [(
         contract.address,
-        contract.encodeABI(
+        False,
+        0 if 'value' not in tx_params else tx_params['value'],
+        bytes.fromhex(contract.encodeABI(
             fn_name=function_name,
             args=args
-        ),
-        0 if 'value' not in tx_params else tx_params['value']
+        )[2:])
     )]
 
     while True:
         try:
             # unpack calls into the multicallThrough inputs
-            addresses, data, values = zip(*calls)
-            total_value = sum(values)
+            total_value = sum([i[2] for i in calls])
 
             # create the transaction and do a static call
             tx_params = snx._get_tx_params(value=total_value)
-            tx_params['to'] = contract.address
-            tx_params['data'] = contract.encodeABI(fn_name='multicallThrough', args=[
-                addresses, data, values])
+            tx_params = snx.multicall.functions.aggregate3Value(calls).build_transaction(tx_params)
 
-            snx.logger.info(f'Simulating new tx: {tx_params}')
-            estimate = snx.web3.eth.estimate_gas(tx_params)
-
-            # if estimate passes, return the transaction
+            # if simulation passes, return the transaction
+            snx.logger.info(f'Simulated tx successfully: {tx_params}')
             return tx_params
         except Exception as e:
             # check if the error is related to oracle data
@@ -121,18 +94,12 @@ def write_erc7412(snx, contract, function_name, args, tx_params={}):
 
                 # create a new request
                 to, data, value = make_fulfillment_request(snx, address, price_update_data, decoded_args)
-                calls = calls[:-1] + [(to, data, value)] + calls[-1:]
+                calls = calls[:-1] + [(to, False, value, data)] + calls[-1:]
             else:
                 snx.logger.error(f'Error is not related to oracle data: {e}')
                 raise e
 
 def call_erc7412(snx, contract, function_name, args):
-    # get a multicall contract
-    multicall = snx.web3.eth.contract(
-        address=snx.contracts['Multicall']['address'],
-        abi=snx.contracts['Multicall']['abi']
-    )
-
     # fix args
     args = args if isinstance(args, (list, tuple)) else (args,)
 
@@ -151,7 +118,8 @@ def call_erc7412(snx, contract, function_name, args):
             total_value = sum(i[2] for i in calls)
 
             # call it
-            call = multicall.functions.aggregate3Value(calls).call({'value': total_value})
+            tx_params = snx._get_tx_params(value=total_value)
+            call = snx.multicall.functions.aggregate3Value(calls).call(tx_params)
 
             # call was successful, decode the result
             decoded_result = decode_result(contract, function_name, call[-1][1])
@@ -170,12 +138,6 @@ def call_erc7412(snx, contract, function_name, args):
                 raise e
 
 def multicall_erc7412(snx, contract, function_name, args_list):
-    # get a multicall contract
-    multicall = snx.web3.eth.contract(
-        address=snx.contracts['Multicall']['address'],
-        abi=snx.contracts['Multicall']['abi']
-    )
-    
     # check if args is a list of lists or tuples
     # correct the format if it is not
     args_list = [
@@ -200,7 +162,7 @@ def multicall_erc7412(snx, contract, function_name, args_list):
             total_value = sum(i[2] for i in calls)
 
             # call it
-            call = multicall.functions.aggregate3Value(calls).call({'value': total_value})
+            call = snx.multicall.functions.aggregate3Value(calls).call({'value': total_value})
 
             # call was successful, decode the result
             calls_to_decode = call[-num_calls:]
