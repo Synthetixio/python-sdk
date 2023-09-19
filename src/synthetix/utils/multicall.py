@@ -82,6 +82,9 @@ def write_erc7412(snx, contract, function_name, args, tx_params={}):
             # create the transaction and do a static call
             tx_params = snx._get_tx_params(value=total_value)
             tx_params = snx.multicall.functions.aggregate3Value(calls).build_transaction(tx_params)
+            
+            # buffer the gas limit
+            tx_params['gas'] = int(tx_params['gas'] * 1.15)
 
             # if simulation passes, return the transaction
             snx.logger.info(f'Simulated tx successfully: {tx_params}')
