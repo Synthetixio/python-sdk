@@ -307,12 +307,9 @@ class Perps:
             tx_args = [account_id]
 
         market_proxy = self.market_proxy
-        tx_data = market_proxy.encodeABI(
-            fn_name='createAccount', args=tx_args)
-
-        tx_params = self.snx._get_tx_params(
-            to=market_proxy.address)
-        tx_params['data'] = tx_data
+        tx_params = self.snx._get_tx_params()
+        tx_params = market_proxy.functions.createAccount(
+            *tx_args).build_transaction(tx_params)
 
         if submit:
             tx_hash = self.snx.execute_transaction(tx_params)
@@ -440,27 +437,6 @@ class Perps:
                 return tx_hash
             else:
                 return tx_params
-
-    def settle(self, account_id: int = None, submit: bool = False):
-        if not account_id:
-            account_id = self.default_account_id
-
-        market_proxy = self.market_proxy
-        tx_data = market_proxy.encodeABI(
-            fn_name='settle', args=[account_id])
-
-        tx_params = self.snx._get_tx_params(
-            to=market_proxy.address)
-        tx_params['data'] = tx_data
-
-        if submit:
-            tx_hash = self.snx.execute_transaction(tx_params)
-            self.logger.info(
-                f"Settling order for account {account_id}")
-            self.logger.info(f"settle tx: {tx_hash}")
-            return tx_hash
-        else:
-            return tx_params
 
     def settle_pyth_order(self, account_id: int = None, max_retry: int = 10, retry_delay: int = 2, submit: bool = False):
         if not account_id:

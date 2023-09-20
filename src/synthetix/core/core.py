@@ -75,12 +75,9 @@ class Core:
         else:
             tx_args = [account_id]
 
-        tx_data = self.core_proxy.encodeABI(
-            fn_name='createAccount', args=tx_args)
-
-        tx_params = self.snx._get_tx_params(
-            to=core_proxy.address)
-        tx_params['data'] = tx_data
+        tx_params = self.snx._get_tx_params()
+        tx_params = self.core_proxy.functions.createAccount(
+            *tx_args).build_transaction(tx_params)
 
         if submit:
             tx_hash = self.snx.execute_transaction(tx_params)
@@ -97,12 +94,9 @@ class Core:
     
         amount_wei = ether_to_wei(amount)
         
-        tx_data = self.core_proxy.encodeABI(
-            fn_name='deposit', args=[account_id, self.snx.contracts['WETH']['address'], amount_wei])        
-
-        tx_params = self.snx._get_tx_params(
-            to=core_proxy.address)
-        tx_params['data'] = tx_data
+        tx_params = self.snx._get_tx_params()
+        tx_params = self.core_proxy.functions.deposit(
+            account_id, self.snx.contracts['WETH']['address'], amount_wei).build_transaction(tx_params)
 
         if submit:
             tx_hash = self.snx.execute_transaction(tx_params)

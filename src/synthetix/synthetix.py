@@ -6,8 +6,6 @@ import web3
 from web3 import Web3
 from web3.constants import ADDRESS_ZERO
 from web3.types import TxParams
-from web3.middleware import geth_poa_middleware
-from decimal import Decimal
 from .constants import DEFAULT_NETWORK_ID, DEFAULT_TRACKING_CODE, DEFAULT_SLIPPAGE, DEFAULT_GQL_ENDPOINT_PERPS, DEFAULT_GQL_ENDPOINT_RATES, DEFAULT_PRICE_SERVICE_ENDPOINTS, DEFAULT_REFERRER, DEFAULT_TRACKING_CODE
 from .utils import wei_to_ether, ether_to_wei
 from .contracts import load_contracts
@@ -92,7 +90,6 @@ class Synthetix:
             raise Exception(
                 "The RPC `chain_id` must match the stored `network_id`")
         else:
-            web3.middleware_onion.inject(geth_poa_middleware, layer=0)
             self.nonce = web3.eth.get_transaction_count(self.address)
 
         self.web3 = web3
@@ -232,7 +229,6 @@ class Synthetix:
             'from': self.address,
             'chainId': self.network_id,
             'value': value,
-            'gasPrice': self.web3.eth.gas_price,
             'nonce': self.nonce
         }
         if to is not None:
@@ -332,12 +328,11 @@ class Synthetix:
         amount = 2**256 - 1 if amount is None else ether_to_wei(amount)
         token_contract = self.web3.eth.contract(
             address=token_address, abi=self.contracts['USDProxy']['abi'])
-        tx_data = token_contract.encodeABI(fn_name='approve', args=[
-            target_address, amount])
+        print(token_contract, token_contract.abi)
 
-        tx_params = self._get_tx_params(
-            to=token_contract.address)
-        tx_params['data'] = tx_data
+        tx_params = self._get_tx_params()
+        tx_params = token_contract.functions.approve(
+            target_address, amount).build_transaction(tx_params)
 
         if submit:
             tx_hash = self.execute_transaction(tx_params)
@@ -370,14 +365,12 @@ class Synthetix:
             tx_args = [ether_to_wei(abs(amount))]
         else:
             fn_name = 'deposit'
-            tx_args = None
+            tx_args = []
 
         tx_params = self._get_tx_params(
-            value=value_wei,
-            to=weth_contract.address
+            value=value_wei
         )
-        tx_params['data'] = weth_contract.encodeABI(
-            fn_name=fn_name, args=tx_args)
+        tx_params = weth_contract.functions[fn_name](*tx_args).build_transaction(tx_params)
 
         if submit:
             tx_hash = self.execute_transaction(tx_params)

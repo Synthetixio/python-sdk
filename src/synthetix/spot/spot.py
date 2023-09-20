@@ -154,9 +154,9 @@ class Spot:
         tx_data = synth_contract.encodeABI(fn_name='approve', args=[
             target_address, amount])
 
-        tx_params = self.snx._get_tx_params(
-            to=synth_contract.address)
-        tx_params['data'] = tx_data
+        tx_params = self.snx._get_tx_params()
+        tx_params = synth_contract.functions.approve(
+            target_address, amount).build_transaction(tx_params)
 
         if submit:
             tx_hash = self.snx.execute_transaction(tx_params)
