@@ -120,9 +120,7 @@ class Synthetix:
         if not price_service_endpoint and self.network_id in DEFAULT_PRICE_SERVICE_ENDPOINTS:
             price_service_endpoint = DEFAULT_PRICE_SERVICE_ENDPOINTS[self.network_id]
 
-        self.pyth = Pyth(
-            self.network_id, price_service_endpoint=price_service_endpoint)
-
+        self.pyth = Pyth(self, price_service_endpoint=price_service_endpoint)
         self.core = Core(self, self.pyth, core_account_id)
         self.perps = Perps(self, self.pyth, perps_account_id)
         self.spot = Spot(self, self.pyth)

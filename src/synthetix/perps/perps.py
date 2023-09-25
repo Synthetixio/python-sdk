@@ -64,6 +64,7 @@ class Perps:
 
     # read
     # TODO: get_market_settings
+    # TODO: get_order_fees
     def get_markets(self):
         """Get all markets and their market summaries"""
         market_ids = self.market_proxy.functions.getMarkets().call()
