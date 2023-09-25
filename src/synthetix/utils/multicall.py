@@ -44,10 +44,13 @@ def make_fulfillment_request(snx, address, price_update_data, args):
         *args,
         price_update_data
     ])
-
+    
+    # assume 1 wei per price update
+    value = len(price_update_data) * 1
+    
     update_tx = erc_contract.functions.fulfillOracleQuery(
         encoded_args
-    ).build_transaction({'value': 1, 'gas': None})
+    ).build_transaction({'value': value, 'gas': None})
     return update_tx['to'], update_tx['data'], update_tx['value']
 
 def write_erc7412(snx, contract, function_name, args, tx_params={}, calls = []):

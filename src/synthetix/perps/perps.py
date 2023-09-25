@@ -1,9 +1,11 @@
 """Module for interacting with Synthetix Perps V3."""
-from ..utils import ether_to_wei, wei_to_ether
-from ..utils.multicall import call_erc7412, multicall_erc7412, write_erc7412
-from .constants import COLLATERALS_BY_ID, COLLATERALS_BY_NAME, PERPS_MARKETS_BY_ID, PERPS_MARKETS_BY_NAME
 import time
 import requests
+from eth_utils import decode_hex
+from eth_abi import encode
+from ..utils import ether_to_wei, wei_to_ether
+from ..utils.multicall import call_erc7412, multicall_erc7412, write_erc7412, make_fulfillment_request
+from .constants import COLLATERALS_BY_ID, COLLATERALS_BY_NAME, PERPS_MARKETS_BY_ID, PERPS_MARKETS_BY_NAME
 
 class Perps:
     """Class for interacting with Synthetix Perps V3 contracts."""
@@ -62,6 +64,25 @@ class Perps:
             market_name = ID_LOOKUP[market_id]
         return market_id, market_name
 
+    def _prepare_oracle_call(self, market_names: [str] = []):
+        """Prepare a call to the external node with oracle updates for the specified markets"""
+        if len(market_names) == 0:
+            market_names = list(PERPS_MARKETS_BY_NAME[self.snx.network_id].keys())
+
+        # fetch the data from pyth
+        feed_ids = [self.snx.pyth.price_feed_ids[market_name]
+                    for market_name in market_names]
+        price_update_data = self.snx.pyth.get_feeds_data(feed_ids)
+
+        # prepare the oracle call
+        raw_feed_ids = [decode_hex(feed_id) for feed_id in feed_ids]
+        args = (1, 30, raw_feed_ids)
+
+        to, data, value = make_fulfillment_request(self.snx, self.snx.contracts['ERC7412']['address'], price_update_data, args)
+        
+        # return this formatted for the multicall
+        return (to, False, value, data)
+
     # read
     # TODO: get_market_settings
     # TODO: get_order_fees
@@ -112,10 +133,12 @@ class Perps:
 
     def get_market_summaries(self, market_ids: list[int] = []):
         """Get the summary for a list of market ids"""
+        # get fresh prices to provide to the oracle
+        oracle_call = self._prepare_oracle_call()
 
         inputs = [(market_id,) for market_id in market_ids]
         markets = multicall_erc7412(
-            self.snx, self.market_proxy, 'getMarketSummary', inputs)
+            self.snx, self.market_proxy, 'getMarketSummary', inputs, calls=[oracle_call])
 
         if len(market_ids) != len(markets):
             self.logger.warning("Failed to fetch some market summaries")
@@ -140,9 +163,12 @@ class Perps:
     def get_market_summary(self, market_id: int = None, market_name: str = None):
         """Get the summary of a market"""
         market_id, market_name = self._resolve_market(market_id, market_name)
+
+        # get a fresh price to provide to the oracle
+        oracle_call = self._prepare_oracle_call([market_name])
         
         skew, size, max_open_interest, current_funding_rate, current_funding_velocity, index_price = call_erc7412(
-            self.snx, self.market_proxy, 'getMarketSummary', market_id)
+            self.snx, self.market_proxy, 'getMarketSummary', market_id, calls=[oracle_call])
 
         return {
             'market_id': market_id,
@@ -204,15 +230,18 @@ class Perps:
         """Get the margin balances and requirements for an account"""
         if not account_id:
             account_id = self.default_account_id
+        
+        # get fresh prices to provide to the oracle
+        oracle_call = self._prepare_oracle_call()
 
         total_collateral_value = call_erc7412(
-            self.snx, self.market_proxy, 'totalCollateralValue', (account_id,))
+            self.snx, self.market_proxy, 'totalCollateralValue', (account_id,), calls=[oracle_call])
         available_margin = call_erc7412(
-            self.snx, self.market_proxy, 'getAvailableMargin', (account_id,))
+            self.snx, self.market_proxy, 'getAvailableMargin', (account_id,), calls=[oracle_call])
         withdrawable_margin = call_erc7412(
-            self.snx, self.market_proxy, 'getWithdrawableMargin', (account_id,))
+            self.snx, self.market_proxy, 'getWithdrawableMargin', (account_id,), calls=[oracle_call])
         initial_margin_requirement, maintenance_margin_requirement, total_accumulated_liquidation_rewards, max_liquidation_reward = call_erc7412(
-            self.snx, self.market_proxy, 'getRequiredMargins', (account_id,))
+            self.snx, self.market_proxy, 'getRequiredMargins', (account_id,), calls=[oracle_call])
 
         return {
             'total_collateral_value': wei_to_ether(total_collateral_value),
@@ -242,17 +271,24 @@ class Perps:
         """Check if an account id is eligible for liquidation"""
         if not account_id:
             account_id = self.default_account_id
+        
+        # get fresh prices to provide to the oracle
+        oracle_call = self._prepare_oracle_call()
 
         can_liquidate = call_erc7412(
-            self.snx, self.market_proxy, 'canLiquidate', account_id)
+            self.snx, self.market_proxy, 'canLiquidate', account_id, calls=[oracle_call])
 
         return can_liquidate
 
     def get_can_liquidates(self, account_ids: [int] = [None]):
         """Check if a list of account ids are eligible for liquidation"""
         account_ids = [(account_id,) for account_id in account_ids]
+
+        # get fresh prices to provide to the oracle
+        oracle_call = self._prepare_oracle_call()
+
         can_liquidates = multicall_erc7412(
-            self.snx, self.market_proxy, 'canLiquidate', account_ids)
+            self.snx, self.market_proxy, 'canLiquidate', account_ids, calls=[oracle_call])
 
         # combine the results with the account ids, return tuples like (account_id, can_liquidate)
         can_liquidates = [
@@ -267,8 +303,11 @@ class Perps:
         if not account_id:
             account_id = self.default_account_id
 
+        # get a fresh price to provide to the oracle
+        oracle_call = self._prepare_oracle_call([market_name])        
+
         pnl, accrued_funding, position_size = call_erc7412(
-            self.snx, self.market_proxy, 'getOpenPosition', (account_id, market_id))
+            self.snx, self.market_proxy, 'getOpenPosition', (account_id, market_id), calls=[oracle_call])
         return {
             'pnl': wei_to_ether(pnl),
             'accrued_funding': wei_to_ether(accrued_funding),
