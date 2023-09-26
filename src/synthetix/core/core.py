@@ -58,13 +58,13 @@ class Core:
         pool = self.core_proxy.functions.getMarketPool(market_id).call()
         return pool
 
-    def get_available_collateral(self, account_id: int = None):
+    def get_available_collateral(self, token_address: str, account_id: int = None):
         """Get the available collateral for an account"""
         if not account_id:
             account_id = self.default_account_id
         
         available_collateral = call_erc7412(
-            self.snx, self.core_proxy, 'getAccountAvailableCollateral', [account_id, self.snx.contracts['WETH']['address']])
+            self.snx, self.core_proxy, 'getAccountAvailableCollateral', [account_id, token_address])
         return wei_to_ether(available_collateral)
 
     # write
@@ -87,7 +87,7 @@ class Core:
         else:
             return tx_params
 
-    def deposit(self, amount: float, account_id: int = None, submit: bool = False):
+    def deposit(self, token_address: str, amount: float, account_id: int = None, submit: bool = False):
         """Deposit collateral to a core account"""
         if not account_id:
             account_id = self.default_account_id
@@ -96,11 +96,11 @@ class Core:
         
         tx_params = self.snx._get_tx_params()
         tx_params = self.core_proxy.functions.deposit(
-            account_id, self.snx.contracts['WETH']['address'], amount_wei).build_transaction(tx_params)
+            account_id, token_address, amount_wei).build_transaction(tx_params)
 
         if submit:
             tx_hash = self.snx.execute_transaction(tx_params)
-            self.logger.info(f"Depositing {amount} WETH for account {account_id}")
+            self.logger.info(f"Depositing {amount} {token_address} for account {account_id}")
             self.logger.info(f"deposit tx: {tx_hash}")
             return tx_hash
         else:
@@ -137,9 +137,8 @@ class Core:
         else:
             return tx_params
 
-    def delegate_collateral(self, amount: float, pool_id: int, leverage: float = 1, account_id: int = None, submit: bool = False):
+    def delegate_collateral(self, token_address: str, amount: float, pool_id: int, leverage: float = 1, account_id: int = None, submit: bool = False):
         """Delegate collateral to a pool"""
-        # TODO: Allow specifying collateral type
         if not account_id:
             account_id = self.default_account_id
     
@@ -150,18 +149,18 @@ class Core:
             self.snx,
             self.core_proxy,
             'delegateCollateral',
-            (account_id, pool_id, self.snx.contracts['WETH']['address'], amount_wei, leverage_wei)
+            (account_id, pool_id, token_address, amount_wei, leverage_wei)
         )
 
         if submit:
             tx_hash = self.snx.execute_transaction(tx_params)
-            self.logger.info(f"Delegating {amount} WETH to pool id {pool_id} for account {account_id}")
+            self.logger.info(f"Delegating {amount} {token_address} to pool id {pool_id} for account {account_id}")
             self.logger.info(f"delegate tx: {tx_hash}")
             return tx_hash
         else:
             return tx_params
 
-    def mint_usd(self, amount: float, pool_id: int, account_id: int = None, submit: bool = False):
+    def mint_usd(self, token_address: str, amount: float, pool_id: int, account_id: int = None, submit: bool = False):
         """Mint USD against a core account"""
         if not account_id:
             account_id = self.default_account_id
@@ -172,14 +171,13 @@ class Core:
             self.snx,
             self.core_proxy,
             'mintUsd',
-            (account_id, pool_id, self.snx.contracts['WETH']['address'], amount_wei)
+            (account_id, pool_id, token_address, amount_wei)
         )
 
         if submit:
             tx_hash = self.snx.execute_transaction(tx_params)
-            self.logger.info(f"Minting {amount} sUSD against pool id {pool_id} for account {account_id}")
+            self.logger.info(f"Minting {amount} sUSD with {token_address} collateral against pool id {pool_id} for account {account_id}")
             self.logger.info(f"mint tx: {tx_hash}")
             return tx_hash
         else:
             return tx_params
-    

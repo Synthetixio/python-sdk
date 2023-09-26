@@ -326,7 +326,6 @@ class Synthetix:
         amount = 2**256 - 1 if amount is None else ether_to_wei(amount)
         token_contract = self.web3.eth.contract(
             address=token_address, abi=self.contracts['USDProxy']['abi'])
-        print(token_contract, token_contract.abi)
 
         tx_params = self._get_tx_params()
         tx_params = token_contract.functions.approve(
