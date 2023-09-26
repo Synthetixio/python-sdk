@@ -314,28 +314,37 @@ class Perps:
             'position_size': wei_to_ether(position_size),
         }
 
-    def get_open_positions(self, inputs: [(int, int | str)] = []):
-        """Get the open positions for a list of accounts and markets"""
-        clean_inputs = []
-        for account_id, market in inputs:
-            if type(market) is str:
-                market_id, market_name = self._resolve_market(None, market)
-            else:
-                market_id, market_name = self._resolve_market(market, None)
-            clean_inputs.append((account_id, market_id))
+    def get_open_positions(self, market_names: [str] = None, market_ids: [int] = None, account_id: int = None):
+        """Get the open positions for a list of markets"""
+        if not account_id:
+            account_id = self.default_account_id
+
+        # if no market names or ids are provided, fetch all markets
+        if not market_names and not market_ids:
+            market_ids = list(self.markets_by_id.keys())
+            market_names = list(self.markets_by_name.keys())
+        elif market_names and not market_ids:
+            market_ids = [self._resolve_market(None, market_name)[0] for market_name in market_names]
+
+        # make the function inputs
+        clean_inputs = [(account_id, market_id) for market_id in market_ids]
+
+        # get a fresh price to provide to the oracle
+        oracle_call = self._prepare_oracle_call(market_names)
 
         open_positions = multicall_erc7412(
-            self.snx, self.market_proxy, 'getOpenPosition', clean_inputs)
+            self.snx, self.market_proxy, 'getOpenPosition', clean_inputs, calls=[oracle_call])
 
-        open_positions = [
-            {
-                'account_id': clean_inputs[ind][0],
-                'market_id': clean_inputs[ind][1],
+        open_positions = {
+            market_names[ind]: {
+                'market_id': market_ids[ind],
+                'market_name': market_names[ind],
                 'pnl': wei_to_ether(pnl),
                 'accrued_funding': wei_to_ether(accrued_funding),
                 'position_size': wei_to_ether(position_size),
             } for ind, (pnl, accrued_funding, position_size) in enumerate(open_positions)
-        ]
+            if abs(position_size) > 0
+        }
         return open_positions
 
     # transactions
@@ -535,10 +544,14 @@ class Perps:
         # log the data
         self.logger.info(f'price_update_data: {price_update_data}')
         self.logger.info(f'extra_data: {extra_data}')
+        
+        # get fresh prices to provide to the oracle
+        market_name = self._resolve_market(order['market_id'], None)[1]
+        oracle_call = self._prepare_oracle_call([market_name])
 
         # prepare the transaction
         tx_params = write_erc7412(
-            self.snx, self.market_proxy, 'settlePythOrder', [price_update_data, extra_data], {'value': 1})
+            self.snx, self.market_proxy, 'settlePythOrder', [price_update_data, extra_data], {'value': 1}, calls=[oracle_call])
 
         if submit:
             self.logger.info(f'tx params: {tx_params}')
