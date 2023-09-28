@@ -7,4 +7,5 @@ Synthetix Documentation
    
    modules/perps
    modules/pyth
+   modules/multicall
    modules/utils
