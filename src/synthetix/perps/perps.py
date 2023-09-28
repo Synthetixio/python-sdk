@@ -1,9 +1,11 @@
 """Module for interacting with Synthetix Perps V3."""
-from ..utils import ether_to_wei, wei_to_ether
-from .constants import COLLATERALS_BY_ID, COLLATERALS_BY_NAME, PERPS_MARKETS_BY_ID, PERPS_MARKETS_BY_NAME
-from decimal import Decimal
 import time
 import requests
+from eth_utils import decode_hex
+from eth_abi import encode
+from ..utils import ether_to_wei, wei_to_ether
+from ..utils.multicall import call_erc7412, multicall_erc7412, write_erc7412, make_fulfillment_request
+from .constants import COLLATERALS_BY_ID, COLLATERALS_BY_NAME, PERPS_MARKETS_BY_ID, PERPS_MARKETS_BY_NAME
 
 class Perps:
     """Class for interacting with Synthetix Perps V3 contracts."""
@@ -15,23 +17,30 @@ class Perps:
         self.pyth = pyth
         self.logger = snx.logger
 
-        market_proxy_address, market_proxy_abi = snx.contracts[
-            'PerpsMarketProxy']['address'], snx.contracts['PerpsMarketProxy']['abi']
-        account_proxy_address, account_proxy_abi = snx.contracts[
-            'AccountProxy']['address'], snx.contracts['AccountProxy']['abi']
+        # check if perps is deployed on this network
+        if 'PerpsMarketProxy' in snx.contracts:
+            market_proxy_address, market_proxy_abi = snx.contracts[
+                'PerpsMarketProxy']['address'], snx.contracts['PerpsMarketProxy']['abi']
+            account_proxy_address, account_proxy_abi = snx.contracts[
+                'PerpsAccountProxy']['address'], snx.contracts['PerpsAccountProxy']['abi']
 
-        self.market_proxy = snx.web3.eth.contract(
-            address=market_proxy_address, abi=market_proxy_abi)
-        self.account_proxy = snx.web3.eth.contract(
-            address=account_proxy_address, abi=account_proxy_abi)
+            self.market_proxy = snx.web3.eth.contract(
+                address=market_proxy_address, abi=market_proxy_abi)
+            self.account_proxy = snx.web3.eth.contract(
+                address=account_proxy_address, abi=account_proxy_abi)
 
-        self.get_account_ids()
-        self.get_markets()
+            self.get_account_ids()
+            try:
+                self.get_markets()
+            except Exception as e:
+                self.logger.warning(f"Failed to fetch markets: {e}")
 
-        if default_account_id:
-            self.default_account_id = default_account_id
-        else:
-            self.default_account_id = self.account_ids[0]
+            if default_account_id:
+                self.default_account_id = default_account_id
+            elif len(self.account_ids) > 0:
+                self.default_account_id = self.account_ids[0]
+            else:
+                self.default_account_id = None
 
     # internals
     def _resolve_market(self, market_id: int, market_name: str, collateral: bool = False):
@@ -39,8 +48,8 @@ class Perps:
         if market_id is None and market_name is None:
             raise ValueError("Must provide a market_id or market_name")
 
-        ID_LOOKUP = COLLATERALS_BY_ID if collateral else PERPS_MARKETS_BY_ID
-        NAME_LOOKUP = COLLATERALS_BY_NAME if collateral else PERPS_MARKETS_BY_NAME
+        ID_LOOKUP = COLLATERALS_BY_ID[self.snx.network_id] if collateral else PERPS_MARKETS_BY_ID[self.snx.network_id]
+        NAME_LOOKUP = COLLATERALS_BY_NAME[self.snx.network_id] if collateral else PERPS_MARKETS_BY_NAME[self.snx.network_id]
 
         has_market_id = market_id is not None
         has_market_name = market_name is not None
@@ -49,23 +58,38 @@ class Perps:
             if market_name not in NAME_LOOKUP:
                 raise ValueError("Invalid market_name")
             market_id = NAME_LOOKUP[market_name]
-
-            if market_id == -1:
-                raise ValueError("Invalid market_name")
         elif has_market_id and not has_market_name:
             if market_id not in ID_LOOKUP:
                 raise ValueError("Invalid market_id")
             market_name = ID_LOOKUP[market_id]
         return market_id, market_name
 
+    def _prepare_oracle_call(self, market_names: [str] = []):
+        """Prepare a call to the external node with oracle updates for the specified markets"""
+        if len(market_names) == 0:
+            market_names = list(PERPS_MARKETS_BY_NAME[self.snx.network_id].keys())
+
+        # fetch the data from pyth
+        feed_ids = [self.snx.pyth.price_feed_ids[market_name]
+                    for market_name in market_names]
+        price_update_data = self.snx.pyth.get_feeds_data(feed_ids)
+
+        # prepare the oracle call
+        raw_feed_ids = [decode_hex(feed_id) for feed_id in feed_ids]
+        args = (1, 30, raw_feed_ids)
+
+        to, data, value = make_fulfillment_request(self.snx, self.snx.contracts['ERC7412']['address'], price_update_data, args)
+        
+        # return this formatted for the multicall
+        return (to, False, value, data)
+
     # read
     # TODO: get_market_settings
+    # TODO: get_order_fees
     def get_markets(self):
         """Get all markets and their market summaries"""
         market_ids = self.market_proxy.functions.getMarkets().call()
-
-        # TODO: add multicall
-        market_summaries = [self.get_market_summary(market_id) for market_id in market_ids]
+        market_summaries = self.get_market_summaries(market_ids)
 
         markets_by_id = {
             summary['market_id']: summary
@@ -84,7 +108,8 @@ class Perps:
         if not account_id:
             account_id = self.default_account_id
 
-        order = self.market_proxy.functions.getOrder(account_id).call()
+        order = call_erc7412(
+            self.snx, self.market_proxy, 'getOrder', (account_id,))
         settlement_time, request = order
         market_id, account_id, size_delta, settlement_strategy_id, acceptable_price, tracking_code, referrer = request
 
@@ -106,12 +131,45 @@ class Perps:
 
         return order_data
 
+    def get_market_summaries(self, market_ids: list[int] = []):
+        """Get the summary for a list of market ids"""
+        # get fresh prices to provide to the oracle
+        oracle_call = self._prepare_oracle_call()
+
+        inputs = [(market_id,) for market_id in market_ids]
+        markets = multicall_erc7412(
+            self.snx, self.market_proxy, 'getMarketSummary', inputs, calls=[oracle_call])
+
+        if len(market_ids) != len(markets):
+            self.logger.warning("Failed to fetch some market summaries")
+
+        market_summaries = []
+        for ind, market in enumerate(markets):
+            skew, size, max_open_interest, current_funding_rate, current_funding_velocity, index_price = market
+            market_id = market_ids[ind]
+            market_id, market_name = self._resolve_market(market_id, None)
+            market_summaries.append({
+                'market_id': market_id,
+                'market_name': market_name,
+                'skew': wei_to_ether(skew),
+                'size': wei_to_ether(size),
+                'max_open_interest': wei_to_ether(max_open_interest),
+                'current_funding_rate': wei_to_ether(current_funding_rate),
+                'current_funding_velocity': wei_to_ether(current_funding_velocity),
+                'index_price': wei_to_ether(index_price)
+            })
+        return market_summaries
+
     def get_market_summary(self, market_id: int = None, market_name: str = None):
         """Get the summary of a market"""
         market_id, market_name = self._resolve_market(market_id, market_name)
 
-        skew, size, max_open_interest, current_funding_rate, current_funding_velocity, index_price = self.market_proxy.functions.getMarketSummary(
-            market_id).call()
+        # get a fresh price to provide to the oracle
+        oracle_call = self._prepare_oracle_call([market_name])
+        
+        skew, size, max_open_interest, current_funding_rate, current_funding_velocity, index_price = call_erc7412(
+            self.snx, self.market_proxy, 'getMarketSummary', market_id, calls=[oracle_call])
+
         return {
             'market_id': market_id,
             'market_name': market_name,
@@ -136,9 +194,10 @@ class Perps:
             feed_id,
             url,
             settlement_reward,
-            price_deviation_tolerance,
             disabled
-        ) = self.market_proxy.functions.getSettlementStrategy(market_id, settlement_strategy_id).call()
+        ) = call_erc7412(
+            self.snx, self.market_proxy, 'getSettlementStrategy', (market_id, settlement_strategy_id))
+
         return {
             'strategy_type': strategy_type,
             'settlement_delay': settlement_delay,
@@ -148,7 +207,6 @@ class Perps:
             'feed_id': feed_id,
             'url': url,
             'settlement_reward': wei_to_ether(settlement_reward),
-            'price_deviation_tolerance': wei_to_ether(price_deviation_tolerance),
             'disabled': disabled,
         }
 
@@ -158,10 +216,13 @@ class Perps:
             address = self.snx.address
 
         balance = self.account_proxy.functions.balanceOf(address).call()
-        account_ids = [
-            self.account_proxy.functions.tokenOfOwnerByIndex(address, i).call()
-            for i in range(balance)
-        ]
+
+        # multicall the account ids
+        inputs = [(address, i) for i in range(balance)]
+
+        account_ids = multicall_erc7412(
+            self.snx, self.account_proxy, 'tokenOfOwnerByIndex', inputs)
+
         self.account_ids = account_ids
         return account_ids
 
@@ -169,15 +230,18 @@ class Perps:
         """Get the margin balances and requirements for an account"""
         if not account_id:
             account_id = self.default_account_id
+        
+        # get fresh prices to provide to the oracle
+        oracle_call = self._prepare_oracle_call()
 
-        total_collateral_value = self.market_proxy.functions.totalCollateralValue(
-            account_id).call()
-        available_margin = self.market_proxy.functions.getAvailableMargin(
-            account_id).call()
-        withdrawable_margin = self.market_proxy.functions.getWithdrawableMargin(
-            account_id).call()
-        initial_margin_requirement, maintenance_margin_requirement, total_accumulated_liquidation_rewards, max_liquidation_reward = self.market_proxy.functions.getRequiredMargins(
-            account_id).call()
+        total_collateral_value = call_erc7412(
+            self.snx, self.market_proxy, 'totalCollateralValue', (account_id,), calls=[oracle_call])
+        available_margin = call_erc7412(
+            self.snx, self.market_proxy, 'getAvailableMargin', (account_id,), calls=[oracle_call])
+        withdrawable_margin = call_erc7412(
+            self.snx, self.market_proxy, 'getWithdrawableMargin', (account_id,), calls=[oracle_call])
+        initial_margin_requirement, maintenance_margin_requirement, total_accumulated_liquidation_rewards, max_liquidation_reward = call_erc7412(
+            self.snx, self.market_proxy, 'getRequiredMargins', (account_id,), calls=[oracle_call])
 
         return {
             'total_collateral_value': wei_to_ether(total_collateral_value),
@@ -195,12 +259,43 @@ class Perps:
             account_id = self.default_account_id
 
         collateral_balances = {}
-        for market_id in COLLATERALS_BY_ID:
+        for market_id in COLLATERALS_BY_ID[self.snx.network_id]:
+            # TODO: add multicall
             balance = self.market_proxy.functions.getCollateralAmount(
                 account_id, market_id).call()
-            collateral_balances[COLLATERALS_BY_ID[market_id]] = wei_to_ether(balance)
+            collateral_balances[COLLATERALS_BY_ID[self.snx.network_id][market_id]] = wei_to_ether(balance)
 
         return collateral_balances
+    
+    def get_can_liquidate(self, account_id: int = None):
+        """Check if an account id is eligible for liquidation"""
+        if not account_id:
+            account_id = self.default_account_id
+        
+        # get fresh prices to provide to the oracle
+        oracle_call = self._prepare_oracle_call()
+
+        can_liquidate = call_erc7412(
+            self.snx, self.market_proxy, 'canLiquidate', account_id, calls=[oracle_call])
+
+        return can_liquidate
+
+    def get_can_liquidates(self, account_ids: [int] = [None]):
+        """Check if a list of account ids are eligible for liquidation"""
+        account_ids = [(account_id,) for account_id in account_ids]
+
+        # get fresh prices to provide to the oracle
+        oracle_call = self._prepare_oracle_call()
+
+        can_liquidates = multicall_erc7412(
+            self.snx, self.market_proxy, 'canLiquidate', account_ids, calls=[oracle_call])
+
+        # combine the results with the account ids, return tuples like (account_id, can_liquidate)
+        can_liquidates = [
+            (account_ids[ind][0], can_liquidate)
+            for ind, can_liquidate in enumerate(can_liquidates)
+        ]
+        return can_liquidates
 
     def get_open_position(self, market_id: int = None, market_name: int = None, account_id: int = None):
         """Get the open position for an account"""
@@ -208,13 +303,49 @@ class Perps:
         if not account_id:
             account_id = self.default_account_id
 
-        pnl, accrued_funding, position_size = self.market_proxy.functions.getOpenPosition(
-            account_id, market_id).call()
+        # get a fresh price to provide to the oracle
+        oracle_call = self._prepare_oracle_call([market_name])        
+
+        pnl, accrued_funding, position_size = call_erc7412(
+            self.snx, self.market_proxy, 'getOpenPosition', (account_id, market_id), calls=[oracle_call])
         return {
             'pnl': wei_to_ether(pnl),
             'accrued_funding': wei_to_ether(accrued_funding),
             'position_size': wei_to_ether(position_size),
         }
+
+    def get_open_positions(self, market_names: [str] = None, market_ids: [int] = None, account_id: int = None):
+        """Get the open positions for a list of markets"""
+        if not account_id:
+            account_id = self.default_account_id
+
+        # if no market names or ids are provided, fetch all markets
+        if not market_names and not market_ids:
+            market_ids = list(self.markets_by_id.keys())
+            market_names = list(self.markets_by_name.keys())
+        elif market_names and not market_ids:
+            market_ids = [self._resolve_market(None, market_name)[0] for market_name in market_names]
+
+        # make the function inputs
+        clean_inputs = [(account_id, market_id) for market_id in market_ids]
+
+        # get a fresh price to provide to the oracle
+        oracle_call = self._prepare_oracle_call(market_names)
+
+        open_positions = multicall_erc7412(
+            self.snx, self.market_proxy, 'getOpenPosition', clean_inputs, calls=[oracle_call])
+
+        open_positions = {
+            market_names[ind]: {
+                'market_id': market_ids[ind],
+                'market_name': market_names[ind],
+                'pnl': wei_to_ether(pnl),
+                'accrued_funding': wei_to_ether(accrued_funding),
+                'position_size': wei_to_ether(position_size),
+            } for ind, (pnl, accrued_funding, position_size) in enumerate(open_positions)
+            if abs(position_size) > 0
+        }
+        return open_positions
 
     # transactions
     def create_account(self, account_id: int = None, submit: bool = False):
@@ -225,12 +356,9 @@ class Perps:
             tx_args = [account_id]
 
         market_proxy = self.market_proxy
-        tx_data = market_proxy.encodeABI(
-            fn_name='createAccount', args=tx_args)
-
-        tx_params = self.snx._get_tx_params(
-            to=market_proxy.address)
-        tx_params['data'] = tx_data
+        tx_params = self.snx._get_tx_params()
+        tx_params = market_proxy.functions.createAccount(
+            *tx_args).build_transaction(tx_params)
 
         if submit:
             tx_hash = self.snx.execute_transaction(tx_params)
@@ -260,9 +388,9 @@ class Perps:
         tx_data = market_proxy.encodeABI(
             fn_name='modifyCollateral', args=[account_id, market_id, ether_to_wei(amount)])
 
-        tx_params = self.snx._get_tx_params(
-            to=market_proxy.address)
-        tx_params['data'] = tx_data
+        market_proxy = self.market_proxy
+        tx_params = write_erc7412(
+            self.snx, self.market_proxy, 'modifyCollateral', [account_id, market_id, ether_to_wei(amount)])
 
         if submit:
             tx_hash = self.snx.execute_transaction(tx_params)
@@ -276,9 +404,9 @@ class Perps:
     def commit_order(
         self,
         size: int,
-        settlement_strategy_id: int = 0,
-        market_id=None,
-        market_name=None,
+        settlement_strategy_id: int = 1,
+        market_id: int = None,
+        market_name: str = None,
         account_id: int = None,
         desired_fill_price: float = None,
         max_price_impact: float = None,
@@ -320,13 +448,8 @@ class Perps:
             "referrer": self.snx.referrer
         }
 
-        market_proxy = self.market_proxy
-        tx_data = market_proxy.encodeABI(
-            fn_name='commitOrder', args=[tx_args])
-
-        tx_params = self.snx._get_tx_params(
-            to=market_proxy.address)
-        tx_params['data'] = tx_data
+        tx_params = write_erc7412(
+            self.snx, self.market_proxy, 'commitOrder', [tx_args])
 
         if submit:
             tx_hash = self.snx.execute_transaction(tx_params)
@@ -337,26 +460,32 @@ class Perps:
         else:
             return tx_params
 
-    def settle(self, account_id: int = None, submit: bool = False):
+    def liquidate(self, account_id: int = None, submit: bool = False, static: bool = False):
         if not account_id:
             account_id = self.default_account_id
 
+        if submit and static:
+            raise ValueError(
+                "Cannot submit and use static in the same transaction")
+
         market_proxy = self.market_proxy
-        tx_data = market_proxy.encodeABI(
-            fn_name='settle', args=[account_id])
+        if static:
+            liquidation_reward = call_erc7412(
+                self.snx, market_proxy, 'liquidate', [account_id])
 
-        tx_params = self.snx._get_tx_params(
-            to=market_proxy.address)
-        tx_params['data'] = tx_data
-
-        if submit:
-            tx_hash = self.snx.execute_transaction(tx_params)
-            self.logger.info(
-                f"Settling order for account {account_id}")
-            self.logger.info(f"settle tx: {tx_hash}")
-            return tx_hash
+            return wei_to_ether(liquidation_reward)
         else:
-            return tx_params
+            tx_params = write_erc7412(
+                self.snx, market_proxy, 'liquidate', [account_id])
+
+            if submit:
+                tx_hash = self.snx.execute_transaction(tx_params)
+                self.logger.info(
+                    f"Liquidating account {account_id}")
+                self.logger.info(f"liquidate tx: {tx_hash}")
+                return tx_hash
+            else:
+                return tx_params
 
     def settle_pyth_order(self, account_id: int = None, max_retry: int = 10, retry_delay: int = 2, submit: bool = False):
         if not account_id:
@@ -415,17 +544,17 @@ class Perps:
         # log the data
         self.logger.info(f'price_update_data: {price_update_data}')
         self.logger.info(f'extra_data: {extra_data}')
+        
+        # get fresh prices to provide to the oracle
+        market_name = self._resolve_market(order['market_id'], None)[1]
+        oracle_call = self._prepare_oracle_call([market_name])
 
         # prepare the transaction
-        market_proxy = self.market_proxy
-        tx_data = market_proxy.encodeABI(
-            fn_name='settlePythOrder', args=[price_update_data, extra_data])
-
-        tx_params = self.snx._get_tx_params(
-            to=market_proxy.address, value=1)
-        tx_params['data'] = tx_data
+        tx_params = write_erc7412(
+            self.snx, self.market_proxy, 'settlePythOrder', [price_update_data, extra_data], {'value': 1}, calls=[oracle_call])
 
         if submit:
+            self.logger.info(f'tx params: {tx_params}')
             tx_hash = self.snx.execute_transaction(tx_params)
             self.logger.info(
                 f"Settling order for account {account_id}")

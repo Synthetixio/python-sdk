@@ -6,6 +6,7 @@ from decimal import Decimal
 from web3.constants import ADDRESS_ZERO
 from gql import Client
 from gql.transport.aiohttp import AIOHTTPTransport
+from gql.transport.requests import RequestsHTTPTransport
 from .gql import queries
 from .config import config
 
@@ -67,10 +68,14 @@ def clean_df(df, config):
 
 
 class Queries:
-    def __init__(self, synthetix, gql_endpoint_perps: str = None, gql_endpoint_rates: str = None):
+    def __init__(self, synthetix, gql_endpoint_perps: str = None, gql_endpoint_rates: str = None, api_key: str = None):
         self.synthetix = synthetix
-        self._gql_endpoint_perps = gql_endpoint_perps
         self._gql_endpoint_rates = gql_endpoint_rates
+
+        if 'satsuma' in gql_endpoint_perps:
+            self._gql_endpoint_perps = gql_endpoint_perps.format(api_key=api_key)
+        else:
+            self._gql_endpoint_perps = gql_endpoint_perps
 
         # set logging for gql
         logging.getLogger("gql").setLevel(logging.WARNING)
@@ -101,6 +106,27 @@ class Queries:
             all_results = []
             while not done_fetching:
                 result = await session.execute(query, variable_values=params)
+                if len(result[accessor]) > 0:
+                    all_results.extend(result[accessor])
+                    params['last_id'] = all_results[-1]['id']
+                else:
+                    done_fetching = True
+
+            df = pd.DataFrame(all_results)
+            return df
+
+    def _run_query_sync(self, query, params, accessor, url):
+        """Run a GraphQL query on the subgraph and return the results as a dataframe"""
+        transport = RequestsHTTPTransport(url=url)
+
+        with Client(
+            transport=transport,
+            fetch_schema_from_transport=True,
+        ) as session:
+            done_fetching = False
+            all_results = []
+            while not done_fetching:
+                result = session.execute(query, variable_values=params)
                 if len(result[accessor]) > 0:
                     all_results.extend(result[accessor])
                     params['last_id'] = all_results[-1]['id']

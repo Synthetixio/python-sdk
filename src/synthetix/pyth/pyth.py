@@ -6,33 +6,43 @@ from .constants import PRICE_FEED_IDS
 
 class Pyth:
     """Class for interacting with the Pyth price service."""
-    def __init__(self, network_id: int, price_service_endpoint: str = None):
+    def __init__(self, snx, price_service_endpoint: str = None):
+        self.snx = snx
+        
         self._price_service_endpoint = price_service_endpoint
-        self.price_feed_ids = PRICE_FEED_IDS[network_id]
+        if snx.network_id in PRICE_FEED_IDS:
+            self.price_feed_ids = PRICE_FEED_IDS[snx.network_id]
 
-    def price_update_data(self, token_symbol):
-        """
-        Request price update data from the pyth price service
-        ...
+    def get_tokens_data(self, tokens: list):
+        """Fetch the pyth data for a list of tokens"""
+        self.snx.logger.info(f'Fetching data for tokens: {tokens}')
+        feed_ids = [self.price_feed_ids[token] for token in tokens]
 
-        Attributes
-        ----------
-        token_symbol : str
-            token symbol from list of supported asset
-
-        Returns
-        ----------
-        str: price update data
-        """
         url = f"{self._price_service_endpoint}/api/latest_vaas"
         params = {
-            'ids[]': self.price_feed_ids[token_symbol]
+            'ids[]': feed_ids
         }
 
         try:
             response = requests.get(url, params, timeout=10)
-            price_data = base64.b64decode(response.json()[0])
-            return price_data
+            price_update_data = [base64.b64decode(raw_pud) for raw_pud in response.json()]
+            return price_update_data
+        except Exception as err:
+            print(err)
+            return None
+
+    def get_feeds_data(self, feed_ids: list):
+        """Fetch the pyth data for a list of feed ids"""
+        self.snx.logger.info(f'Fetching data for feed ids: {feed_ids}')
+        url = f"{self._price_service_endpoint}/api/latest_vaas"
+        params = {
+            'ids[]': feed_ids
+        }
+
+        try:
+            response = requests.get(url, params, timeout=10)
+            price_update_data = [base64.b64decode(raw_pud) for raw_pud in response.json()]
+            return price_update_data
         except Exception as err:
             print(err)
             return None

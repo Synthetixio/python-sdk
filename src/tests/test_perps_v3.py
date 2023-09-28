@@ -6,7 +6,7 @@ load_dotenv()
 
 # constants
 TEST_MARKET_ID = 100
-TEST_SETTLEMENT_STRATEGY_ID = 0
+TEST_SETTLEMENT_STRATEGY_ID = 1
 
 # tests
 
@@ -68,6 +68,33 @@ def test_perps_open_position(snx, logger):
     assert position['accrued_funding'] is not None
     assert position['position_size'] is not None
 
+def test_perps_open_positions_by_id(snx, logger):
+    """The instance can fetch all open positions for an account"""
+    positions = snx.perps.get_open_positions()
+
+    logger.info(f"Address: {snx.address} - positions: {positions}")
+    assert positions is not None
+    if len(positions) > 0:
+        key = list(positions.keys())[0]
+        assert positions[key]['market_id'] is not None
+        assert positions[key]['market_name'] is not None
+        assert positions[key]['pnl'] is not None
+        assert positions[key]['accrued_funding'] is not None
+        assert positions[key]['position_size'] is not None
+
+def test_perps_open_positions_by_name(snx, logger):
+    """The instance can fetch the open position for a list of markets"""
+    positions = snx.perps.get_open_positions(market_names=['ETH', 'BTC'])
+
+    logger.info(f"Address: {snx.address} - positions: {positions}")
+    assert positions is not None
+    if len(positions) > 0:
+        key = list(positions.keys())[0]
+        assert positions[key]['market_id'] is not None
+        assert positions[key]['market_name'] is not None
+        assert positions[key]['pnl'] is not None
+        assert positions[key]['accrued_funding'] is not None
+        assert positions[key]['position_size'] is not None
 
 def test_perps_account_collateral_balances(snx, logger):
     """The instance can fetch collateral balances for an account"""
@@ -78,6 +105,28 @@ def test_perps_account_collateral_balances(snx, logger):
     assert balances['sUSD'] is not None
     assert balances['ETH'] is not None
     assert balances['BTC'] is not None
+
+
+def test_perps_can_liquidate(snx, logger):
+    """The instance can fetch an accounts liquidation status"""
+    can_liquidate = snx.perps.get_can_liquidate()
+
+    logger.info(f"Account: {snx.perps.default_account_id} - can liquidate: {can_liquidate}")
+    assert can_liquidate is not None
+    assert type(can_liquidate) is bool
+
+def test_perps_can_liquidates(snx, logger):
+    """The instance can fetch liquidation status for a list of accounts"""
+    account_ids = snx.perps.account_ids[:10]
+    can_liquidates = snx.perps.get_can_liquidates(account_ids)
+
+    logger.info(f"Accounts: {account_ids} - can liquidate: {can_liquidates}")
+    assert can_liquidates is not None
+    assert type(can_liquidates) is list
+    for can_liquidate in can_liquidates:
+        assert len(can_liquidate) == 2
+        assert type(can_liquidate[0]) is int
+        assert type(can_liquidate[1]) is bool
 
 
 def test_perps_market_summary(snx, logger):
@@ -110,7 +159,6 @@ def test_perps_settlement_strategy(snx, logger):
     assert settlement_strategy['feed_id'] is not None
     assert settlement_strategy['url'] is not None
     assert settlement_strategy['settlement_reward'] is not None
-    assert settlement_strategy['price_deviation_tolerance'] is not None
     assert settlement_strategy['disabled'] is not None
 
 
@@ -154,7 +202,6 @@ def test_perps_order_with_settlement_strategy(snx, logger):
     assert order['settlement_strategy']['feed_id'] is not None
     assert order['settlement_strategy']['url'] is not None
     assert order['settlement_strategy']['settlement_reward'] is not None
-    assert order['settlement_strategy']['price_deviation_tolerance'] is not None
     assert order['settlement_strategy']['disabled'] is not None
 
 
@@ -183,14 +230,14 @@ def test_perps_commit_order(snx, logger):
     assert order['data'] is not None
 
 
-def test_perps_settle(snx, logger):
-    """User can prepare a settlement transaction"""
-    settle = snx.perps.settle()
+def test_perps_liquidate(snx, logger):
+    """User can call the static liquidate function"""
+    liquidate = snx.perps.liquidate()
 
-    assert settle is not None
-    assert settle['from'] == snx.address
-    assert settle['data'] is not None
-
+    logger.info(f"Account: {snx.perps.default_account_id} - liquidate: {liquidate}")
+    assert liquidate is not None
+    assert liquidate['from'] == snx.address
+    assert liquidate['data'] is not None
 
 def test_perps_settle_pyth_order(snx, logger):
     """User can prepare a settlement transaction using Pyth"""

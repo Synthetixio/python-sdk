@@ -9,7 +9,7 @@ def test_susd_contract(snx, logger):
     """The instance has an sUSD contract"""
     assert snx.susd_token is not None
 
-def test_susd_contract(snx, logger):
+def test_susd_legacy_contract(snx, logger):
     """The instance has an sUSD legacy contract"""
     assert snx.susd_legacy_token is not None
 

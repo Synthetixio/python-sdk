@@ -1,0 +1,58 @@
+{
+  "address": "0x9172995177A9A10FE1b7Df76E2A3266c0cFc71c7",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "FeeRequired",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "oracleContract",
+          "type": "address"
+        },
+        {
+          "internalType": "bytes",
+          "name": "oracleQuery",
+          "type": "bytes"
+        }
+      ],
+      "name": "OracleDataRequired",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes",
+          "name": "signedOffchainData",
+          "type": "bytes"
+        }
+      ],
+      "name": "fulfillOracleQuery",
+      "outputs": [],
+      "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "oracleId",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "oracleId",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ]
+}

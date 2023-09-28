@@ -10,7 +10,8 @@ setup(
         "numpy",
         "pandas",
         "requests",
-        "web3>=6.0.0",
+        "requests_toolbelt",
+        "web3>=6.4.0",
         "gql"
     ],
     classifiers=[
