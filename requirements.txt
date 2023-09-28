@@ -6,3 +6,4 @@ python-dotenv
 pytest
 sphinx
 sphinx-rtd-theme
+myst-parser
