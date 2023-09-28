@@ -349,7 +349,16 @@ class Perps:
 
     # transactions
     def create_account(self, account_id: int = None, submit: bool = False):
-        """Create a perps account"""
+        """
+        Create a perps account. An account NFT is minted to the sender, who
+        owns the account.
+
+        :param account_id: Optional Specify the id of the account. If the id already exists,
+        :param submit: Optional If `True`, submit the transaction to the blockchain.
+
+        :return: If `submit`, returns the trasaction hash. Otherwise, returns the transaction.
+        :rtype: str | dict
+        """
         if not account_id:
             tx_args = []
         else:
