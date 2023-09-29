@@ -8,7 +8,15 @@ from ..utils.multicall import call_erc7412, multicall_erc7412, write_erc7412, ma
 from .constants import COLLATERALS_BY_ID, COLLATERALS_BY_NAME, PERPS_MARKETS_BY_ID, PERPS_MARKETS_BY_NAME
 
 class Perps:
-    """Class for interacting with Synthetix Perps V3 contracts."""
+    """
+    Class for interacting with Synthetix Perps V3 contracts. Provides methods for
+    creating and managing accounts, depositing and withdrawing collateral,
+    committing and settling orders, and liquidating accounts.
+    
+    :param snx: An instance of the Synthetix class.
+    :param pyth: An instance of the Pyth class.
+    :param default_account_id: Optional The default account id to use for transactions.
+    """
     # TODO: implement asyncio
     # TODO: add waiting for transaction receipt
 
@@ -44,7 +52,17 @@ class Perps:
 
     # internals
     def _resolve_market(self, market_id: int, market_name: str, collateral: bool = False):
-        """Resolve a market_id or market_name to a market_id and market_name"""
+        """
+        Look up the market_id and market_name for a market. If only one is provided,
+        the other is resolved. If both are provided, they are checked for consistency.
+        
+        :param market_id: Optional The id of the market. If not known, provide `None`.
+        :param market_name: Optional The name of the market. If not known, provide `None`.
+        :param collateral: If `True`, resolve the market as a collateral type from the spot markets. Otherwise, resolve a perps market.
+        
+        :return: The `market_id` and `market_name` for the market.
+        :rtype: (int, str)
+        """
         if market_id is None and market_name is None:
             raise ValueError("Must provide a market_id or market_name")
 
@@ -62,10 +80,25 @@ class Perps:
             if market_id not in ID_LOOKUP:
                 raise ValueError("Invalid market_id")
             market_name = ID_LOOKUP[market_id]
+        elif has_market_id and has_market_name:
+            market_name_lookup = ID_LOOKUP[market_id]
+            if market_name != market_name_lookup:
+                raise ValueError(
+                    f"Market name {market_name} does not match market id {market_id}")
         return market_id, market_name
 
     def _prepare_oracle_call(self, market_names: [str] = []):
-        """Prepare a call to the external node with oracle updates for the specified markets"""
+        """
+        Prepare a call to the external node with oracle updates for the specified market names.
+        The result can be passed as the first argument to a multicall function to improve performance
+        of ERC-7412 calls. If no market names are provided, all markets are fetched. This is useful for
+        read functions since the user does not pay gas for those oracle calls, and reduces RPC calls and
+        runtime.
+        
+        :param market_names: Optional A list of market names to fetch prices for. If not provided, all markets are fetched.
+        :return: The address of the oracle contract, the value to send, and the encoded transaction data.
+        :rtype: (str, int, str)
+        """
         if len(market_names) == 0:
             market_names = list(PERPS_MARKETS_BY_NAME[self.snx.network_id].keys())
 
@@ -87,7 +120,12 @@ class Perps:
     # TODO: get_market_settings
     # TODO: get_order_fees
     def get_markets(self):
-        """Get all markets and their market summaries"""
+        """
+        Fetch the ids and summaries for all markets.
+        
+        :return: Market summaries keyed by `market_id` and `market_name`.
+        :rtype: (dict, dict)
+        """
         market_ids = self.market_proxy.functions.getMarkets().call()
         market_summaries = self.get_market_summaries(market_ids)
 
@@ -104,7 +142,15 @@ class Perps:
 
 
     def get_order(self, account_id: int = None, fetch_settlement_strategy: bool = True):
-        """Get the open order for an account"""
+        """
+        Fetches the open order for an account.
+        Optionally fetches the settlement strategy, which can be useful for order settlement and debugging. 
+        
+        :param account_id: Optional The id of the account. If not provided, the default account is used.
+        :param fetch_settlement_strategy: Optional If `True`, fetch the settlement strategy information.
+        :return: A dictionary with order information.
+        :rtype: dict
+        """
         if not account_id:
             account_id = self.default_account_id
 
@@ -131,8 +177,16 @@ class Perps:
 
         return order_data
 
-    def get_market_summaries(self, market_ids: list[int] = []):
-        """Get the summary for a list of market ids"""
+    def get_market_summaries(self, market_ids: [int] = []):
+        """
+        Fetch the market summaries for a list of `market_id`s.
+        
+        :param market_ids: A list of market ids to fetch.
+        :return: A list of market summaries in the order of the input `market_ids`.
+        :rtype: [dict]
+        """
+        # TODO: Fetch for all if no market ids are provided
+        # TODO: Fetch for market names
         # get fresh prices to provide to the oracle
         oracle_call = self._prepare_oracle_call()
 
@@ -161,7 +215,16 @@ class Perps:
         return market_summaries
 
     def get_market_summary(self, market_id: int = None, market_name: str = None):
-        """Get the summary of a market"""
+        """
+        Fetch the market summary for a single market, including
+        information about the market's price, open interest, funding rate,
+        and skew. Provide either the `market_id` or `market_name`.
+        
+        :param market_id: Optional A market id to fetch the summary for.
+        :param market_name: Optional A market name to fetch the summary for.
+        :return: A dictionary with the market summary.
+        :rtype: dict
+        """
         market_id, market_name = self._resolve_market(market_id, market_name)
 
         # get a fresh price to provide to the oracle
@@ -182,7 +245,10 @@ class Perps:
         }
 
     def get_settlement_strategy(self, settlement_strategy_id: int, market_id: int = None, market_name: str = None):
-        """Get the settlement strategy of a market"""
+        """
+        Get the settlement strategy of a market
+        
+        """
         market_id, market_name = self._resolve_market(market_id, market_name)
 
         (

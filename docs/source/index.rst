@@ -5,6 +5,7 @@ Synthetix Documentation
    :maxdepth: 2
    :caption: Reference
    
+   modules/synthetix
    modules/perps
    modules/pyth
    modules/multicall
