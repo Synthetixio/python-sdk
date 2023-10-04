@@ -562,7 +562,7 @@ class Perps:
             else:
                 return tx_params
 
-    def settle_pyth_order(self, account_id: int = None, max_retry: int = 10, retry_delay: int = 2, submit: bool = False):
+    def settle_pyth_order(self, account_id: int = None, max_pyth_tries: int = 10, pyth_delay: int = 2, submit: bool = False, max_tx_tries: int = 3, tx_delay: int = 2):
         if not account_id:
             account_id = self.default_account_id
 
@@ -592,22 +592,22 @@ class Perps:
         # query pyth for the price update data
         url = settlement_strategy['url'].format(data=data_param)
 
-        retry_count = 0
+        pyth_tries = 0
         price_update_data = None
-        while not price_update_data and retry_count < max_retry:
+        while not price_update_data and pyth_tries < max_pyth_tries:
             response = requests.get(url)
 
             if response.status_code == 200:
                 response_json = response.json()
                 price_update_data = response_json['data']
             else:
-                retry_count += 1
-                if retry_count > max_retry:
+                pyth_tries += 1
+                if pyth_tries > max_pyth_tries:
                     raise ValueError("Price update data not available")
                 else:
                     self.logger.info(
                         "Price update data not available, waiting 2 seconds and retrying")
-                    time.sleep(retry_delay)
+                    time.sleep(pyth_delay)
 
         # encode the extra data
         account_bytes = account_id.to_bytes(32, byteorder='big')
@@ -625,15 +625,34 @@ class Perps:
         oracle_call = self._prepare_oracle_call([market_name])
 
         # prepare the transaction
-        tx_params = write_erc7412(
-            self.snx, self.market_proxy, 'settlePythOrder', [price_update_data, extra_data], {'value': 1}, calls=[oracle_call])
+        tx_tries = 0
+        while tx_tries < max_tx_tries:
+            tx_params = write_erc7412(
+                self.snx, self.market_proxy, 'settlePythOrder', [price_update_data, extra_data], {'value': 1}, calls=[oracle_call])
 
-        if submit:
-            self.logger.info(f'tx params: {tx_params}')
-            tx_hash = self.snx.execute_transaction(tx_params)
-            self.logger.info(
-                f"Settling order for account {account_id}")
-            self.logger.info(f"settle tx: {tx_hash}")
-            return tx_hash
-        else:
-            return tx_params
+            if submit:
+                    self.logger.info(f'tx params: {tx_params}')
+
+                    tx_hash = self.snx.execute_transaction(tx_params)
+                    self.logger.info(
+                        f"Settling order for account {account_id}")
+                    self.logger.info(f"settle tx: {tx_hash}")
+                    
+                    receipt = self.snx.wait(tx_hash)
+                    self.logger.info(f"settle receipt: {receipt}")
+                    
+                    # check the order
+                    order = self.get_order(account_id)
+                    if order['size_delta'] == 0:
+                        self.logger.info(f"Order settlement successful for account {account_id}")
+                        return tx_hash
+
+                    tx_tries += 1
+                    if tx_tries > max_tx_tries:
+                        raise ValueError("Failed to settle order")
+                    else:
+                        self.logger.info(
+                            "Failed to settle order, waiting 2 seconds and retrying")
+                        time.sleep(tx_delay)
+            else:
+                return tx_params

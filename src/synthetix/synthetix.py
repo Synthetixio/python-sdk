@@ -232,6 +232,18 @@ class Synthetix:
         if to is not None:
             params['to'] = to
         return params
+    
+    def wait(self, tx_hash: str, timeout: int = 120):
+        """
+        Wait for a transaction to be confirmed and return the receipt.
+        
+        :params: tx_hash: str: transaction hash to wait for
+        :params: timeout: int: timeout in seconds
+        
+        :returns: receipt: dict: transaction receipt
+        """
+        receipt = self.web3.eth.wait_for_transaction_receipt(tx_hash, timeout=timeout)
+        return receipt
 
     def execute_transaction(self, tx_data: dict):
         """
