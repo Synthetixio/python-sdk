@@ -487,7 +487,23 @@ class Perps:
         max_price_impact: float = None,
         submit: bool = False,
     ):
-        """Commit an order to the orderbook"""
+        """
+        Submit an order to the specified market. Keepers will attempt to fill the order 
+        according to the settlement strategy. If `desired_fill_price` is provided, the order
+        will be filled at that price or better. If `max_price_impact` is provided, the 
+        `desired_fill_price` is calculated from the current market price and the price impact.
+        
+        :param size: The size of the order to submit.
+        :param settlement_strategy_id: Optional The id of the settlement strategy to use.
+        :param market_id: Optional The id of the market to submit the order to. If not provided, `market_name` must be provided.
+        :param market_name: Optional The name of the market to submit the order to. If not provided, `market_id` must be provided.
+        :param account_id: Optional The id of the account to submit the order for. Defaults to `default_account_id`.
+        :param desired_fill_price: Optional The price to fill the order at. If not provided, it will be calculated based on `max_price_impact`.
+        :param max_price_impact: Optional The maximum price impact to allow when filling the order as a percentage (0.01 = 1%). If not provided, it will inherit the default value from `snx.max_price_impact`.
+        :param submit: Optional If `True`, submit the transaction to the blockchain.
+
+        :return: If `submit`, returns the trasaction hash. Otherwise, returns the transaction.
+        """
         market_id, market_name = self._resolve_market(market_id, market_name)
 
         # set acceptable price
@@ -507,6 +523,7 @@ class Perps:
             if not max_price_impact:
                 max_price_impact = self.snx.max_price_impact
             price_impact = 1 + is_short*max_price_impact/100
+            # TODO: check that this price is skew-adjusted
             acceptable_price = market_summary['index_price'] * price_impact
 
         if not account_id:
