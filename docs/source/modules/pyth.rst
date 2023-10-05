@@ -1,7 +1,0 @@
-Pyth
-===========================
-
-.. autoclass:: synthetix.pyth.Pyth
-   :members:
-   :undoc-members:
-   :show-inheritance:

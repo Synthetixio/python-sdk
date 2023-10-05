@@ -5,3 +5,13 @@ Synthetix
    :members:
    :undoc-members:
    :show-inheritance:
+
+   .. autoclass:: synthetix.perps.Perps
+      :members:
+      :undoc-members:
+      :show-inheritance:
+
+   .. autoclass:: synthetix.pyth.Pyth
+      :members:
+      :undoc-members:
+      :show-inheritance:
