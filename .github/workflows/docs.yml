@@ -16,7 +16,7 @@ jobs:
           pip install sphinx sphinx_rtd_theme myst_parser
       - name: Install Synthetix
         run: |
-          pip install ./src
+          pip install -e ./src
       - name: Sphinx build
         run: |
           cd docs && make html
