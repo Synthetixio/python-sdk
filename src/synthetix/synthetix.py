@@ -20,6 +20,52 @@ warnings.filterwarnings('ignore')
 
 
 class Synthetix:
+    """
+    The main class for interacting with the Synthetix protocol. The class
+    requires a provider RPC endpoint and a wallet address::
+        
+            snx = Synthetix(
+                provider_rpc='https://mainnet.infura.io/v3/...',
+                address='0x12345...'
+            )
+    
+    The class can be initialized with a private key to allow for transactions
+    to be sent::
+            
+                snx = Synthetix(
+                    provider_rpc='https://mainnet.infura.io/v3/...',
+                    address='0x12345...',
+                    private_key='0xabcde...'
+                )
+
+    :param str provider_rpc: An RPC endpoint to use for the provider.
+    :param str address: Wallet address to use as a default. If a private key is
+        specified, this address will be used to sign transactions.
+    :param str private_key: Private key of the provided wallet address. If specified,
+        the wallet will be enabled to sign and submit transactions.
+    :param int network_id: Network ID for the chain to connect to. This must match 
+        the chain ID of the RPC endpoint.
+    :param int core_account_id: A default ``account_id`` for core transactions.
+        Setting a default will avoid the need to specify on each transaction. If
+        not specified, the first ``account_id`` will be used.
+    :param int perps_account_id: A default ``account_id`` for perps transactions.
+        Setting a default will avoid the need to specify on each transaction. If 
+        not specified, the first ``account_id`` will be used.
+    :param str tracking_code: Set a tracking code for trades.
+    :param str referrer: Set a referrer address for trades.
+    :param float max_price_impact: Max price impact setting for trades,
+        specified as a percentage. This setting applies to both spot and
+        perps markets.
+    :param bool use_estimate_gas: Use estimate gas for transactions. If false,
+        it is assumed you will add a gas limit to all transactions.
+    :param str gql_endpoint_perps: GraphQL endpoint for perps data.
+    :param str satsuma_api_key: API key for Satsuma. If the endpoint is from
+        Satsuma, the API key will be automatically added to the request.
+    :param str price_service_endpoint: Endpoint for a Pyth price service. If
+        not specified, a default endpoint is used.
+    :return: Synthetix class instance
+    :rtype: Synthetix
+    """
     def __init__(
             self,
             provider_rpc: str,
@@ -127,12 +173,20 @@ class Synthetix:
 
     def _load_contracts(self):
         """
-        Initializes all necessary contracts
-        ...
-
-        Attributes
-        ----------
-        N/A
+        Initializes and sets up contracts according to the connected chain.
+        On calling this function, the following contracts are connected and set up:
+        * ``PerpsV2MarketData``
+        * ``PerpsV2MarketProxy`` (for each V2 market)
+        * ``sUSD`` contracts for both V3 and legacy sUSD.
+        * ``TrustedMulticallForwarder`` (if available)
+        
+        These are stored as methods on the base Synthetix object::
+        
+            >>> snx.susd_token.address
+            0x...
+        
+        :return: web3 contracts
+        :rtype: [contract, contract, contract, contract]
         """
         w3 = self.web3
 
@@ -208,20 +262,14 @@ class Synthetix:
         self, value=0, to=None
     ) -> TxParams:
         """
-        Get the default tx params
-        ...
-
-        Attributes
-        ----------
-        value : int
-            value to send in wei
-        to : str
-            address to send to
-
-        Returns
-        -------
-        params : dict
-            transaction parameters to be completed with another function
+        A helper function to prepare transaction parameters. This function
+        will set up the transaction based on the parameters at initialization,
+        but leave the ``data`` parameter empty.
+        
+        :param int value: value to send with transaction
+        :param str | None to: address to send transaction to
+        :return: A prepared transaction without the ``data`` parameter
+        :rtype: TxParams
         """
         params: TxParams = {
             'from': self.address,
@@ -236,26 +284,28 @@ class Synthetix:
     def wait(self, tx_hash: str, timeout: int = 120):
         """
         Wait for a transaction to be confirmed and return the receipt.
-        
-        :params: tx_hash: str: transaction hash to wait for
-        :params: timeout: int: timeout in seconds
-        
-        :returns: receipt: dict: transaction receipt
+        The function will throw an error if the timeout is exceeded.
+        Use this as a helper function to wait for a transaction to be confirmed,
+        then check the results and react accordingly.
+
+        :param str tx_hash: transaction hash to wait for
+        :param int timeout: timeout in seconds
+        :return: A transaction receipt
+        :rtype: dict
         """
         receipt = self.web3.eth.wait_for_transaction_receipt(tx_hash, timeout=timeout)
         return receipt
 
     def execute_transaction(self, tx_data: dict):
         """
-        Execute a transaction given the TX data
-        ...
-
-        Attributes
-        ----------
-        tx_data : dict
-            tx data to send transaction
-        private_key : str
-            private key of wallet sending transaction
+        Execute a provided transaction. This function will be signed with the provided
+        private key and submitted to the connected RPC. The ``Synthetix`` object tracks
+        the nonce internally, and will handle estimating gas limits if they are not
+        provided.
+        
+        :param dict tx_data: transaction data
+        :return: A transaction hash
+        :rtype: str
         """
         if self.private_key is None:
             raise Exception("No private key specified.")
@@ -278,19 +328,14 @@ class Synthetix:
 
     def get_susd_balance(self, address: str = None, legacy: bool = False) -> dict:
         """
-        Gets current sUSD Balance in wallet
-        ...
-
-        Attributes
-        ----------
-        address : str
-            address of wallet to check
-        legacy : bool
-            if true, check legacy sUSD contract
-        Returns
-        ----------
-        Dict: wei and usd sUSD balance
+        Gets current sUSD balance in wallet. Supports both legacy and V3 sUSD.
+        
+        :param str address: address to check balances for
+        :param bool legacy: check legacy sUSD balance
+        :return: A dictionary with the sUSD balance
+        :rtype: dict
         """
+        # TODO: remove the dictionary return
         if not address:
             address = self.address
 
@@ -302,16 +347,11 @@ class Synthetix:
 
     def get_eth_balance(self, address: str = None) -> dict:
         """
-        Gets current ETH Balance in wallet
-        ...
-
-        Attributes
-        ----------
-        address : str
-            address of wallet to check
-        Returns
-        ----------
-        Dict: wei and usd ETH balance
+        Gets current ETH and WETH balances at the specified address.
+        
+        :param str address: address to check balances for
+        :return: A dictionary with the ETH and WETH balances
+        :rtype: dict
         """
         if not address:
             address = self.address
@@ -330,10 +370,28 @@ class Synthetix:
         self,
         token_address: str,
         target_address: str,
-        amount: int = None,
+        amount: float = None,
         submit: bool = False
     ):
-        """Approve an address to spend an ERC20 token"""
+        """
+        Approve an address to spend a specified ERC20 token. This is a general
+        implementation that can be used for any ERC20 token. Specify the amount
+        as an ether value, otherwise it will default to the maximum amount::
+        
+            snx.approve(
+                snx.susd_token.address,
+                snx.perps.market_proxy.address,
+                amount=1000
+            )
+        
+        :param str token_address: address of the token to approve
+        :param str target_address: address to approve to spend the token
+        :param float amount: amount of the token to approve
+        :param bool submit: submit the transaction
+        :return: If ``submit``, returns a transaction hash. Otherwise, returns
+            the transaction parameters.
+        :rtype: str | dict
+        """
         # fix the amount
         amount = 2**256 - 1 if amount is None else ether_to_wei(amount)
         token_contract = self.web3.eth.contract(
@@ -354,16 +412,17 @@ class Synthetix:
 
     def wrap_eth(self, amount: float, submit: bool = False) -> str:
         """
-        Wraps ETH into WETH
-        ...
-
-        Attributes
-        ----------
-        amount : float
-            amount of ETH to wrap
-        Returns
-        ----------
-        str: transaction hash
+        Wraps or unwaps ETH to/from the WETH implementation stored in the constants file.
+        Negative numbers will unwrap ETH, positive numbers will wrap ETH::
+            
+                snx.wrap_eth(1)
+                snx.wrap_eth(-1)
+        
+        :param float amount: amount of ETH to wrap
+        :param bool submit: submit the transaction
+        :return: If ``submit``, returns a transaction hash. Otherwise, returns
+            the transaction parameters.
+        :rtype: str | dict
         """
         value_wei = ether_to_wei(max(amount, 0))
         weth_contract = self.web3.eth.contract(
