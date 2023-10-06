@@ -6,5 +6,4 @@ Synthetix Documentation
    :caption: Reference
    
    modules/synthetix
-   modules/multicall
    modules/utils
