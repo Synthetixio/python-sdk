@@ -12,10 +12,21 @@ class Perps:
     Class for interacting with Synthetix Perps V3 contracts. Provides methods for
     creating and managing accounts, depositing and withdrawing collateral,
     committing and settling orders, and liquidating accounts.
+
+    Use ``get_`` methods to fetch information about accounts, markets, and orders::
+    
+        markets = snx.perps.get_markets()
+        open_positions = snx.perps.get_open_positions()
+    
+    Other methods prepare transactions, and submit them to your RPC::
+    
+        create_tx_hash = snx.perps.create_account(submit=True)
+        collateral_tx_hash = snx.perps.modify_collateral(amount=1000, market_name='sUSD', submit=True)
+        order_tx_hash = snx.perps.commit_order(size=10, market_name='ETH', desired_fill_price=2000, submit=True)
     
     :param Synthetix snx: An instance of the Synthetix class.
     :param Pyth pyth: An instance of the Pyth class.
-    :param int | None default_account_id: The default account id to use for transactions.
+    :param int | None default_account_id: The default ``account_id`` to use for transactions.
     
     :return: An instance of the Perps class.
     :rtype: Perps
@@ -127,6 +138,7 @@ class Perps:
         Fetch the ids and summaries for all perps markets. Market summaries include
         information about the market's price, open interest, funding rate,
         and skew::
+        
             markets_by_name = {
                 'ETH': {
                     'market_id': 100,
@@ -435,6 +447,7 @@ class Perps:
         Fetch the position for a specified account and market. The result includes the unrealized
         pnl since the last interaction with this position, any accrued funding, and the position size.
         Provide either a ``market_id`` or a ``market_name``::
+        
             open_position = {
                 'pnl': 86.56,
                 'accrued_funding': -10.50,
@@ -466,6 +479,7 @@ class Perps:
         """
         Get the open positions for a list of markets.
         Provide either a list of ``market_name`` or ``market_id``::
+        
             open_positions = {
                 'ETH': {
                     'market_id': 100,
