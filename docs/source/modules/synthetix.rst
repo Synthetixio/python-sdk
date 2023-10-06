@@ -8,6 +8,7 @@ Synthetix
 
    .. autoclass:: synthetix.perps.Perps
       :members:
+      :private-members:
       :undoc-members:
       :show-inheritance:
 

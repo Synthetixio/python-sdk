@@ -13,9 +13,12 @@ class Perps:
     creating and managing accounts, depositing and withdrawing collateral,
     committing and settling orders, and liquidating accounts.
     
-    :param snx: An instance of the Synthetix class.
-    :param pyth: An instance of the Pyth class.
-    :param default_account_id: Optional The default account id to use for transactions.
+    :param Synthetix snx: An instance of the Synthetix class.
+    :param Pyth pyth: An instance of the Pyth class.
+    :param int | None default_account_id: The default account id to use for transactions.
+    
+    :return: An instance of the Perps class.
+    :rtype: Perps
     """
     # TODO: implement asyncio
     # TODO: add waiting for transaction receipt
@@ -56,11 +59,11 @@ class Perps:
         Look up the market_id and market_name for a market. If only one is provided,
         the other is resolved. If both are provided, they are checked for consistency.
         
-        :param market_id: Optional The id of the market. If not known, provide `None`.
-        :param market_name: Optional The name of the market. If not known, provide `None`.
-        :param collateral: If `True`, resolve the market as a collateral type from the spot markets. Otherwise, resolve a perps market.
+        :param int | None market_id: The id of the market. If not known, provide `None`.
+        :param str | None market_name: The name of the market. If not known, provide `None`.
+        :param bool collateral: If ``True``, resolve the market as a collateral type from the spot markets. Otherwise, resolve a perps market.
         
-        :return: The `market_id` and `market_name` for the market.
+        :return: The ``market_id`` and ``market_name`` for the market.
         :rtype: (int, str)
         """
         if market_id is None and market_name is None:
@@ -95,7 +98,7 @@ class Perps:
         read functions since the user does not pay gas for those oracle calls, and reduces RPC calls and
         runtime.
         
-        :param market_names: Optional A list of market names to fetch prices for. If not provided, all markets are fetched.
+        :param [str] market_names: A list of market names to fetch prices for. If not provided, all markets are fetched.
         :return: The address of the oracle contract, the value to send, and the encoded transaction data.
         :rtype: (str, int, str)
         """
@@ -121,8 +124,25 @@ class Perps:
     # TODO: get_order_fees
     def get_markets(self):
         """
-        Fetch the ids and summaries for all markets.
-        
+        Fetch the ids and summaries for all perps markets. Market summaries include
+        information about the market's price, open interest, funding rate,
+        and skew::
+            markets_by_name = {
+                'ETH': {
+                    'market_id': 100,
+                    'market_name': 'ETH',
+                    'skew': -15,
+                    'size': 100,
+                    'max_open_interest': 10000,
+                    'current_funding_rate': 0.000182,
+                    'current_funding_velocity': 0.00002765,
+                    'index_price': 1852.59
+                }
+                'BTC': {
+                    ...
+                }
+            }
+
         :return: Market summaries keyed by `market_id` and `market_name`.
         :rtype: (dict, dict)
         """
@@ -146,8 +166,8 @@ class Perps:
         Fetches the open order for an account.
         Optionally fetches the settlement strategy, which can be useful for order settlement and debugging. 
         
-        :param account_id: Optional The id of the account. If not provided, the default account is used.
-        :param fetch_settlement_strategy: Optional If `True`, fetch the settlement strategy information.
+        :param int | None account_id: The id of the account. If not provided, the default account is used.
+        :param bool | None fetch_settlement_strategy: If ``True``, fetch the settlement strategy information.
         :return: A dictionary with order information.
         :rtype: dict
         """
@@ -179,13 +199,12 @@ class Perps:
 
     def get_market_summaries(self, market_ids: [int] = []):
         """
-        Fetch the market summaries for a list of `market_id`s.
+        Fetch the market summaries for a list of ``market_id``.
         
-        :param market_ids: A list of market ids to fetch.
-        :return: A list of market summaries in the order of the input `market_ids`.
+        :param [int] market_ids: A list of market ids to fetch.
+        :return: A list of market summaries in the order of the input ``market_ids``.
         :rtype: [dict]
         """
-        # TODO: Fetch for all if no market ids are provided
         # TODO: Fetch for market names
         # get fresh prices to provide to the oracle
         oracle_call = self._prepare_oracle_call()
@@ -220,8 +239,8 @@ class Perps:
         information about the market's price, open interest, funding rate,
         and skew. Provide either the `market_id` or `market_name`.
         
-        :param market_id: Optional A market id to fetch the summary for.
-        :param market_name: Optional A market name to fetch the summary for.
+        :param int | None market_id: A market id to fetch the summary for.
+        :param str | None market_name: A market name to fetch the summary for.
         :return: A dictionary with the market summary.
         :rtype: dict
         """
@@ -244,10 +263,22 @@ class Perps:
             'index_price': wei_to_ether(index_price)
         }
 
-    def get_settlement_strategy(self, settlement_strategy_id: int, market_id: int = None, market_name: str = None):
+    def get_settlement_strategy(
+        self,
+        settlement_strategy_id: int,
+        market_id: int = None,
+        market_name: str = None
+    ):
         """
-        Get the settlement strategy of a market
+        Fetch the settlement strategy for a market. Settlement strategies describe the
+        conditions under which an order can be settled. Provide either a ``market_id``
+        or ``market_name``.
         
+        :param int settlement_strategy_id: The id of the settlement strategy to fetch.
+        :param int | None market_id: The id of the market to fetch the settlement strategy for.
+        :param str | None market_name: The name of the market to fetch the settlement strategy for.
+        :return: A dictionary with the settlement strategy information.
+        :rtype: dict
         """
         market_id, market_name = self._resolve_market(market_id, market_name)
 
@@ -277,7 +308,15 @@ class Perps:
         }
 
     def get_account_ids(self, address: str = None):
-        """Get the perps account_ids owned by an account"""
+        """
+        Fetch a list of perps ``account_id`` owned by an address. Perps accounts
+        are minted as an NFT to the owner's address. The ``account_id`` is the
+        token id of the NFTs held by the address.
+        
+        :param str | None address: The address to fetch the account ids for. If not provided, the default address is used.
+        :return: A list of account ids.
+        :rtype: [int]
+        """
         if not address:
             address = self.snx.address
 
@@ -293,13 +332,23 @@ class Perps:
         return account_ids
 
     def get_margin_info(self, account_id: int = None):
-        """Get the margin balances and requirements for an account"""
+        """
+        Fetch information about an account's margin requirements and balances.
+        Accounts must maintain an ``available_margin`` above the ``maintenance_margin_requirement``
+        to avoid liquidation. Accounts with ``available_margin`` below the ``initial_margin_requirement``
+        can not interact with their position unless they deposit more collateral.
+        
+        :param int | None account_id: The id of the account to fetch the margin info for. If not provided, the default account is used.
+        :return: A dictionary with the margin information.
+        :rtype: dict
+        """
         if not account_id:
             account_id = self.default_account_id
         
         # get fresh prices to provide to the oracle
         oracle_call = self._prepare_oracle_call()
 
+        # TODO: expand multical capability to handle multiple functions
         total_collateral_value = call_erc7412(
             self.snx, self.market_proxy, 'totalCollateralValue', (account_id,), calls=[oracle_call])
         available_margin = call_erc7412(
@@ -320,7 +369,13 @@ class Perps:
         }
 
     def get_collateral_balances(self, account_id: int = None):
-        """Get the collateral balances for an account"""
+        """
+        Fetch the balance of each collateral type for an account.
+        
+        :param int | None account_id: The id of the account to fetch the collateral balances for. If not provided, the default account is used.
+        :return: A dictionary with the collateral balances.
+        :rtype: dict
+        """
         if not account_id:
             account_id = self.default_account_id
 
@@ -334,7 +389,13 @@ class Perps:
         return collateral_balances
     
     def get_can_liquidate(self, account_id: int = None):
-        """Check if an account id is eligible for liquidation"""
+        """
+        Check if an ``account_id`` is eligible for liquidation.
+        
+        :param int | None account_id: The id of the account to check. If not provided, the default account is used.
+        :return: A boolean indicating if the account is eligible for liquidation.
+        :rtype: bool
+        """
         if not account_id:
             account_id = self.default_account_id
         
@@ -347,7 +408,13 @@ class Perps:
         return can_liquidate
 
     def get_can_liquidates(self, account_ids: [int] = [None]):
-        """Check if a list of account ids are eligible for liquidation"""
+        """
+        Check if a batch of ``account_id`` are eligible for liquidation.
+        
+        :param [int] account_ids: A list of account ids to check.
+        :return: A list of tuples containing the ``account_id`` and a boolean indicating if the account is eligible for liquidation.
+        :rtype: [(int, bool)]
+        """
         account_ids = [(account_id,) for account_id in account_ids]
 
         # get fresh prices to provide to the oracle
@@ -364,7 +431,22 @@ class Perps:
         return can_liquidates
 
     def get_open_position(self, market_id: int = None, market_name: int = None, account_id: int = None):
-        """Get the open position for an account"""
+        """
+        Fetch the position for a specified account and market. The result includes the unrealized
+        pnl since the last interaction with this position, any accrued funding, and the position size.
+        Provide either a ``market_id`` or a ``market_name``::
+            open_position = {
+                'pnl': 86.56,
+                'accrued_funding': -10.50,
+                'position_size': 10.0,
+            }
+        
+        :param int | None market_id: The id of the market to fetch the position for.
+        :param str | None market_name: The name of the market to fetch the position for.
+        :param int | None account_id: The id of the account to fetch the position for. If not provided, the default account is used.
+        :return: A dictionary with the position information.
+        :rtype: dict
+        """
         market_id, market_name = self._resolve_market(market_id, market_name)
         if not account_id:
             account_id = self.default_account_id
@@ -381,7 +463,28 @@ class Perps:
         }
 
     def get_open_positions(self, market_names: [str] = None, market_ids: [int] = None, account_id: int = None):
-        """Get the open positions for a list of markets"""
+        """
+        Get the open positions for a list of markets.
+        Provide either a list of ``market_name`` or ``market_id``::
+            open_positions = {
+                'ETH': {
+                    'market_id': 100,
+                    'market_name': 'ETH',
+                    'pnl': 86.56,
+                    'accrued_funding': -10.50,
+                    'position_size': 10.0,
+                },
+                'BTC': {
+                    ...
+                }
+            }
+        
+        :param [str] | None market_names: A list of market names to fetch the positions for.
+        :param [int] | None market_ids: A list of market ids to fetch the positions for.
+        :param int | None account_id: The id of the account to fetch the positions for. If not provided, the default account is used.
+        :return: A dictionary with the position information keyed by ``market_name``.
+        :rtype: dict        
+        """
         if not account_id:
             account_id = self.default_account_id
 
@@ -419,8 +522,8 @@ class Perps:
         Create a perps account. An account NFT is minted to the sender, who
         owns the account.
 
-        :param account_id: Optional Specify the id of the account. If the id already exists,
-        :param submit: Optional If `True`, submit the transaction to the blockchain.
+        :param int | None account_id: Specify the id of the account. If the id already exists,
+        :param boolean submit: If ``True``, submit the transaction to the blockchain.
 
         :return: If `submit`, returns the trasaction hash. Otherwise, returns the transaction.
         :rtype: str | dict
@@ -451,7 +554,21 @@ class Perps:
         account_id: int = None,
         submit: bool = False,
     ):
-        """Deposit or withdraw collateral from an account"""
+        """
+        Move collateral in or out of a specified perps account. The ``market_id``
+        or ``market_name`` must be provided to specify the collateral type. 
+        Provide either a ``market_id`` or a ``market_name``.  Note that the ``market_id``
+        here refers to the spot market id, not the perps market id. Make sure to approve
+        the market proxy to transfer tokens of the collateral type before calling this function.
+        
+        :param int amount: The amount of collateral to move. Positive values deposit collateral, negative values withdraw collateral.
+        :param int | None market_id: The id of the market to move collateral for.
+        :param str | None market_name: The name of the market to move collateral for.
+        :param int | None account_id: The id of the account to move collateral for. If not provided, the default account is used.
+        :param bool submit: If ``True``, submit the transaction to the blockchain.
+        :return: If ``submit``, returns the trasaction hash. Otherwise, returns the transaction.
+        :rtype: str | dict
+        """
         market_id, market_name = self._resolve_market(
             market_id, market_name, collateral=True)
 
@@ -489,18 +606,18 @@ class Perps:
     ):
         """
         Submit an order to the specified market. Keepers will attempt to fill the order 
-        according to the settlement strategy. If `desired_fill_price` is provided, the order
-        will be filled at that price or better. If `max_price_impact` is provided, the 
-        `desired_fill_price` is calculated from the current market price and the price impact.
+        according to the settlement strategy. If ``desired_fill_price`` is provided, the order
+        will be filled at that price or better. If ``max_price_impact`` is provided, the 
+        ``desired_fill_price`` is calculated from the current market price and the price impact.
         
-        :param size: The size of the order to submit.
-        :param settlement_strategy_id: Optional The id of the settlement strategy to use.
-        :param market_id: Optional The id of the market to submit the order to. If not provided, `market_name` must be provided.
-        :param market_name: Optional The name of the market to submit the order to. If not provided, `market_id` must be provided.
-        :param account_id: Optional The id of the account to submit the order for. Defaults to `default_account_id`.
-        :param desired_fill_price: Optional The price to fill the order at. If not provided, it will be calculated based on `max_price_impact`.
-        :param max_price_impact: Optional The maximum price impact to allow when filling the order as a percentage (0.01 = 1%). If not provided, it will inherit the default value from `snx.max_price_impact`.
-        :param submit: Optional If `True`, submit the transaction to the blockchain.
+        :param int size: The size of the order to submit.
+        :param int settlement_strategy_id: The id of the settlement strategy to use.
+        :param int | None market_id: The id of the market to submit the order to. If not provided, `market_name` must be provided.
+        :param str | None market_name: The name of the market to submit the order to. If not provided, `market_id` must be provided.
+        :param int | None account_id: The id of the account to submit the order for. Defaults to `default_account_id`.
+        :param float | None desired_fill_price: The max price for longs and minimum price for shorts. If not provided, one will be calculated based on `max_price_impact`.
+        :param float | None max_price_impact: The maximum price impact to allow when filling the order as a percentage (1.0 = 1%). If not provided, it will inherit the default value from `snx.max_price_impact`.
+        :param bool submit: If ``True``, submit the transaction to the blockchain.
 
         :return: If `submit`, returns the trasaction hash. Otherwise, returns the transaction.
         """
@@ -553,6 +670,19 @@ class Perps:
             return tx_params
 
     def liquidate(self, account_id: int = None, submit: bool = False, static: bool = False):
+        """
+        Submit a liquidation for an account, or static call the liquidation function to fetch
+        the liquidation reward. The static call is important for accounts which have been
+        partially liquidated. Due to the throughput limit on liquidated value, the static call
+        returning a nonzero value means more value can be liquidated (and rewards collected).
+        This function can not be called if ``submit`` and ``static`` are true.
+        
+        :param int | None account_id: The id of the account to liquidate. If not provided, the default account is used.
+        :param bool submit: If ``True``, submit the transaction to the blockchain.
+        :param bool static: If ``True``, static call the liquidation function to fetch the liquidation reward.
+        :return: If ``submit``, returns the trasaction hash. If ``static``, returns the liquidation reward. Otherwise, returns the transaction.
+        :rtype: str | dict | float
+        """
         if not account_id:
             account_id = self.default_account_id
 
@@ -580,6 +710,20 @@ class Perps:
                 return tx_params
 
     def settle_pyth_order(self, account_id: int = None, max_pyth_tries: int = 10, pyth_delay: int = 2, submit: bool = False, max_tx_tries: int = 3, tx_delay: int = 2):
+        """
+        Settles an order by fetching data from the Pyth price feed and submitting a transaction.
+        If the order is not yet ready to be settled, this function will wait until the settlement time.
+        If the Pyth data is not available, this function will retry until the max number of tries is reached
+        with a configurable delay. If the transaction fails, this function will retry until the max number
+        of tries is reached with a configurable delay.
+        
+        :param int | None account_id: The id of the account to settle. If not provided, the default account is used.
+        :param int max_pyth_tries: The max number of tries to fetch the Pyth data.
+        :param int pyth_delay: The delay in seconds between Pyth data fetches.
+        :param bool submit: If ``True``, submit the transaction to the blockchain.
+        :param int max_tx_tries: The max number of tries to submit the transaction.
+        :param int tx_delay: The delay in seconds between transaction submissions.
+        """
         if not account_id:
             account_id = self.default_account_id
 
