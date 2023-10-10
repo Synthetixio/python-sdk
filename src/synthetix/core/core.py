@@ -22,7 +22,11 @@ class Core:
             self.account_proxy = snx.web3.eth.contract(
                 address=account_proxy_address, abi=account_proxy_abi)
 
-            self.get_account_ids()
+            try:
+                self.get_account_ids()
+            except Exception as e:
+                self.account_ids = []
+                self.logger.warning(f"Failed to fetch core accounts: {e}")
 
             if default_account_id:
                 self.default_account_id = default_account_id

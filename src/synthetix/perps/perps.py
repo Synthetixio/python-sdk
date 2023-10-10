@@ -51,7 +51,12 @@ class Perps:
             self.account_proxy = snx.web3.eth.contract(
                 address=account_proxy_address, abi=account_proxy_abi)
 
-            self.get_account_ids()
+            try:
+                self.get_account_ids()
+            except Exception as e:
+                self.account_ids = []
+                self.logger.warning(f"Failed to fetch perps accounts: {e}")
+
             try:
                 self.get_markets()
             except Exception as e:
