@@ -25,7 +25,8 @@ class Synthetix:
     requires a provider RPC endpoint and a wallet address::
         
             snx = Synthetix(
-                provider_rpc='https://mainnet.infura.io/v3/...',
+                provider_rpc='https://optimism-mainnet.infura.io/v3/...',
+                network_id=10,
                 address='0x12345...'
             )
     
@@ -33,7 +34,8 @@ class Synthetix:
     to be sent::
             
                 snx = Synthetix(
-                    provider_rpc='https://mainnet.infura.io/v3/...',
+                    provider_rpc='https://optimism-mainnet.infura.io/v3/...',
+                    network_id=10,
                     address='0x12345...',
                     private_key='0xabcde...'
                 )
