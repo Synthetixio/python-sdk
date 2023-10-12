@@ -46,7 +46,7 @@ jobs:
 
       - name: Build
         run: |
-          python setup.py sdist bdist_wheel
+          python ./src/setup.py sdist bdist_wheel
 
       - name: Publish to Test PyPi with unique version
         run: |
@@ -83,7 +83,7 @@ jobs:
 
       - name: Build and publish
         run: |
-          python setup.py sdist bdist_wheel
+          python ./src/setup.py sdist bdist_wheel
           twine upload dist/* --skip-existing
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
