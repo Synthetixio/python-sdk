@@ -9,9 +9,6 @@
 name: Upload Python Package
 
 on:
-  push:
-    branches:
-      - v3-competition-publish
   release:
     types: [published]
 
@@ -36,7 +33,6 @@ jobs:
     - name: Build package
       run: |
         python -m build src --outdir dist
-        echo "$(ls)"
     - name: Publish package
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
