@@ -52,6 +52,7 @@ jobs:
       - name: Publish to Test PyPi with unique version
         run: |
           VERSION_SUFFIX=$(echo "${{ github.sha }}" | cut -c1-7)
+          sed -i.bak "s/version='0.1.0',/version='0.1.0.dev${VERSION_SUFFIX}',/" setup.py
           twine upload --repository-url https://test.pypi.org/legacy/ src/dist/* --verbose --skip-existing
         env:
           TWINE_USERNAME: ${{ secrets.TEST_PYPI_USERNAME }}
