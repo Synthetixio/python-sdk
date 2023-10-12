@@ -27,7 +27,7 @@ jobs:
 
   deploy-testpypi:
     needs: build-and-test
-    if: github.event_name == 'pull_request' && github.ref == 'refs/heads/v3-competition'
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
