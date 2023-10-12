@@ -1,0 +1,60 @@
+name: PyPi Publish
+
+on:
+  push:
+    branches:
+      - v3-competition
+  pull_request:
+    branches:
+      - v3-competition
+
+jobs:
+  build-and-install:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.10
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install ./src
+
+  deploy:
+    needs: build-and-install
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.10
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install twine
+
+      - name: Bump version
+        id: bump_version
+        run: |
+          bump2version patch --config-file .bumpversion.cfg
+          echo "::set-output name=new_version::$(cat .bumpversion.cfg | grep current_version | sed 's/^current_version = //')"
+
+      - name: Build and publish
+        run: |
+          python ./src/setup.py sdist bdist_wheel
+          twine upload dist/*
+        env:
+          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
