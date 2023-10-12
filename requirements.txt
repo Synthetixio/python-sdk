@@ -1,5 +1,4 @@
-requests==2.28.1
-web3>=6.0.0
+wheel
 autopep8
 pre-commit
 python-dotenv
