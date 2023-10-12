@@ -52,7 +52,7 @@ jobs:
       - name: Publish to Test PyPi with unique version
         run: |
           cd src
-          bump2version --no-commit --new-version {current_version}beta0 beta
+          bump2version --no-commit beta
           python setup.py sdist bdist_wheel
           twine upload --repository-url https://test.pypi.org/legacy/ dist/* --verbose --skip-existing
         env:
