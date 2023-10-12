@@ -42,7 +42,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install wheel twine
+          pip install wheel twine bump2version
 
       - name: Build
         run: |
@@ -51,11 +51,12 @@ jobs:
 
       - name: Publish to Test PyPi with unique version
         run: |
-          CURRENT_VERSION=$(python -c "exec(open('src/setup.py').read()); print(version)")
+          cd src
+          CURRENT_VERSION=$(python -c "import setuptools; exec(open('setup.py').read()); print(setuptools.setup(version))")
           VERSION_SUFFIX=$(echo "dev${{ github.sha }}" | cut -c1-7)
           NEW_VERSION="${CURRENT_VERSION}.${VERSION_SUFFIX}"
           bump2version --current-version $CURRENT_VERSION --new-version $NEW_VERSION dev
-          twine upload --repository-url https://test.pypi.org/legacy/ src/dist/* --verbose --skip-existing
+          twine upload --repository-url https://test.pypi.org/legacy/ dist/* --verbose --skip-existing
         env:
           TWINE_USERNAME: ${{ secrets.TEST_PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.TEST_PYPI_PASSWORD }}
