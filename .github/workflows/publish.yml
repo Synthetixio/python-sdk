@@ -52,12 +52,12 @@ jobs:
       - name: Publish to Test PyPi with unique version
         run: |
           cd src
-          CURRENT_VERSION=$(grep current_version= ../.bumpversion.cfg | sed 's/current_version=//')
-          VERSION_SUFFIX=$(echo "dev${{ github.sha }}" | cut -c1-7)
-          NEW_VERSION="${CURRENT_VERSION}+dev${{ github.sha }}"
-          bump2version --no-commit --new-version $NEW_VERSION build
+          GIT_HASH=$(echo "${{ github.sha }}" | cut -c1-7)
+          NEW_VERSION=$(bump2version --dry-run --list --config-file ../.bumpversion.cfg --new-version {current_version}+g${GIT_HASH} githash | grep new_version | sed -r s,"^.*=",,)
+          bump2version --no-commit --allow-dirty --new-version $NEW_VERSION githash
           python setup.py sdist bdist_wheel
           twine upload --repository-url https://test.pypi.org/legacy/ dist/* --verbose --skip-existing
+
         env:
           TWINE_USERNAME: ${{ secrets.TEST_PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.TEST_PYPI_PASSWORD }}
