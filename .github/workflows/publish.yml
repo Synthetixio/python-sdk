@@ -54,8 +54,8 @@ jobs:
           cd src
           CURRENT_VERSION=$(grep current_version= ../.bumpversion.cfg | sed 's/current_version=//')
           VERSION_SUFFIX=$(echo "dev${{ github.sha }}" | cut -c1-7)
-          NEW_VERSION="${CURRENT_VERSION}.${VERSION_SUFFIX}"
-          bump2version --no-commit --new-version $NEW_VERSION dev
+          NEW_VERSION="${CURRENT_VERSION}+dev${{ github.sha }}"
+          bump2version --no-commit --new-version $NEW_VERSION build
           python setup.py sdist bdist_wheel
           twine upload --repository-url https://test.pypi.org/legacy/ dist/* --verbose --skip-existing
         env:
