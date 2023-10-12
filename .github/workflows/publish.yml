@@ -52,10 +52,8 @@ jobs:
       - name: Publish to Test PyPi with unique version
         run: |
           cd src
-          CURRENT_VERSION=$(python -c "import setuptools; exec(open('setup.py').read()); print(setuptools.setup(version))")
           VERSION_SUFFIX=$(echo "dev${{ github.sha }}" | cut -c1-7)
-          NEW_VERSION="${CURRENT_VERSION}.${VERSION_SUFFIX}"
-          bump2version --current-version $CURRENT_VERSION --new-version $NEW_VERSION dev
+          bump2version --no-commit --new-version 0.1.0.${VERSION_SUFFIX} dev
           twine upload --repository-url https://test.pypi.org/legacy/ dist/* --verbose --skip-existing
         env:
           TWINE_USERNAME: ${{ secrets.TEST_PYPI_USERNAME }}
