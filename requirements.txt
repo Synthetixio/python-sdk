@@ -1,5 +1,3 @@
-twine
-wheel
 autopep8
 pre-commit
 python-dotenv
