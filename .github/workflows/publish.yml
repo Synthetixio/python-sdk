@@ -52,7 +52,7 @@ jobs:
       - name: Publish to Test PyPi with unique version
         run: |
           cd src
-          CURRENT_VERSION=$(bump2version --dry-run --list | grep current_version | sed -r s,"^.*=",,)
+          CURRENT_VERSION=$(grep current_version= ../.bumpversion.cfg | sed 's/current_version=//')
           VERSION_SUFFIX=$(echo "dev${{ github.sha }}" | cut -c1-7)
           NEW_VERSION="${CURRENT_VERSION}.${VERSION_SUFFIX}"
           bump2version --no-commit --new-version $NEW_VERSION dev
