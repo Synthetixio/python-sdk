@@ -155,4 +155,4 @@ After an order is executed, you can check your position using `get_open_position
 
 ## Conclusion
 
-Congratulations! You have now mastered the basics of trading Synthetix perps. To see the full API reference for the perps module, check out the full API Reference section of the docs.
+Congratulations! You have now mastered the basics of trading Synthetix perps. To see the full API reference for the perps module, check out the full [API Reference](https://synthetixio.github.io/python-sdk/modules/synthetix.html) section of the docs.
