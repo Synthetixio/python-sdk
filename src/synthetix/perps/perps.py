@@ -346,6 +346,8 @@ class Perps:
             self.snx, self.account_proxy, 'tokenOfOwnerByIndex', inputs)
 
         self.account_ids = account_ids
+        if len(account_ids) > 0:
+            self.default_account_id = account_ids[0]
         return account_ids
 
     def get_margin_info(self, account_id: int = None):

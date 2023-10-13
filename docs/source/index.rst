@@ -4,10 +4,11 @@ Synthetix Documentation
 The ``synthetix`` library provides an interface for interacting with the Synthetix_ protocol smart contracts. Learn more about the Synthetix protocol in the documentation_.
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: User Guides
    
    guides/quickstart
+   guides/trade_perps
 
 .. toctree::
    :maxdepth: 1
