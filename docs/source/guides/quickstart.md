@@ -1,6 +1,6 @@
 # Getting started
 
-This library provides an interface for interacting with the [Synthetix](https://synthetix.io/) protocol. This guide is intended to show the basics of initializing the library and calling a few functions.
+This library offers a way to interact with the [Synthetix](https://synthetix.io/) protocol using Python. This guide will teach you the basics: how to set up the client and use some of its functions.
 
 If your use case requires a more in-depth understanding of the protocol, please refer to the [Synthetix documentation](https://docs.synthetix.io/).
 
@@ -8,7 +8,7 @@ If your use case requires a more in-depth understanding of the protocol, please 
 
 This library requires Python 3.8 or higher. It makes heavy use of the [web3.py](https://github.com/ethereum/web3.py) library for interacting with smart contracts.
 
-It is recommended to use a virtual environment to install the library and its dependencies. Use [venv](https://docs.python.org/3/library/venv.html) to create and manage this virtual environment:
+We recommend using a virtual environment to install the library and its dependencies. Use [venv](https://docs.python.org/3/library/venv.html) to create and manage this virtual environment:
 
 ```bash
 python3 -m venv env
@@ -52,11 +52,11 @@ snx = Synthetix(
 )
 ```
 
-This will initialize an `snx` object which you can use to interact with the protocol. Any warnings or errors will be logged to the console.
+This creates an snx object that helps you interact with the protocol smart contracts. If there are any warnings or errors, they are logged to the console.
 
 ## Basic usage
 
-After initialization, you can use the `snx` object to interact with the different modules in the protocol. Here are some common functions you may want to use:
+Once set up, you can use the `snx` object to interact with the different modules in the protocol. Here are some common functions you may want to use:
 
 ```python
 snx.perps.get_markets() # fetch all perps market summaries
@@ -64,7 +64,7 @@ snx.perps.get_accounts() # fetch all perps accounts for the specified address
 snx.perps.get_margin_info(1) # get the margin balances for account_id 1
 ```
 
-Here is an example of calling the `get_markets` function with sample output:
+Let's see how to use the get_markets function with a sample output:
 ```python
 >>> markets_by_id, markets_by_name = snx.perps.get_markets()
 >>> markets_by_name
