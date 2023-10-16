@@ -1,27 +1,26 @@
 # Synthetix Python SDK
 
-Python SDK to interact with Synthetix smart contracts and subgraphs.
+This is a Python SDK designed to help you interact with Synthetix smart contracts and subgraphs. Visit the [documentation](https://synthetixio.github.io/python-sdk/) for more information.
 
 ## Installation
-Create a python virtual environment, activate it and install the Synthetix library:
+
+To get started, install the `synthetix` library in your Python environment:
+
 ```bash
-python3 -m venv env
-source env/bin/activate
-pip install --upgrade pip
 pip install synthetix
 ```
 
-This method will install the latest version published to PyPi.
-
 ## Development
-Create a python virtual environment, activate it and install libraries:
+
+If you are interested in contributing to the library's development, you can clone the repository and set up the dependencies for editable mode:
 
 ```bash
 python3 -m venv env
 source env/bin/activate
+
 pip install --upgrade pip
 pip install -r requirements.txt
 pip install -e ./src
 ```
 
-This method will install the package in editable mode, so you can make changes to the code and test them without having to reinstall the package.
+Using this method, you'll have the package installed in an 'editable mode'. This means you can easily modify the code and test your changes without the hassle of reinstalling the package every time.
