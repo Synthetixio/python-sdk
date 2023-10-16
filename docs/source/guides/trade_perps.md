@@ -50,6 +50,7 @@ PRIVATE_KEY=<your private key>
 Finally, initialize the client with the following code:
 
 ```python
+import os
 from synthetix import Synthetix
 from dotenv import load_dotenv
 
