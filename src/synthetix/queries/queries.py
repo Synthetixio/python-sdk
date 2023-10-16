@@ -68,10 +68,14 @@ def clean_df(df, config):
 
 
 class Queries:
-    def __init__(self, synthetix, gql_endpoint_perps: str = None, gql_endpoint_rates: str = None):
+    def __init__(self, synthetix, gql_endpoint_perps: str = None, gql_endpoint_rates: str = None, api_key: str = None):
         self.synthetix = synthetix
-        self._gql_endpoint_perps = gql_endpoint_perps
         self._gql_endpoint_rates = gql_endpoint_rates
+
+        if 'satsuma' in gql_endpoint_perps:
+            self._gql_endpoint_perps = gql_endpoint_perps.format(api_key=api_key)
+        else:
+            self._gql_endpoint_perps = gql_endpoint_perps
 
         # set logging for gql
         logging.getLogger("gql").setLevel(logging.WARNING)

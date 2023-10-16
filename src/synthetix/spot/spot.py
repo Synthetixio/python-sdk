@@ -1,5 +1,6 @@
 """Module for interacting with Synthetix V3 spot markets."""
 from ..utils import ether_to_wei, wei_to_ether
+from ..utils.multicall import write_erc7412
 from .constants import SPOT_MARKETS_BY_ID, SPOT_MARKETS_BY_NAME
 from typing import Literal
 import time
@@ -30,16 +31,16 @@ class Spot:
         has_market_name = market_name is not None
 
         if not has_market_id and has_market_name:
-            if market_name not in SPOT_MARKETS_BY_NAME:
+            if market_name not in SPOT_MARKETS_BY_NAME[self.snx.network_id]:
                 raise ValueError("Invalid market_name")
-            market_id = SPOT_MARKETS_BY_NAME[market_name]
+            market_id = SPOT_MARKETS_BY_NAME[self.snx.network_id][market_name]
 
             if market_id == -1:
                 raise ValueError("Invalid market_name")
         elif has_market_id and not has_market_name:
-            if market_id not in SPOT_MARKETS_BY_ID:
+            if market_id not in SPOT_MARKETS_BY_ID[self.snx.network_id]:
                 raise ValueError("Invalid market_id")
-            market_name = SPOT_MARKETS_BY_ID[market_id]
+            market_name = SPOT_MARKETS_BY_ID[self.snx.network_id][market_id]
         return market_id, market_name
 
     def _get_synth_contract(self, market_id: int = None, market_name: str = None):
@@ -90,7 +91,6 @@ class Spot:
             feed_id,
             url,
             settlement_reward,
-            price_deviation_tolerance,
             minimum_usd_exchange_amount,
             max_rounding_loss,
             disabled,
@@ -103,7 +103,6 @@ class Spot:
             "feed_id": feed_id,
             "url": url,
             "settlement_reward": settlement_reward,
-            "price_deviation_tolerance": price_deviation_tolerance,
             "minimum_usd_exchange_amount": minimum_usd_exchange_amount,
             "max_rounding_loss": max_rounding_loss,
             "disabled": disabled,
@@ -137,6 +136,7 @@ class Spot:
         return order_data
 
     # transactions
+    # TODO: cancel order
     def approve(
         self,
         target_address: str,
@@ -154,9 +154,9 @@ class Spot:
         tx_data = synth_contract.encodeABI(fn_name='approve', args=[
             target_address, amount])
 
-        tx_params = self.snx._get_tx_params(
-            to=synth_contract.address)
-        tx_params['data'] = tx_data
+        tx_params = self.snx._get_tx_params()
+        tx_params = synth_contract.functions.approve(
+            target_address, amount).build_transaction(tx_params)
 
         if submit:
             tx_hash = self.snx.execute_transaction(tx_params)
@@ -193,14 +193,8 @@ class Spot:
             0,                      # minimumSettlementAmount
             self.snx.referrer,      # referrer
         ]
-
-        market_proxy = self.market_proxy
-        tx_data = market_proxy.encodeABI(
-            fn_name='commitOrder', args=tx_args)
-
-        tx_params = self.snx._get_tx_params(
-            to=market_proxy.address)
-        tx_params['data'] = tx_data
+        tx_params = write_erc7412(
+            self.snx, self.market_proxy, 'commitOrder', tx_args)
 
         if submit:
             tx_hash = self.snx.execute_transaction(tx_params)
@@ -211,8 +205,7 @@ class Spot:
         else:
             return tx_params
 
-    def settle_pyth_order(self, async_order_id: int = None, market_id: int = None, market_name: str = None, max_retry: int = 10, retry_delay: int = 2, submit: bool = False):
-        # sourcery skip: remove-unnecessary-else, swap-if-else-branches
+    def settle_pyth_order(self, async_order_id: int, market_id: int = None, market_name: str = None, max_retry: int = 10, retry_delay: int = 2, submit: bool = False):
         """Settle a pyth order"""
         # TODO: Update this for spot market
         market_id, market_name = self._resolve_market(market_id, market_name)
@@ -273,14 +266,11 @@ class Spot:
 
         # prepare the transaction
         market_proxy = self.market_proxy
-        tx_data = market_proxy.encodeABI(
-            fn_name='settlePythOrder', args=[price_update_data, extra_data])
-
-        tx_params = self.snx._get_tx_params(
-            to=market_proxy.address, value=1)
-        tx_params['data'] = tx_data
+        tx_params = write_erc7412(
+            self.snx, self.market_proxy, 'settlePythOrder', [price_update_data, extra_data], {'value': 1})
 
         if submit:
+            self.logger.info(f'tx params: {tx_params}')
             tx_hash = self.snx.execute_transaction(tx_params)
             self.logger.info(
                 f"Settling order {order['id']}")

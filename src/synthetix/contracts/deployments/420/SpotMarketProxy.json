@@ -5,6 +5,47 @@
       "inputs": [
         {
           "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "DeniedMulticallTarget",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "RecursiveMulticall",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes[]",
+          "name": "data",
+          "type": "bytes[]"
+        }
+      ],
+      "name": "multicall",
+      "outputs": [
+        {
+          "internalType": "bytes[]",
+          "name": "results",
+          "type": "bytes[]"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
           "name": "implementation",
           "type": "address"
         }
@@ -770,6 +811,19 @@
         }
       ],
       "name": "renounceMarketNomination",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint128",
+          "name": "synthMarketId",
+          "type": "uint128"
+        }
+      ],
+      "name": "renounceMarketOwnership",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -2151,22 +2205,6 @@
     {
       "inputs": [
         {
-          "internalType": "uint256",
-          "name": "deviation",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "tolerance",
-          "type": "uint256"
-        }
-      ],
-      "name": "PriceDeviationToleranceExceeded",
-      "type": "error"
-    },
-    {
-      "inputs": [
-        {
           "internalType": "enum SettlementStrategy.Type",
           "name": "strategyType",
           "type": "uint8"
@@ -2457,11 +2495,6 @@
             },
             {
               "internalType": "uint256",
-              "name": "priceDeviationTolerance",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
               "name": "minimumUsdExchangeAmount",
               "type": "uint256"
             },
@@ -2542,11 +2575,6 @@
             {
               "internalType": "uint256",
               "name": "settlementReward",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "priceDeviationTolerance",
               "type": "uint256"
             },
             {

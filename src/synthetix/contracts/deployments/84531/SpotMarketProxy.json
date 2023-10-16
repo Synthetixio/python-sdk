@@ -2281,22 +2281,6 @@
     {
       "inputs": [
         {
-          "internalType": "uint256",
-          "name": "deviation",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "tolerance",
-          "type": "uint256"
-        }
-      ],
-      "name": "PriceDeviationToleranceExceeded",
-      "type": "error"
-    },
-    {
-      "inputs": [
-        {
           "internalType": "enum SettlementStrategy.Type",
           "name": "strategyType",
           "type": "uint8"
@@ -2587,11 +2571,6 @@
             },
             {
               "internalType": "uint256",
-              "name": "priceDeviationTolerance",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
               "name": "minimumUsdExchangeAmount",
               "type": "uint256"
             },
@@ -2672,11 +2651,6 @@
             {
               "internalType": "uint256",
               "name": "settlementReward",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "priceDeviationTolerance",
               "type": "uint256"
             },
             {

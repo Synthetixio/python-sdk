@@ -617,6 +617,47 @@
       "inputs": [
         {
           "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "DeniedMulticallTarget",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "RecursiveMulticall",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes[]",
+          "name": "data",
+          "type": "bytes[]"
+        }
+      ],
+      "name": "multicall",
+      "outputs": [
+        {
+          "internalType": "bytes[]",
+          "name": "results",
+          "type": "bytes[]"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
           "name": "implementation",
           "type": "address"
         }
@@ -843,6 +884,11 @@
     },
     {
       "inputs": [],
+      "name": "PerpsMarketAlreadyInitialized",
+      "type": "error"
+    },
+    {
+      "inputs": [],
       "name": "PerpsMarketNotInitialized",
       "type": "error"
     },
@@ -914,7 +960,23 @@
       "type": "function"
     },
     {
-      "inputs": [],
+      "inputs": [
+        {
+          "internalType": "contract ISynthetixSystem",
+          "name": "synthetix",
+          "type": "address"
+        },
+        {
+          "internalType": "contract ISpotMarketSystem",
+          "name": "spotMarket",
+          "type": "address"
+        },
+        {
+          "internalType": "string",
+          "name": "marketName",
+          "type": "string"
+        }
+      ],
       "name": "initializeFactory",
       "outputs": [
         {
@@ -986,25 +1048,12 @@
     {
       "inputs": [
         {
-          "internalType": "contract ISpotMarketSystem",
-          "name": "spotMarket",
-          "type": "address"
+          "internalType": "string",
+          "name": "marketName",
+          "type": "string"
         }
       ],
-      "name": "setSpotMarket",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "contract ISynthetixSystem",
-          "name": "synthetix",
-          "type": "address"
-        }
-      ],
-      "name": "setSynthetix",
+      "name": "setPerpsMarketName",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -1075,16 +1124,37 @@
       "inputs": [
         {
           "internalType": "uint256",
-          "name": "available",
+          "name": "availableUsdDenominated",
           "type": "uint256"
         },
         {
           "internalType": "uint256",
-          "name": "required",
+          "name": "requiredUsdDenominated",
           "type": "uint256"
         }
       ],
       "name": "InsufficientCollateralAvailableForWithdraw",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint128",
+          "name": "synthMarketId",
+          "type": "uint128"
+        },
+        {
+          "internalType": "uint256",
+          "name": "collateralAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "withdrawAmount",
+          "type": "uint256"
+        }
+      ],
+      "name": "InsufficientSynthCollateral",
       "type": "error"
     },
     {
@@ -2081,23 +2151,12 @@
     },
     {
       "inputs": [],
-      "name": "OverflowUint256ToUint64",
+      "name": "OverflowInt128ToUint128",
       "type": "error"
     },
     {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "deviation",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "tolerance",
-          "type": "uint256"
-        }
-      ],
-      "name": "PriceDeviationToleranceExceeded",
+      "inputs": [],
+      "name": "OverflowUint256ToUint64",
       "type": "error"
     },
     {
@@ -2283,19 +2342,6 @@
       "type": "event"
     },
     {
-      "inputs": [],
-      "name": "PRECISION",
-      "outputs": [
-        {
-          "internalType": "int256",
-          "name": "",
-          "type": "int256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
       "inputs": [
         {
           "internalType": "uint128",
@@ -2322,6 +2368,108 @@
         }
       ],
       "name": "settlePythOrder",
+      "outputs": [],
+      "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "fillPrice",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "acceptablePrice",
+          "type": "uint256"
+        }
+      ],
+      "name": "AcceptablePriceNotExceeded",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint128",
+          "name": "marketId",
+          "type": "uint128"
+        },
+        {
+          "indexed": true,
+          "internalType": "uint128",
+          "name": "accountId",
+          "type": "uint128"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "desiredPrice",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "fillPrice",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "int128",
+          "name": "sizeDelta",
+          "type": "int128"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "settlementReward",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "trackingCode",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "settler",
+          "type": "address"
+        }
+      ],
+      "name": "OrderCancelled",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint128",
+          "name": "accountId",
+          "type": "uint128"
+        }
+      ],
+      "name": "cancelOrder",
+      "outputs": [],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes",
+          "name": "result",
+          "type": "bytes"
+        },
+        {
+          "internalType": "bytes",
+          "name": "extraData",
+          "type": "bytes"
+        }
+      ],
+      "name": "cancelPythOrder",
       "outputs": [],
       "stateMutability": "payable",
       "type": "function"
@@ -2698,6 +2846,19 @@
       "type": "function"
     },
     {
+      "inputs": [],
+      "name": "flaggedAccounts",
+      "outputs": [
+        {
+          "internalType": "uint256[]",
+          "name": "accountIds",
+          "type": "uint256[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
       "inputs": [
         {
           "internalType": "uint128",
@@ -2717,7 +2878,13 @@
       "type": "function"
     },
     {
-      "inputs": [],
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "maxNumberOfAccounts",
+          "type": "uint256"
+        }
+      ],
       "name": "liquidateFlagged",
       "outputs": [
         {
@@ -2728,6 +2895,65 @@
       ],
       "stateMutability": "nonpayable",
       "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint128[]",
+          "name": "accountIds",
+          "type": "uint128[]"
+        }
+      ],
+      "name": "liquidateFlaggedAccounts",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "liquidationReward",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint128",
+          "name": "marketId",
+          "type": "uint128"
+        }
+      ],
+      "name": "liquidationCapacity",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "capacity",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "maxLiquidationInWindow",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "latestLiquidationTimestamp",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "duration",
+          "type": "uint256"
+        }
+      ],
+      "name": "InvalidSettlementWindowDuration",
+      "type": "error"
     },
     {
       "anonymous": false,
@@ -2968,11 +3194,6 @@
               "type": "uint256"
             },
             {
-              "internalType": "uint256",
-              "name": "priceDeviationTolerance",
-              "type": "uint256"
-            },
-            {
               "internalType": "bool",
               "name": "disabled",
               "type": "bool"
@@ -3065,11 +3286,6 @@
             {
               "internalType": "uint256",
               "name": "settlementReward",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "priceDeviationTolerance",
               "type": "uint256"
             },
             {
@@ -3308,11 +3524,6 @@
             {
               "internalType": "uint256",
               "name": "settlementReward",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "priceDeviationTolerance",
               "type": "uint256"
             },
             {
