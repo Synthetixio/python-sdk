@@ -1,0 +1,2 @@
+recursive-include synthetix *.py
+recursive-include synthetix *.json

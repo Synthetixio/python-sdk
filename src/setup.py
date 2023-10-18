@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 setup(
     name='synthetix',
-    version='1.0.2',
+    version='1.0.3',
     description='Synthetix protocol SDK',
     long_description='A library containing helpful functions for interacting with the Synthetix protocol',
     author='Synthetix DAO',
@@ -23,8 +23,5 @@ setup(
         'Programming Language :: Python :: 3.10',
     ],
     python_requires=">=3.8",
-    package_data={
-        'synthetix': ['*'],
-    },
     include_package_data=True,
 )
