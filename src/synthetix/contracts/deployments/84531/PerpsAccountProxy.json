@@ -1,5 +1,5 @@
 {
-  "address": "0x518F2905b24AE298Ca06C1137b806DD5ACD493b6",
+  "address": "0xfBD08C515DedDa6DbE59611b4bAC2E0f4a250301",
   "abi": [
     {
       "inputs": [
@@ -422,7 +422,7 @@
       ],
       "name": "burn",
       "outputs": [],
-      "stateMutability": "payable",
+      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
@@ -464,7 +464,7 @@
       ],
       "name": "initialize",
       "outputs": [],
-      "stateMutability": "payable",
+      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
@@ -519,7 +519,7 @@
       ],
       "name": "mint",
       "outputs": [],
-      "stateMutability": "payable",
+      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
@@ -574,7 +574,7 @@
       ],
       "name": "safeMint",
       "outputs": [],
-      "stateMutability": "payable",
+      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
@@ -643,7 +643,7 @@
       ],
       "name": "setAllowance",
       "outputs": [],
-      "stateMutability": "payable",
+      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
@@ -674,7 +674,7 @@
       ],
       "name": "setBaseTokenURI",
       "outputs": [],
-      "stateMutability": "payable",
+      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
@@ -811,5 +811,7 @@
   "deployTxnHash": "",
   "sourceName": "",
   "contractName": "",
-  "deployedOn": "invoke.init_account"
+  "deployedOn": "invoke.init_account",
+  "gasUsed": 0,
+  "gasCost": "0"
 }

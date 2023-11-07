@@ -236,8 +236,13 @@ class Perps:
             calls = []
 
         inputs = [(market_id,) for market_id in market_ids]
+        
+        market_metadata = multicall_erc7412(
+            self.snx, self.market_proxy, 'metadata', inputs, calls=calls)
         markets = multicall_erc7412(
             self.snx, self.market_proxy, 'getMarketSummary', inputs, calls=calls)
+        
+        print(market_metadata)
 
         if len(market_ids) != len(markets):
             self.logger.warning("Failed to fetch some market summaries")
@@ -246,6 +251,7 @@ class Perps:
         for ind, market in enumerate(markets):
             skew, size, max_open_interest, current_funding_rate, current_funding_velocity, index_price = market
             market_id = market_ids[ind]
+            
             market_id, market_name = self._resolve_market(market_id, None)
             market_summaries.append({
                 'market_id': market_id,

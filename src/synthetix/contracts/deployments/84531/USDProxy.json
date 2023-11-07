@@ -1,5 +1,5 @@
 {
-  "address": "0x579c612E4Bf390f5504DB9f76b6F5759A3172279",
+  "address": "0xC9ee9628f23b14483EA413C28712690E8D2dC6a3",
   "abi": [
     {
       "inputs": [
@@ -827,5 +827,7 @@
   "deployTxnHash": "",
   "sourceName": "",
   "contractName": "",
-  "deployedOn": "invoke.init_usd"
+  "deployedOn": "invoke.init_usd",
+  "gasUsed": 0,
+  "gasCost": "0"
 }
