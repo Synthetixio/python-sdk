@@ -12,6 +12,10 @@ class Spot:
         self.snx = snx
         self.pyth = pyth
         self.logger = snx.logger
+        
+        if snx.network_id in SPOT_MARKETS_BY_ID:
+            self.markets_by_id = SPOT_MARKETS_BY_ID[snx.network_id]
+            self.markets_by_name = SPOT_MARKETS_BY_NAME[snx.network_id]
 
         # check if spot is deployed on this network
         if 'SpotMarketProxy' in snx.contracts:

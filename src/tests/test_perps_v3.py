@@ -103,9 +103,6 @@ def test_perps_account_collateral_balances(snx, logger):
     logger.info(f"Address: {snx.address} - balances: {balances}")
     assert balances is not None
     assert balances['sUSD'] is not None
-    assert balances['ETH'] is not None
-    assert balances['BTC'] is not None
-
 
 def test_perps_can_liquidate(snx, logger):
     """The instance can fetch an accounts liquidation status"""

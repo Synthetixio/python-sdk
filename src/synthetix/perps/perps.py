@@ -5,7 +5,6 @@ from eth_utils import decode_hex
 from eth_abi import encode
 from ..utils import ether_to_wei, wei_to_ether
 from ..utils.multicall import call_erc7412, multicall_erc7412, write_erc7412, make_fulfillment_request
-from .constants import COLLATERALS_BY_ID, COLLATERALS_BY_NAME, PERPS_MARKETS_BY_ID, PERPS_MARKETS_BY_NAME
 
 class Perps:
     """
@@ -82,7 +81,6 @@ class Perps:
         
         :param int | None market_id: The id of the market. If not known, provide `None`.
         :param str | None market_name: The name of the market. If not known, provide `None`.
-        :param bool collateral: If ``True``, resolve the market as a collateral type from the spot markets. Otherwise, resolve a perps market.
         
         :return: The ``market_id`` and ``market_name`` for the market.
         :rtype: (int, str)
@@ -90,22 +88,19 @@ class Perps:
         if market_id is None and market_name is None:
             raise ValueError("Must provide a market_id or market_name")
 
-        ID_LOOKUP = COLLATERALS_BY_ID[self.snx.network_id] if collateral else PERPS_MARKETS_BY_ID[self.snx.network_id]
-        NAME_LOOKUP = COLLATERALS_BY_NAME[self.snx.network_id] if collateral else PERPS_MARKETS_BY_NAME[self.snx.network_id]
-
         has_market_id = market_id is not None
         has_market_name = market_name is not None
 
         if not has_market_id and has_market_name:
-            if market_name not in NAME_LOOKUP:
+            if market_name not in self.markets_by_name:
                 raise ValueError("Invalid market_name")
-            market_id = NAME_LOOKUP[market_name]
+            market_id = self.markets_by_name[market_name]['market_id']
         elif has_market_id and not has_market_name:
-            if market_id not in ID_LOOKUP:
+            if market_id not in self.markets_by_id:
                 raise ValueError("Invalid market_id")
-            market_name = ID_LOOKUP[market_id]
+            market_name = self.markets_by_id[market_id]['market_name']
         elif has_market_id and has_market_name:
-            market_name_lookup = ID_LOOKUP[market_id]
+            market_name_lookup = self.markets_by_id[market_id]['market_id']
             if market_name != market_name_lookup:
                 raise ValueError(
                     f"Market name {market_name} does not match market id {market_id}")
@@ -124,7 +119,7 @@ class Perps:
         :rtype: (str, int, str)
         """
         if len(market_names) == 0:
-            market_names = list(PERPS_MARKETS_BY_NAME[self.snx.network_id].keys())
+            market_names = [self.market_meta[market]['symbol'] for market in self.market_meta]
 
         # fetch the data from pyth
         feed_ids = [self.snx.pyth.price_feed_ids[market_name]
@@ -170,6 +165,19 @@ class Perps:
         :rtype: (dict, dict)
         """
         market_ids = self.market_proxy.functions.getMarkets().call()
+        
+        # fetch and store the metadata
+        market_metadata = multicall_erc7412(
+            self.snx, self.market_proxy, 'metadata', market_ids)
+        
+        self.market_meta = {
+            market_id: {
+                'name': market_metadata[ind][0],
+                'symbol': market_metadata[ind][1],
+            } for ind, market_id in enumerate(market_ids)
+        }
+
+        # fetch the market summaries
         market_summaries = self.get_market_summaries(market_ids)
 
         markets_by_id = {
@@ -238,12 +246,8 @@ class Perps:
 
         inputs = [(market_id,) for market_id in market_ids]
         
-        market_metadata = multicall_erc7412(
-            self.snx, self.market_proxy, 'metadata', inputs, calls=calls)
         markets = multicall_erc7412(
             self.snx, self.market_proxy, 'getMarketSummary', inputs, calls=calls)
-        
-        print(market_metadata)
 
         if len(market_ids) != len(markets):
             self.logger.warning("Failed to fetch some market summaries")
@@ -253,10 +257,9 @@ class Perps:
             skew, size, max_open_interest, current_funding_rate, current_funding_velocity, index_price = market
             market_id = market_ids[ind]
             
-            market_id, market_name = self._resolve_market(market_id, None)
             market_summaries.append({
                 'market_id': market_id,
-                'market_name': market_name,
+                'market_name': self.market_meta[market_id]['symbol'],
                 'skew': wei_to_ether(skew),
                 'size': wei_to_ether(size),
                 'max_open_interest': wei_to_ether(max_open_interest),
@@ -422,7 +425,7 @@ class Perps:
         if not account_id:
             account_id = self.default_account_id
 
-        inputs = [(account_id, market_id) for market_id in COLLATERALS_BY_ID[self.snx.network_id]]
+        inputs = [(account_id, market_id) for market_id in self.snx.spot.markets_by_id]
 
         # call for the balances
         balances = multicall_erc7412(
@@ -430,7 +433,7 @@ class Perps:
 
         # make a clean dictionary
         collateral_balances = {
-            COLLATERALS_BY_ID[self.snx.network_id][inputs[ind][1]]: wei_to_ether(balance)
+            self.snx.spot.markets_by_id[inputs[ind][1]]: wei_to_ether(balance)
             for ind, balance in enumerate(balances)
         }
         return collateral_balances
@@ -634,8 +637,8 @@ class Perps:
         :return: If ``submit``, returns the trasaction hash. Otherwise, returns the transaction.
         :rtype: str | dict
         """
-        market_id, market_name = self._resolve_market(
-            market_id, market_name, collateral=True)
+        market_id, market_name = self.snx.spot._resolve_market(
+            market_id, market_name)
 
         if not account_id:
             account_id = self.default_account_id
