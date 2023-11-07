@@ -135,7 +135,8 @@ class Perps:
         raw_feed_ids = [decode_hex(feed_id) for feed_id in feed_ids]
         args = (1, 30, raw_feed_ids)
 
-        to, data, value = make_fulfillment_request(self.snx, self.snx.contracts['ERC7412']['address'], price_update_data, args)
+        to, data, _ = make_fulfillment_request(self.snx, self.snx.contracts['ERC7412']['address'], price_update_data, args)
+        value = len(market_names)
         
         # return this formatted for the multicall
         return (to, False, value, data)
@@ -421,13 +422,17 @@ class Perps:
         if not account_id:
             account_id = self.default_account_id
 
-        collateral_balances = {}
-        for market_id in COLLATERALS_BY_ID[self.snx.network_id]:
-            # TODO: add multicall
-            balance = self.market_proxy.functions.getCollateralAmount(
-                account_id, market_id).call()
-            collateral_balances[COLLATERALS_BY_ID[self.snx.network_id][market_id]] = wei_to_ether(balance)
+        inputs = [(account_id, market_id) for market_id in COLLATERALS_BY_ID[self.snx.network_id]]
 
+        # call for the balances
+        balances = multicall_erc7412(
+            self.snx, self.market_proxy, 'getCollateralAmount', inputs)
+
+        # make a clean dictionary
+        collateral_balances = {
+            COLLATERALS_BY_ID[self.snx.network_id][inputs[ind][1]]: wei_to_ether(balance)
+            for ind, balance in enumerate(balances)
+        }
         return collateral_balances
     
     def get_can_liquidate(self, account_id: int = None):
