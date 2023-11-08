@@ -36,11 +36,9 @@ class Spot:
 
         if not has_market_id and has_market_name:
             if market_name not in SPOT_MARKETS_BY_NAME[self.snx.network_id]:
-                raise ValueError("Invalid market_name")
+                raise ValueError(f"Invalid market_name")
             market_id = SPOT_MARKETS_BY_NAME[self.snx.network_id][market_name]
 
-            if market_id == -1:
-                raise ValueError("Invalid market_name")
         elif has_market_id and not has_market_name:
             if market_id not in SPOT_MARKETS_BY_ID[self.snx.network_id]:
                 raise ValueError("Invalid market_id")
@@ -279,6 +277,73 @@ class Spot:
             self.logger.info(
                 f"Settling order {order['id']}")
             self.logger.info(f"settle tx: {tx_hash}")
+            return tx_hash
+        else:
+            return tx_params
+
+    def atomic_order(
+        self,
+        side: Literal['buy', 'sell'],
+        size: int,
+        market_id: int = None,
+        market_name: str = None,
+        submit: bool = False,
+    ):
+        """Execute an atomic order to the spot market"""
+        market_id, market_name = self._resolve_market(market_id, market_name)
+
+        size_wei = ether_to_wei(size)
+
+        # prepare the transaction
+        tx_args = [
+            market_id,              # marketId
+            size_wei,               # amount provided
+            size_wei,               # amount received
+            self.snx.referrer,      # referrer
+        ]
+        tx_params = write_erc7412(
+            self.snx, self.market_proxy, side, tx_args)
+
+        if submit:
+            tx_hash = self.snx.execute_transaction(tx_params)
+            self.logger.info(
+                f"Committing {side} atomic order of size {size_wei} ({size}) to {market_name} (id: {market_id})")
+            self.logger.info(f"atomic {side} tx: {tx_hash}")
+            return tx_hash
+        else:
+            return tx_params
+
+    def wrap(
+        self,
+        size: int,
+        market_id: int = None,
+        market_name: str = None,
+        submit: bool = False,
+    ):
+        """Wrap or unwrap an asset on the spot market"""
+        market_id, market_name = self._resolve_market(market_id, market_name)
+
+        if size < 0:
+            side = 'unwrap'
+            size_wei = ether_to_wei(-size)
+        else:
+            side = 'wrap'
+            size_wei = ether_to_wei(size)
+
+        # prepare the transaction
+        tx_args = [
+            market_id,              # marketId
+            size_wei,               # amount provided
+            size_wei,               # amount received
+        ]
+        tx_params = write_erc7412(
+            self.snx, self.market_proxy, side, tx_args)
+
+        if submit:
+            tx_hash = self.snx.execute_transaction(tx_params)
+            self.logger.info(
+                f"{side} of size {size_wei} ({size}) to {market_name} (id: {market_id})")
+            self.logger.info(f"{side} tx: {tx_hash}")
             return tx_hash
         else:
             return tx_params
