@@ -1,7 +1,7 @@
 """Module for interacting with Synthetix V3 spot markets."""
 from ..utils import ether_to_wei, wei_to_ether
-from ..utils.multicall import write_erc7412
-from .constants import SPOT_MARKETS_BY_ID, SPOT_MARKETS_BY_NAME
+from ..utils.multicall import multicall_erc7412, write_erc7412
+from web3.constants import ADDRESS_ZERO
 from typing import Literal
 import time
 import requests
@@ -13,13 +13,11 @@ class Spot:
         self.pyth = pyth
         self.logger = snx.logger
         
-        if snx.network_id in SPOT_MARKETS_BY_ID:
-            self.markets_by_id = SPOT_MARKETS_BY_ID[snx.network_id]
-            self.markets_by_name = SPOT_MARKETS_BY_NAME[snx.network_id]
-
         # check if spot is deployed on this network
         if 'SpotMarketProxy' in snx.contracts:
             self.market_proxy = snx.contracts['SpotMarketProxy']['contract']
+
+        self.markets_by_id, self.markets_by_name = self.get_markets()
 
     # internals
     def _resolve_market(self, market_id: int, market_name: str):
@@ -31,31 +29,72 @@ class Spot:
         has_market_name = market_name is not None
 
         if not has_market_id and has_market_name:
-            if market_name not in SPOT_MARKETS_BY_NAME[self.snx.network_id]:
+            if market_name not in self.markets_by_name:
                 raise ValueError(f"Invalid market_name")
-            market_id = SPOT_MARKETS_BY_NAME[self.snx.network_id][market_name]
+            market_id = self.markets_by_name[market_name]['market_id']
 
         elif has_market_id and not has_market_name:
-            if market_id not in SPOT_MARKETS_BY_ID[self.snx.network_id]:
+            if market_id not in self.markets_by_id:
                 raise ValueError("Invalid market_id")
-            market_name = SPOT_MARKETS_BY_ID[self.snx.network_id][market_id]
+            market_name = self.markets_by_id[market_id]['market_name']
         return market_id, market_name
 
     def _get_synth_contract(self, market_id: int = None, market_name: str = None):
         """Create a contract instance for a specified synth"""
         market_id, market_name = self._resolve_market(market_id, market_name)
-
-        if market_id == 0:
-            market_implementation = self.snx.contracts['USDProxy']['address']
-        else:
-            market_implementation = self.market_proxy.functions.getSynth(market_id).call()
-
-        return self.snx.web3.eth.contract(
-            address=market_implementation,
-            abi=self.snx.contracts['USDProxy']['abi'],
-        )
+        return self.markets_by_id[market_id]['contract']
 
     # read
+    def get_markets(self):
+        """Get all spot markets"""
+        # set some reasonable defaults to avoid infinite loops
+        MAX_ITER = 4
+        ITEMS_PER_ITER = 25
+        
+        num_iter = 0
+        synths = []
+        while num_iter < MAX_ITER:
+            addresses = multicall_erc7412(
+                self.snx,
+                self.market_proxy,
+                'getSynth',
+                range(num_iter * ITEMS_PER_ITER, (num_iter + 1) * ITEMS_PER_ITER)
+            )
+            
+            new_synths = [(i, address) for i, address in enumerate(addresses) if address != ADDRESS_ZERO]
+            synths.extend(new_synths)
+            
+            if len(new_synths) != len(addresses):
+                break
+            else:
+                num_iter += 1
+
+        # build dictionaries by id and name
+        markets_by_id = {
+            0: {
+                'market_name': 'sUSD',
+                'contract': self.snx.contracts['USDProxy']['contract'],
+            }
+        }
+        for (market_id, address) in synths:
+            synth_contract = self.snx.web3.eth.contract(
+                address=self.snx.web3.to_checksum_address(address),
+                abi=self.snx.contracts['USDProxy']['abi'],
+            )
+            markets_by_id[market_id] = {
+                'market_name': synth_contract.functions.symbol().call(),
+                'contract': synth_contract,
+            }
+        
+        markets_by_name = {
+            v['market_name']: {
+                'market_id': k,
+                'contract': v['contract'],
+            }
+            for k, v in markets_by_id.items()
+        }        
+        return markets_by_id, markets_by_name
+
     def get_balance(self, address: str = None, market_id: int = None, market_name: str = None):
         """Get the balance of a spot synth"""
         market_id, market_name = self._resolve_market(market_id, market_name)

@@ -6,7 +6,7 @@ load_dotenv()
 
 # constants
 TEST_MARKET_ID = 100
-TEST_SETTLEMENT_STRATEGY_ID = 1
+TEST_SETTLEMENT_STRATEGY_ID = 0
 
 # tests
 

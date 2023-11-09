@@ -426,7 +426,7 @@ class Perps:
 
         # make a clean dictionary
         collateral_balances = {
-            self.snx.spot.markets_by_id[inputs[ind][1]]: wei_to_ether(balance)
+            self.snx.spot.markets_by_id[inputs[ind][1]]['market_name']: wei_to_ether(balance)
             for ind, balance in enumerate(balances)
         }
         return collateral_balances
@@ -657,7 +657,7 @@ class Perps:
     def commit_order(
         self,
         size: int,
-        settlement_strategy_id: int = 1,
+        settlement_strategy_id: int = 0,
         market_id: int = None,
         market_name: str = None,
         account_id: int = None,
