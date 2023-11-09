@@ -42,8 +42,9 @@ class Synthetix:
 
     :param str provider_rpc: An RPC endpoint to use for the provider that interacts
         with the smart contracts. This must match the ``network_id``.
-    :param str provider_rpc: A mainnet RPC endpoint to use for the provider that
+    :param str mainnet_rpc: A mainnet RPC endpoint to use for the provider that
         fetches deployments from the Cannon registry.
+    :param str ipfs_gateway: An IPFS gateway to use for fetching deployments.
     :param str address: Wallet address to use as a default. If a private key is
         specified, this address will be used to sign transactions.
     :param str private_key: Private key of the provided wallet address. If specified,
