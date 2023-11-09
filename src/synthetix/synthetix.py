@@ -40,7 +40,10 @@ class Synthetix:
                     private_key='0xabcde...'
                 )
 
-    :param str provider_rpc: An RPC endpoint to use for the provider.
+    :param str provider_rpc: An RPC endpoint to use for the provider that interacts
+        with the smart contracts. This must match the ``network_id``.
+    :param str provider_rpc: A mainnet RPC endpoint to use for the provider that
+        fetches deployments from the Cannon registry.
     :param str address: Wallet address to use as a default. If a private key is
         specified, this address will be used to sign transactions.
     :param str private_key: Private key of the provided wallet address. If specified,
@@ -71,6 +74,8 @@ class Synthetix:
     def __init__(
             self,
             provider_rpc: str,
+            mainnet_rpc: str = 'https://eth.llamarpc.com',
+            ipfs_gateway: str = 'https://ipfs.io/ipfs',
             address: str = ADDRESS_ZERO,
             private_key: str = None,
             network_id: int = None,
@@ -80,6 +85,7 @@ class Synthetix:
             referrer: str = None,
             max_price_impact: float = DEFAULT_SLIPPAGE,
             use_estimate_gas: bool = True,
+            cannon_config: dict = None,
             gql_endpoint_perps: str = None,
             gql_endpoint_rates: str = None,
             satsuma_api_key: str = None,
@@ -120,18 +126,18 @@ class Synthetix:
         self.private_key = private_key
         self.address = address
         self.use_estimate_gas = use_estimate_gas
+        self.cannon_config = cannon_config
         self.provider_rpc = provider_rpc
+        self.mainnet_rpc = mainnet_rpc
+        self.ipfs_gateway = ipfs_gateway
 
-        # init provider
+        # init chain provider
         if provider_rpc.startswith('http'):
-            self.provider_class = Web3.HTTPProvider
+            web3 = Web3(Web3.HTTPProvider(self.provider_rpc))
         elif provider_rpc.startswith('wss'):
-            self.provider_class = Web3.WebsocketProvider
+            web3 = Web3(Web3.WebsocketProvider(self.provider_rpc))
         else:
-            raise Exception("RPC endpoint is invalid")
-        
-        # set up the web3 instance
-        web3 = Web3(self.provider_class(self.provider_rpc))
+            raise Exception("Provider RPC endpoint is invalid")
 
         # check if the chain_id matches
         if web3.eth.chain_id != network_id:
@@ -144,7 +150,7 @@ class Synthetix:
         self.network_id = network_id
 
         # init contracts
-        self.contracts = load_contracts(network_id)
+        self.contracts = load_contracts(self)
         self.v2_markets, self.susd_legacy_token, self.susd_token, self.multicall = self._load_contracts()
 
         # init alerts
