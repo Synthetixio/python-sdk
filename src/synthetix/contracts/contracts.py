@@ -20,16 +20,27 @@ def load_contracts(snx):
 def load_local_contracts(snx):
     """loads the contracts for a synthetix instance"""
     deployment_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'deployments', f'{snx.network_id}')
-    contracts = load_json_files_from_directory(deployment_dir)
+    contracts = load_json_files_from_directory(snx, deployment_dir)
     return contracts
 
-def load_json_files_from_directory(directory):
+def load_json_files_from_directory(snx, directory):
     """load json files from a given directory"""
     json_files = glob.glob(os.path.join(directory, '*.json'))
-    return {
+    contracts = {
         os.path.splitext(os.path.basename(file))[0]: json.load(open(file))
         for file in json_files
     }
+
+    # add a web3 contract object
+    contracts = {
+        k: {
+            'address': v["address"],
+            'abi': v["abi"],
+            'contract': snx.web3.eth.contract(address=v["address"], abi=v["abi"])
+        }
+        for k, v in contracts.items()
+    }
+    return contracts
 
 def get_deployment_hash(snx):
     provider_rpc = snx.mainnet_rpc

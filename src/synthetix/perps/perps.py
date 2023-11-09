@@ -45,15 +45,8 @@ class Perps:
 
         # check if perps is deployed on this network
         if 'PerpsMarketProxy' in snx.contracts:
-            market_proxy_address, market_proxy_abi = snx.contracts[
-                'PerpsMarketProxy']['address'], snx.contracts['PerpsMarketProxy']['abi']
-            account_proxy_address, account_proxy_abi = snx.contracts[
-                'PerpsAccountProxy']['address'], snx.contracts['PerpsAccountProxy']['abi']
-
-            self.market_proxy = snx.web3.eth.contract(
-                address=market_proxy_address, abi=market_proxy_abi)
-            self.account_proxy = snx.web3.eth.contract(
-                address=account_proxy_address, abi=account_proxy_abi)
+            self.market_proxy = snx.contracts['PerpsMarketProxy']['contract']
+            self.account_proxy = snx.contracts['PerpsAccountProxy']['contract']
 
             try:
                 self.get_account_ids()

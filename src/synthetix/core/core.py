@@ -13,14 +13,8 @@ class Core:
 
         # check if perps is deployed on this network
         if 'CoreProxy' in snx.contracts:
-            core_proxy_address, core_proxy_abi = snx.contracts['CoreProxy']['address'], snx.contracts['CoreProxy']['abi']
-            account_proxy_address, account_proxy_abi = snx.contracts[
-                'AccountProxy']['address'], snx.contracts['AccountProxy']['abi']
-
-            self.core_proxy = snx.web3.eth.contract(
-                address=core_proxy_address, abi=core_proxy_abi)
-            self.account_proxy = snx.web3.eth.contract(
-                address=account_proxy_address, abi=account_proxy_abi)
+            self.core_proxy = snx.contracts['CoreProxy']['contract']
+            self.account_proxy = snx.contracts['AccountProxy']['contract']
 
             try:
                 self.get_account_ids()
