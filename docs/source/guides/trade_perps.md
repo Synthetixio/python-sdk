@@ -25,10 +25,10 @@ Initialize the client using the following code:
 from synthetix import Synthetix
 
 snx = Synthetix(
-    PROVIDER_RPC="https://base-goerli.g.alchemy.com/v2/<api key>",
-    NETWORK=84531,
-    ADDRESS="<your address>",
-    PRIVATE_KEY="<your private key>"
+    provider_rpc="https://base-goerli.g.alchemy.com/v2/<api key>",
+    network_id=84531,
+    address="<your address>",
+    private_key="<your private key>"
 )
 ```
 
@@ -57,10 +57,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 snx = Synthetix(
-    PROVIDER_RPC=os.getenv("PROVIDER_RPC"),
-    NETWORK=os.getenv("NETWORK"),
-    ADDRESS=os.getenv("ADDRESS"),
-    PRIVATE_KEY=os.getenv("PRIVATE_KEY")
+    provider_rpc=os.getenv("PROVIDER_RPC"),
+    network_id=os.getenv("NETWORK"),
+    address=os.getenv("ADDRESS"),
+    private_key=os.getenv("PRIVATE_KEY")
 )
 ```
 
