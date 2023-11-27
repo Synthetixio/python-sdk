@@ -4,10 +4,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# constants
-TEST_MARKET_ID = 100
-TEST_SETTLEMENT_STRATEGY_ID = 0
-
 # tests
 
 
@@ -62,20 +58,14 @@ def test_modify_collateral(snx, logger, account_id):
     assert susd_balance_end['balance'] == susd_balance_start['balance'] - 100
 
 def test_open_position(snx, logger, account_id):
-    """Test modify collateral"""
-    # get starting collateral and sUSD balance
-    margin_info_start = snx.perps.get_margin_info(account_id)
-    susd_balance_start = snx.get_susd_balance()
-
-    # modify collateral
-    modify_tx = snx.perps.modify_collateral(100, market_name='sUSD', account_id=account_id, submit=True)
-    snx.wait(modify_tx)
+    """Test opening a position"""
+    # commit order
+    commit_tx = snx.perps.commit_order(0.1, market_name='ETH', account_id=account_id, submit=True)
+    snx.wait(commit_tx)
+    
+    # wait for the order settlement
+    snx.perps.settle_pyth_order(account_id=account_id, submit=True)
     
     # check the result
-    margin_info_end = snx.perps.get_margin_info(account_id)
-    susd_balance_end = snx.get_susd_balance()
-    
-    assert margin_info_end['total_collateral_value'] > margin_info_start['total_collateral_value']
-    assert susd_balance_end['balance'] < susd_balance_start['balance']
-    assert susd_balance_end['balance'] == susd_balance_start['balance'] - 100
-
+    position = snx.perps.get_open_position(market_name='ETH', account_id=account_id)
+    assert position['position_size'] == 0.1

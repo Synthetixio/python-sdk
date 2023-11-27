@@ -26,24 +26,48 @@ def snx(pytestconfig):
 def account_id(pytestconfig, snx, logger):
     # check if an account exists
     account_ids = snx.perps.get_account_ids()
+
+    final_account_id = None
+    for account_id in account_ids:
+        margin_info = snx.perps.get_margin_info(account_id)
+        
+        if margin_info['total_collateral_value'] == 0:
+            logger.info(f'Account {account_id} has no collateral')
+            final_account_id = account_id
+            break
+        else:
+            logger.info(f'Account {account_id} has collateral')
     
     # TODO: add account setup
-    if len(account_ids) > 0:
-        logger.info(f'Account already exists: {account_ids[-1]}')
-        account_id = account_ids[-1]
-    else:
+    if final_account_id is None:
         logger.info('Creating a new perps account')
         
         create_tx = snx.perps.create_account(submit=True)
         snx.wait(create_tx)
         
         account_ids = snx.perps.get_account_ids()
-        assert len(account_ids) > 0
-        account_id = account_ids[0]
+        final_account_id = account_ids[-1]
 
-    yield account_id
+    yield final_account_id
 
-    # TODO: check open positions and close them
+    close_positions_and_withdraw(snx, final_account_id)
+
+def close_positions_and_withdraw(snx, account_id):
+    # close positions
+    positions = snx.perps.get_open_positions(account_id=account_id)
+    
+    for market_name in positions:
+        size = positions[market_name]['position_size']
+            
+        commit_tx = snx.perps.commit_order(-size, market_name=market_name, account_id=account_id, submit=True)
+        snx.wait(commit_tx)
+        
+        # wait for the order settlement
+        snx.perps.settle_pyth_order(account_id=account_id, submit=True)
+        
+        # check the result
+        position = snx.perps.get_open_position(market_name=market_name, account_id=account_id)
+        assert position['position_size'] == 0
     
     # withdraw all collateral
     collateral_balances = snx.perps.get_collateral_balances(account_id)
@@ -51,4 +75,3 @@ def account_id(pytestconfig, snx, logger):
         if balance > 0:
             withdraw_tx = snx.perps.modify_collateral(-balance, market_name=market_name, account_id=account_id, submit=True)
             snx.wait(withdraw_tx)
-    
