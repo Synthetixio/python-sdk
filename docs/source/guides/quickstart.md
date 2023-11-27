@@ -59,8 +59,8 @@ This creates an snx object that helps you interact with the protocol smart contr
 Once set up, you can use the `snx` object to interact with the different modules in the protocol. Here are some common functions you may want to use:
 
 ```python
-snx.perps.get_markets() # fetch all perps market summaries
-snx.perps.get_accounts() # fetch all perps accounts for the specified address
+snx.perps.get_markets()      # fetch all perps market summaries
+snx.perps.get_account_ids()  # fetch all perps accounts for the specified address
 snx.perps.get_margin_info(1) # get the margin balances for account_id 1
 ```
 
