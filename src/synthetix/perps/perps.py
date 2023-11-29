@@ -38,8 +38,8 @@ class Perps:
         self.pyth = pyth
         self.logger = snx.logger
         
-        if 'ERC7412' in snx.contracts:
-            self.erc7412_enabled = True
+        if 'PythERC7412Wrapper' in snx.contracts:
+            self.erc7412_enabled = False
         else:
             self.erc7412_enabled = False
 
@@ -123,11 +123,11 @@ class Perps:
         raw_feed_ids = [decode_hex(feed_id) for feed_id in feed_ids]
         args = (1, 30, raw_feed_ids)
 
-        to, data, _ = make_fulfillment_request(self.snx, self.snx.contracts['ERC7412']['address'], price_update_data, args)
+        to, data, _ = make_fulfillment_request(self.snx, self.snx.contracts['PythERC7412Wrapper']['address'], price_update_data, args)
         value = len(market_names)
         
         # return this formatted for the multicall
-        return (to, False, value, data)
+        return (to, True, value, data)
 
     # read
     # TODO: get_market_settings
@@ -200,11 +200,11 @@ class Perps:
 
         order = call_erc7412(
             self.snx, self.market_proxy, 'getOrder', (account_id,))
-        settlement_time, request = order
+        commitment_time, request = order
         market_id, account_id, size_delta, settlement_strategy_id, acceptable_price, tracking_code, referrer = request
 
         order_data = {
-            'settlement_time': settlement_time,
+            'commitment_time': commitment_time,
             'market_id': market_id,
             'account_id': account_id,
             'size_delta': wei_to_ether(size_delta),
@@ -319,10 +319,8 @@ class Perps:
             strategy_type,
             settlement_delay,
             settlement_window_duration,
-            price_window_duration,
             price_verification_contract,
             feed_id,
-            url,
             settlement_reward,
             disabled
         ) = call_erc7412(
@@ -332,10 +330,8 @@ class Perps:
             'strategy_type': strategy_type,
             'settlement_delay': settlement_delay,
             'settlement_window_duration': settlement_window_duration,
-            'price_window_duration': price_window_duration,
             'price_verification_contract': price_verification_contract,
             'feed_id': feed_id,
-            'url': url,
             'settlement_reward': wei_to_ether(settlement_reward),
             'disabled': disabled,
         }
@@ -394,7 +390,7 @@ class Perps:
             self.snx, self.market_proxy, 'getAvailableMargin', (account_id,), calls=calls)
         withdrawable_margin = call_erc7412(
             self.snx, self.market_proxy, 'getWithdrawableMargin', (account_id,), calls=calls)
-        initial_margin_requirement, maintenance_margin_requirement, total_accumulated_liquidation_rewards, max_liquidation_reward = call_erc7412(
+        initial_margin_requirement, maintenance_margin_requirement, max_liquidation_reward = call_erc7412(
             self.snx, self.market_proxy, 'getRequiredMargins', (account_id,), calls=calls)
 
         return {
@@ -403,7 +399,6 @@ class Perps:
             'withdrawable_margin': wei_to_ether(withdrawable_margin),
             'initial_margin_requirement': wei_to_ether(initial_margin_requirement),
             'maintenance_margin_requirement': wei_to_ether(maintenance_margin_requirement),
-            'total_accumulated_liquidation_rewards': wei_to_ether(total_accumulated_liquidation_rewards),
             'max_liquidation_reward': wei_to_ether(max_liquidation_reward),
         }
 
@@ -790,12 +785,13 @@ class Perps:
 
         order = self.get_order(account_id)
         settlement_strategy = order['settlement_strategy']
+        settlement_time = order['commitment_time'] + settlement_strategy['settlement_delay']
 
         # check if order is ready to be settled
-        self.logger.info(f"settlement time: {order['settlement_time']}")
+        self.logger.info(f"settlement time: {settlement_time}")
         self.logger.info(f"current time: {time.time()}")
-        if order['settlement_time'] > time.time():
-            duration = order['settlement_time'] - time.time()
+        if settlement_time > time.time():
+            duration = settlement_time - time.time()
             self.logger.info(
                 f'Waiting {duration} seconds until order can be settled')
             time.sleep(duration)
@@ -803,45 +799,6 @@ class Perps:
             # TODO: check if expired
             self.logger.info(f'Order is ready to be settled')
 
-        # create hex inputs
-        feed_id_hex = settlement_strategy['feed_id'].hex()
-        settlement_time_hex = self.snx.web3.to_hex(
-            (order['settlement_time']).to_bytes(8, byteorder='big'))
-
-        # Concatenate the hex strings with '0x' prefix
-        data_param = f'0x{feed_id_hex}{settlement_time_hex[2:]}'
-
-        # query pyth for the price update data
-        url = settlement_strategy['url'].format(data=data_param)
-
-        pyth_tries = 0
-        price_update_data = None
-        while not price_update_data and pyth_tries < max_pyth_tries:
-            response = requests.get(url)
-
-            if response.status_code == 200:
-                response_json = response.json()
-                price_update_data = response_json['data']
-            else:
-                pyth_tries += 1
-                if pyth_tries > max_pyth_tries:
-                    raise ValueError("Price update data not available")
-                else:
-                    self.logger.info(
-                        "Price update data not available, waiting 2 seconds and retrying")
-                    time.sleep(pyth_delay)
-
-        # encode the extra data
-        account_bytes = account_id.to_bytes(32, byteorder='big')
-        market_bytes = order['market_id'].to_bytes(32, byteorder='big')
-
-        # Concatenate the bytes and convert to hex
-        extra_data = self.snx.web3.to_hex(account_bytes + market_bytes)
-
-        # log the data
-        self.logger.info(f'price_update_data: {price_update_data}')
-        self.logger.info(f'extra_data: {extra_data}')
-        
         # get fresh prices to provide to the oracle
         market_name = self._resolve_market(order['market_id'], None)[1]
         if self.erc7412_enabled:
@@ -853,8 +810,14 @@ class Perps:
         # prepare the transaction
         tx_tries = 0
         while tx_tries < max_tx_tries:
-            tx_params = write_erc7412(
-                self.snx, self.market_proxy, 'settlePythOrder', [price_update_data, extra_data], {'value': 1}, calls=calls)
+            try:
+                tx_params = write_erc7412(
+                    self.snx, self.market_proxy, 'settleOrder', [account_id], calls=calls)
+            except Exception as e:
+                self.logger.info(f"settleOrder error: {e}")
+                tx_tries += 1
+                time.sleep(tx_delay)
+                continue
 
             if submit:
                     self.logger.info(f'tx params: {tx_params}')

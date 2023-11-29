@@ -1,5 +1,5 @@
 {
-  "address": "0x7056F16f58638253B8A1E5023d67a8CF98000681",
+  "address": "0x4967d1987930b2CD183dAB4B6C40B8745DD2eba1",
   "abi": [
     {
       "inputs": [
@@ -45,6 +45,25 @@
         }
       ],
       "name": "Approval",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "previousOwner",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "OwnershipTransferred",
       "type": "event"
     },
     {
@@ -233,6 +252,26 @@
     },
     {
       "inputs": [],
+      "name": "owner",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "renounceOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
       "name": "symbol",
       "outputs": [
         {
@@ -309,18 +348,31 @@
       ],
       "stateMutability": "nonpayable",
       "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "transferOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
     }
   ],
   "constructorArgs": [
-    "Token",
-    "TKN",
+    "Fake USD Coin",
+    "fUSDC",
     "0"
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0xa665d03b3434c33eec4b6e4005538e5d0d173623cd032c9f97ac5a713fe5d3ef",
-  "sourceName": "src/MintableTokenPermissionlessMint.sol",
-  "contractName": "MintableTokenPermissionlessMint",
+  "deployTxnHash": "0xff358e4d0ffc0863978b52d52c0e354957d664dc6f7751860adedaf12739a170",
+  "sourceName": "src/MintableToken.sol",
+  "contractName": "MintableToken",
   "deployedOn": "contract.MintableToken",
-  "gasUsed": 642711,
-  "gasCost": "1500000051"
+  "gasUsed": 763702,
+  "gasCost": "1500000254"
 }

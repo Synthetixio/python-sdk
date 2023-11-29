@@ -1,5 +1,5 @@
 {
-  "address": "0xd7cFdcf6499896a1E15Db92629AAC8085af8B2ac",
+  "address": "0xF4Df9Dd327Fd30695d478c3c8a2fffAddcdD0d31",
   "abi": [
     {
       "inputs": [
@@ -2037,11 +2037,6 @@
           "internalType": "address",
           "name": "collateralType",
           "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "collateralAmount",
-          "type": "uint256"
         }
       ],
       "name": "getCollateralPrice",
@@ -2686,6 +2681,30 @@
           "internalType": "address",
           "name": "sender",
           "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "int128",
+          "name": "creditCapacity",
+          "type": "int128"
+        },
+        {
+          "indexed": false,
+          "internalType": "int128",
+          "name": "netIssuance",
+          "type": "int128"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "depositedCollateralValue",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "reportedDebt",
+          "type": "uint256"
         }
       ],
       "name": "MarketCollateralDeposited",
@@ -2717,6 +2736,30 @@
           "internalType": "address",
           "name": "sender",
           "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "int128",
+          "name": "creditCapacity",
+          "type": "int128"
+        },
+        {
+          "indexed": false,
+          "internalType": "int128",
+          "name": "netIssuance",
+          "type": "int128"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "depositedCollateralValue",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "reportedDebt",
+          "type": "uint256"
         }
       ],
       "name": "MarketCollateralWithdrawn",
@@ -2986,6 +3029,30 @@
           "internalType": "address",
           "name": "market",
           "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "int128",
+          "name": "creditCapacity",
+          "type": "int128"
+        },
+        {
+          "indexed": false,
+          "internalType": "int128",
+          "name": "netIssuance",
+          "type": "int128"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "depositedCollateralValue",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "reportedDebt",
+          "type": "uint256"
         }
       ],
       "name": "MarketUsdDeposited",
@@ -3017,6 +3084,30 @@
           "internalType": "address",
           "name": "market",
           "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "int128",
+          "name": "creditCapacity",
+          "type": "int128"
+        },
+        {
+          "indexed": false,
+          "internalType": "int128",
+          "name": "netIssuance",
+          "type": "int128"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "depositedCollateralValue",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "reportedDebt",
+          "type": "uint256"
         }
       ],
       "name": "MarketUsdWithdrawn",
@@ -3501,47 +3592,6 @@
       "type": "function"
     },
     {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "name": "DeniedMulticallTarget",
-      "type": "error"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "name": "RecursiveMulticall",
-      "type": "error"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "bytes[]",
-          "name": "data",
-          "type": "bytes[]"
-        }
-      ],
-      "name": "multicall",
-      "outputs": [
-        {
-          "internalType": "bytes[]",
-          "name": "results",
-          "type": "bytes[]"
-        }
-      ],
-      "stateMutability": "payable",
-      "type": "function"
-    },
-    {
       "anonymous": false,
       "inputs": [
         {
@@ -3917,6 +3967,25 @@
       "anonymous": false,
       "inputs": [
         {
+          "indexed": true,
+          "internalType": "uint128",
+          "name": "poolId",
+          "type": "uint128"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "owner",
+          "type": "address"
+        }
+      ],
+      "name": "PoolOwnershipRenounced",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
           "indexed": false,
           "internalType": "uint256",
           "name": "minLiquidityRatio",
@@ -3984,6 +4053,42 @@
           "internalType": "address",
           "name": "",
           "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint128",
+          "name": "poolId",
+          "type": "uint128"
+        },
+        {
+          "internalType": "address",
+          "name": "collateralType",
+          "type": "address"
+        }
+      ],
+      "name": "getPoolCollateralConfiguration",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "collateralLimitD18",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "issuanceRatioD18",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct PoolCollateralConfiguration.Data",
+          "name": "config",
+          "type": "tuple"
         }
       ],
       "stateMutability": "view",
@@ -4132,6 +4237,19 @@
         }
       ],
       "name": "renouncePoolNomination",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint128",
+          "name": "poolId",
+          "type": "uint128"
+        }
+      ],
+      "name": "renouncePoolOwnership",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -4494,6 +4612,40 @@
       "name": "distributeRewards",
       "outputs": [],
       "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint128",
+          "name": "accountId",
+          "type": "uint128"
+        },
+        {
+          "internalType": "uint128",
+          "name": "poolId",
+          "type": "uint128"
+        },
+        {
+          "internalType": "address",
+          "name": "collateralType",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "distributor",
+          "type": "address"
+        }
+      ],
+      "name": "getAvailableRewards",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
       "type": "function"
     },
     {
@@ -4995,11 +5147,6 @@
         {
           "internalType": "uint256",
           "name": "amount",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "value",
           "type": "uint256"
         }
       ],

@@ -85,3 +85,52 @@ class Pyth:
         except Exception as err:
             print(err)
             return None
+
+    def get_benchmark_data(self, feed_id: str, publish_time: int):
+        self.snx.logger.info(f'Fetching benchmark data for {feed_id} at {publish_time}')
+        url = f"{self._price_service_endpoint}/api/get_vaa"
+        params = {
+            'id': feed_id,
+            'publish_time': publish_time,
+        }
+
+        try:
+            response = requests.get(url, params, timeout=10)
+
+            # parse the response
+            response_data = response.json()
+            
+            price_update_data = base64.b64decode(response_data['vaa'])
+            publish_time = response_data['publishTime']
+
+            return price_update_data, feed_id, publish_time
+        except Exception as err:
+            print(err)
+            return None
+
+    def get_latest_data(self, feed_id: str):
+        self.snx.logger.info(f'Fetching data for feed id: {feed_id}')
+        url = f"{self._price_service_endpoint}/api/latest_price_feeds"
+        params = {
+            'ids[]': [feed_id],
+            'binary': 'true'
+        }
+
+        try:
+            response = requests.get(url, params, timeout=10)
+
+            # parse the response
+            feed_datas = response.json()
+            
+            price_update_data = []
+            feed_ids = []
+            timestamps = []
+            for feed_data in feed_datas:
+                price_update_data.append(base64.b64decode(feed_data['vaa']))
+                feed_ids.append(base64.b64decode(feed_data['id']))
+                timestamps.append(feed_data['price']['publish_time'])
+
+            return price_update_data, feed_ids, timestamps
+        except Exception as err:
+            print(err)
+            return None

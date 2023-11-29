@@ -151,10 +151,8 @@ def test_perps_settlement_strategy(snx, logger):
     assert settlement_strategy['strategy_type'] is not None
     assert settlement_strategy['settlement_delay'] is not None
     assert settlement_strategy['settlement_window_duration'] is not None
-    assert settlement_strategy['price_window_duration'] is not None
     assert settlement_strategy['price_verification_contract'] is not None
     assert settlement_strategy['feed_id'] is not None
-    assert settlement_strategy['url'] is not None
     assert settlement_strategy['settlement_reward'] is not None
     assert settlement_strategy['disabled'] is not None
 
@@ -165,7 +163,7 @@ def test_perps_order(snx, logger):
 
     logger.info(f"Address: {snx.address} - order: {order}")
     assert order is not None
-    assert order['settlement_time'] is not None
+    assert order['commitment_time'] is not None
     assert order['market_id'] is not None
     assert order['account_id'] is not None
     assert order['size_delta'] is not None
@@ -182,7 +180,7 @@ def test_perps_order_with_settlement_strategy(snx, logger):
 
     logger.info(f"Address: {snx.address} - order: {order}")
     assert order is not None
-    assert order['settlement_time'] is not None
+    assert order['commitment_time'] is not None
     assert order['market_id'] is not None
     assert order['account_id'] is not None
     assert order['size_delta'] is not None
@@ -194,10 +192,8 @@ def test_perps_order_with_settlement_strategy(snx, logger):
     assert order['settlement_strategy']['strategy_type'] is not None
     assert order['settlement_strategy']['settlement_delay'] is not None
     assert order['settlement_strategy']['settlement_window_duration'] is not None
-    assert order['settlement_strategy']['price_window_duration'] is not None
     assert order['settlement_strategy']['price_verification_contract'] is not None
     assert order['settlement_strategy']['feed_id'] is not None
-    assert order['settlement_strategy']['url'] is not None
     assert order['settlement_strategy']['settlement_reward'] is not None
     assert order['settlement_strategy']['disabled'] is not None
 
