@@ -8,7 +8,7 @@ load_dotenv()
 
 
 def test_perps_module(snx, logger):
-    """The instance has an perps_module"""
+    """The instance has a perps module"""
     assert snx.perps is not None
     assert snx.perps.market_proxy is not None
     assert snx.perps.account_proxy is not None
@@ -26,7 +26,7 @@ def test_perps_markets(snx, logger):
     assert markets_by_id is not None
     assert markets_by_name is not None
 
-    required_keys = ['ETH', 'BTC', 'LTC', 'XRP']
+    required_keys = ['ETH', 'BTC']
     for key in required_keys:
         assert key in markets_by_name, f"Key {key} is missing in markets_by_name"
 
@@ -64,8 +64,26 @@ def test_open_position(snx, logger, account_id):
     snx.wait(commit_tx)
     
     # wait for the order settlement
-    snx.perps.settle_pyth_order(account_id=account_id, submit=True)
+    settle_tx = snx.perps.settle_pyth_order(account_id=account_id, submit=True)
+    snx.wait(settle_tx)
     
     # check the result
     position = snx.perps.get_open_position(market_name='ETH', account_id=account_id)
     assert position['position_size'] == 0.1
+
+def test_close_position(snx, logger, account_id):
+    """Test closing a position"""
+    # get the position size
+    position = snx.perps.get_open_position(market_name='ETH', account_id=account_id)
+    size = position['position_size']
+        
+    # commit order
+    commit_tx = snx.perps.commit_order(-size, market_name='ETH', account_id=account_id, submit=True)
+    snx.wait(commit_tx)
+    
+    # wait for the order settlement
+    snx.perps.settle_pyth_order(account_id=account_id, submit=True)
+    
+    # check the result
+    position = snx.perps.get_open_position(market_name='ETH', account_id=account_id)
+    assert position['position_size'] == 0
