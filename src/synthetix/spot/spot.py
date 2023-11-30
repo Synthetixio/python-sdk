@@ -173,7 +173,6 @@ class Spot:
         return order_data
 
     # transactions
-    # TODO: cancel order
     def approve(
         self,
         target_address: str,

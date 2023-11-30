@@ -420,6 +420,36 @@ class Synthetix:
             return tx_hash
         else:
             return tx_params
+    
+    def allowance(self, token_address: str, spender_address: str, owner_address: str = None) -> float:
+        """
+        Get the allowance for a target address to spend a specified ERC20 token for an owner.
+        This is a general implementation that can be used for any ERC20 token.::
+        
+            snx.allowance(
+                snx.susd_token.address,
+                
+                snx.perps.market_proxy.address
+            )
+        
+        :param str token_address: address of the token to approve
+        :param str spender_address: address to spender of the token
+        :param str owner_address: address to token owner. If not specified, the default
+            address is used.
+        :return: The allowance for the target address to spend the token for the owner
+        :rtype: float
+        """
+        if not owner_address:
+            owner_address = self.address
+        
+        token_contract = self.web3.eth.contract(
+            address=token_address, abi=self.contracts['USDProxy']['abi'])
+
+        allowance = token_contract.functions.allowance(
+            owner_address, spender_address).call()
+        
+        return wei_to_ether(allowance)
+
 
     def wrap_eth(self, amount: float, submit: bool = False) -> str:
         """
