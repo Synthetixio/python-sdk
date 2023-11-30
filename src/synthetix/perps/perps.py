@@ -383,7 +383,7 @@ class Perps:
         else:
             calls = []
 
-        # TODO: expand multical capability to handle multiple functions
+        # TODO: expand multicall capability to handle multiple functions
         total_collateral_value = call_erc7412(
             self.snx, self.market_proxy, 'totalCollateralValue', (account_id,), calls=calls)
         available_margin = call_erc7412(
@@ -589,10 +589,8 @@ class Perps:
         else:
             tx_args = [account_id]
 
-        market_proxy = self.market_proxy
-        tx_params = self.snx._get_tx_params()
-        tx_params = market_proxy.functions.createAccount(
-            *tx_args).build_transaction(tx_params)
+        tx_params = write_erc7412(
+            self.snx, self.market_proxy, 'createAccount', tx_args)
 
         if submit:
             tx_hash = self.snx.execute_transaction(tx_params)
@@ -632,11 +630,6 @@ class Perps:
             account_id = self.default_account_id
 
         # TODO: check approvals
-        market_proxy = self.market_proxy
-        tx_data = market_proxy.encodeABI(
-            fn_name='modifyCollateral', args=[account_id, market_id, ether_to_wei(amount)])
-
-        market_proxy = self.market_proxy
         tx_params = write_erc7412(
             self.snx, self.market_proxy, 'modifyCollateral', [account_id, market_id, ether_to_wei(amount)])
 
@@ -765,17 +758,14 @@ class Perps:
             else:
                 return tx_params
 
-    def settle_pyth_order(self, account_id: int = None, max_pyth_tries: int = 10, pyth_delay: int = 2, submit: bool = False, max_tx_tries: int = 3, tx_delay: int = 2):
+    def settle_order(self, account_id: int = None, submit: bool = False, max_tx_tries: int = 3, tx_delay: int = 2):
         """
-        Settles an order by fetching data from the Pyth price feed and submitting a transaction.
+        Settles an order using ERC7412 by handling ``OracleDataRequired`` errors and forming a multicall.
         If the order is not yet ready to be settled, this function will wait until the settlement time.
-        If the Pyth data is not available, this function will retry until the max number of tries is reached
-        with a configurable delay. If the transaction fails, this function will retry until the max number
-        of tries is reached with a configurable delay.
+        If the transaction fails, this function will retry until the max number of tries is reached with a 
+        configurable delay.
         
         :param int | None account_id: The id of the account to settle. If not provided, the default account is used.
-        :param int max_pyth_tries: The max number of tries to fetch the Pyth data.
-        :param int pyth_delay: The delay in seconds between Pyth data fetches.
         :param bool submit: If ``True``, submit the transaction to the blockchain.
         :param int max_tx_tries: The max number of tries to submit the transaction.
         :param int tx_delay: The delay in seconds between transaction submissions.
@@ -820,8 +810,6 @@ class Perps:
                 continue
 
             if submit:
-                    self.logger.info(f'tx params: {tx_params}')
-
                     tx_hash = self.snx.execute_transaction(tx_params)
                     self.logger.info(
                         f"Settling order for account {account_id}")

@@ -11,7 +11,10 @@ def test_susd_contract(snx, logger):
 
 def test_susd_legacy_contract(snx, logger):
     """The instance has an sUSD legacy contract"""
-    assert snx.susd_legacy_token is not None
+    if snx.network_id in [10, 420]:
+        assert snx.susd_legacy_token is not None
+    else:
+        assert snx.susd_legacy_token is None
 
 def test_susd_balance(snx, logger):
     """The instance has an sUSD balance"""
@@ -24,5 +27,8 @@ def test_susd_legacy_balance(snx, logger):
     """The instance has a legacy sUSD balance"""
     balance = snx.get_susd_balance(legacy=True)
     logger.info(f"Balance: {balance}")
-    assert balance is not None
-    assert balance['balance'] >= 0
+    if snx.network_id in [10, 420]:
+        assert balance is not None
+        assert balance['balance'] >= 0
+    else:
+        assert balance['balance'] == 0

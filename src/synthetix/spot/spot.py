@@ -307,7 +307,6 @@ class Spot:
             self.snx, self.market_proxy, 'settlePythOrder', [price_update_data, extra_data], {'value': 1})
 
         if submit:
-            self.logger.info(f'tx params: {tx_params}')
             tx_hash = self.snx.execute_transaction(tx_params)
             self.logger.info(
                 f"Settling order {order['id']}")

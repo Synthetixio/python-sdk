@@ -232,9 +232,9 @@ def test_perps_liquidate(snx, logger):
     assert liquidate['from'] == snx.address
     assert liquidate['data'] is not None
 
-def test_perps_settle_pyth_order(snx, logger):
-    """User can prepare a settlement transaction using Pyth"""
-    settle = snx.perps.settle_pyth_order()
+def test_perps_settle_order(snx, logger):
+    """User can prepare a settlement transaction using ERC7412"""
+    settle = snx.perps.settle_order()
 
     assert settle is not None
     assert settle['from'] == snx.address

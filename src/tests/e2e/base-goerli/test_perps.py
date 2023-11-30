@@ -64,7 +64,7 @@ def test_open_position(snx, logger, account_id):
     snx.wait(commit_tx)
     
     # wait for the order settlement
-    settle_tx = snx.perps.settle_pyth_order(account_id=account_id, submit=True)
+    settle_tx = snx.perps.settle_order(account_id=account_id, submit=True)
     snx.wait(settle_tx)
     
     # check the result
@@ -82,7 +82,7 @@ def test_close_position(snx, logger, account_id):
     snx.wait(commit_tx)
     
     # wait for the order settlement
-    snx.perps.settle_pyth_order(account_id=account_id, submit=True)
+    snx.perps.settle_order(account_id=account_id, submit=True)
     
     # check the result
     position = snx.perps.get_open_position(market_name='ETH', account_id=account_id)

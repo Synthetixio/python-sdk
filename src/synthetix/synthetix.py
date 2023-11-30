@@ -349,6 +349,8 @@ class Synthetix:
             address = self.address
 
         token = self.susd_legacy_token if legacy else self.susd_token
+        if token is None:
+            return {"balance": 0}
 
         balance = token.functions.balanceOf(
             self.address).call()

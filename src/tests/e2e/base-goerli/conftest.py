@@ -30,15 +30,15 @@ def account_id(pytestconfig, snx, logger):
     final_account_id = None
     for account_id in account_ids:
         margin_info = snx.perps.get_margin_info(account_id)
+        positions = snx.perps.get_open_positions(account_id=account_id)
         
-        if margin_info['total_collateral_value'] == 0:
-            logger.info(f'Account {account_id} has no collateral')
+        if margin_info['total_collateral_value'] == 0 and len(positions) == 0:
+            logger.info(f'Account {account_id} is empty')
             final_account_id = account_id
             break
         else:
-            logger.info(f'Account {account_id} has collateral')
+            logger.info(f'Account {account_id} has margin')
     
-    # TODO: add account setup
     if final_account_id is None:
         logger.info('Creating a new perps account')
         
@@ -63,7 +63,7 @@ def close_positions_and_withdraw(snx, account_id):
         snx.wait(commit_tx)
         
         # wait for the order settlement
-        snx.perps.settle_pyth_order(account_id=account_id, submit=True)
+        snx.perps.settle_order(account_id=account_id, submit=True)
         
         # check the result
         position = snx.perps.get_open_position(market_name=market_name, account_id=account_id)
