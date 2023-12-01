@@ -14,79 +14,156 @@ def test_spot_module(snx, logger):
     assert snx.spot is not None
     assert snx.spot.market_proxy is not None
 
+
 def test_spot_markets(snx, logger):
     """The instance has an sUSDC market"""
-    assert 'sUSDC' in snx.spot.markets_by_name
-    assert snx.spot.markets_by_name['sUSDC']['contract'] is not None
+    assert "sUSDC" in snx.spot.markets_by_name
+    assert snx.spot.markets_by_name["sUSDC"]["contract"] is not None
+
 
 def test_spot_wrap(snx, logger):
     """The instance can wrap USDC for sUSDC"""
     # use the mintable token on testnet
-    usdc = snx.contracts['MintableToken']['contract']
-    
+    usdc = snx.contracts["MintableToken"]["contract"]
+
     # make sure we have some USDC
     balance_wei = usdc.functions.balanceOf(snx.address).call()
     balance = wei_to_ether(balance_wei)
-    
-    synth_balance = snx.spot.get_balance(market_name='sUSDC')
-    
+
+    synth_balance = snx.spot.get_balance(market_name="sUSDC")
+
     assert balance > 0
-    
+
     # check the allowance
     allowance = snx.allowance(usdc.address, snx.spot.market_proxy.address)
-    
+
     if allowance < TEST_AMOUNT:
         # approve
         approve_tx = snx.approve(usdc.address, snx.spot.market_proxy.address)
         snx.wait(approve_tx)
-    
+
     # wrap
-    wrap_tx = snx.spot.wrap(TEST_AMOUNT, market_name='sUSDC', submit=True)
+    wrap_tx = snx.spot.wrap(TEST_AMOUNT, market_name="sUSDC", submit=True)
     snx.wait(wrap_tx)
-    
+
     # get new balances
     new_balance_wei = usdc.functions.balanceOf(snx.address).call()
     new_balance = wei_to_ether(new_balance_wei)
-    
-    new_synth_balance = snx.spot.get_balance(market_name='sUSDC')
-    
+
+    new_synth_balance = snx.spot.get_balance(market_name="sUSDC")
+
     assert new_balance == balance - TEST_AMOUNT
     assert new_synth_balance == synth_balance + TEST_AMOUNT
+
 
 def test_spot_unwrap(snx, logger):
     """The instance can unwrap sUSDC for USDC"""
     # use the mintable token on testnet
-    usdc = snx.contracts['MintableToken']['contract']
-    susdc = snx.spot.markets_by_name['sUSDC']['contract']
-    
+    usdc = snx.contracts["MintableToken"]["contract"]
+    susdc = snx.spot.markets_by_name["sUSDC"]["contract"]
+
     # check balances
     balance_wei = usdc.functions.balanceOf(snx.address).call()
     balance = wei_to_ether(balance_wei)
-    
-    synth_balance = snx.spot.get_balance(market_name='sUSDC')
-    
+
+    synth_balance = snx.spot.get_balance(market_name="sUSDC")
+
     assert synth_balance >= TEST_AMOUNT
 
     # check the allowance
-    allowance = snx.allowance(
-        susdc.address,
-        snx.spot.market_proxy.address
-    )
-    
+    allowance = snx.allowance(susdc.address, snx.spot.market_proxy.address)
+
     if allowance < TEST_AMOUNT:
         # approve
         approve_tx = snx.approve(susdc.address, snx.spot.market_proxy.address)
         snx.wait(approve_tx)
-    
+
     # wrap
-    wrap_tx = snx.spot.wrap(-TEST_AMOUNT, market_name='sUSDC', submit=True)
+    wrap_tx = snx.spot.wrap(-TEST_AMOUNT, market_name="sUSDC", submit=True)
     snx.wait(wrap_tx)
-    
+
     # get new balances
     new_balance_wei = usdc.functions.balanceOf(snx.address).call()
     new_balance = wei_to_ether(new_balance_wei)
-    
-    new_synth_balance = snx.spot.get_balance(market_name='sUSDC')
-    
+
+    new_synth_balance = snx.spot.get_balance(market_name="sUSDC")
+
     assert new_balance == balance + TEST_AMOUNT
     assert new_synth_balance == synth_balance - TEST_AMOUNT
+
+
+def test_spot_atomic_buy(snx, logger):
+    """The instance can buy sUSDC for sUSD"""
+    # use the mintable token on testnet
+    susd = snx.spot.markets_by_name["sUSD"]["contract"]
+
+    susd_balance = snx.spot.get_balance(market_name="sUSD")
+    susdc_balance = snx.spot.get_balance(market_name="sUSDC")
+    assert susd_balance >= TEST_AMOUNT
+
+    # check the allowances
+    susd_allowance = snx.allowance(susd.address, snx.spot.market_proxy.address)
+    if susd_allowance < TEST_AMOUNT:
+        # approve sUSDC
+        approve_tx = snx.approve(susd.address, snx.spot.market_proxy.address)
+        snx.wait(approve_tx)
+
+    # buy sUSDC
+    buy_tx = snx.spot.atomic_order("buy", TEST_AMOUNT, market_name="sUSDC", submit=True)
+    snx.wait(buy_tx)
+
+    # get new balances
+    new_susdc_balance = snx.spot.get_balance(market_name="sUSDC")
+    new_susd_balance = snx.spot.get_balance(market_name="sUSD")
+
+    assert new_susd_balance == susd_balance - TEST_AMOUNT
+    assert new_susdc_balance == susdc_balance + TEST_AMOUNT
+
+
+def test_spot_atomic_sell(snx, logger):
+    """The instance can wrap USDC for sUSDC and sell for sUSD"""
+    # use the mintable token on testnet
+    usdc = snx.contracts["MintableToken"]["contract"]
+    susdc = snx.spot.markets_by_name["sUSDC"]["contract"]
+
+    # make sure we have some USDC
+    usdc_balance_wei = usdc.functions.balanceOf(snx.address).call()
+    usdc_balance = wei_to_ether(usdc_balance_wei)
+
+    susdc_balance = snx.spot.get_balance(market_name="sUSDC")
+    susd_balance = snx.spot.get_balance(market_name="sUSD")
+    assert usdc_balance >= TEST_AMOUNT
+
+    # check the allowances
+    usdc_allowance = snx.allowance(usdc.address, snx.spot.market_proxy.address)
+    susdc_allowance = snx.allowance(susdc.address, snx.spot.market_proxy.address)
+
+    if usdc_allowance < TEST_AMOUNT:
+        # approve USDC
+        approve_tx = snx.approve(usdc.address, snx.spot.market_proxy.address)
+        snx.wait(approve_tx)
+    if susdc_allowance < TEST_AMOUNT:
+        # approve sUSDC
+        approve_tx = snx.approve(susdc.address, snx.spot.market_proxy.address)
+        snx.wait(approve_tx)
+
+    # wrap
+    wrap_tx = snx.spot.wrap(TEST_AMOUNT, market_name="sUSDC", submit=True)
+    snx.wait(wrap_tx)
+
+    # sell for sUSD
+    sell_tx = snx.spot.atomic_order(
+        "sell", TEST_AMOUNT, market_name="sUSDC", submit=True
+    )
+    snx.wait(sell_tx)
+
+    # get new balances
+    new_usdc_balance_wei = usdc.functions.balanceOf(snx.address).call()
+    new_usdc_balance = wei_to_ether(new_usdc_balance_wei)
+
+    new_susdc_balance = snx.spot.get_balance(market_name="sUSDC")
+    new_susd_balance = snx.spot.get_balance(market_name="sUSD")
+
+    assert new_susd_balance == susd_balance + TEST_AMOUNT
+    assert new_usdc_balance == usdc_balance - TEST_AMOUNT
+    assert new_susdc_balance == susdc_balance
