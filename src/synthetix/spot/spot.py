@@ -1,7 +1,7 @@
 """Module for interacting with Synthetix V3 spot markets."""
 from ..utils import ether_to_wei, wei_to_ether
-from ..utils.multicall import write_erc7412
-from .constants import SPOT_MARKETS_BY_ID, SPOT_MARKETS_BY_NAME
+from ..utils.multicall import multicall_erc7412, write_erc7412
+from web3.constants import ADDRESS_ZERO
 from typing import Literal
 import time
 import requests
@@ -12,14 +12,12 @@ class Spot:
         self.snx = snx
         self.pyth = pyth
         self.logger = snx.logger
-
+        
         # check if spot is deployed on this network
         if 'SpotMarketProxy' in snx.contracts:
-            market_proxy_address, market_proxy_abi = snx.contracts[
-                'SpotMarketProxy']['address'], snx.contracts['SpotMarketProxy']['abi']
+            self.market_proxy = snx.contracts['SpotMarketProxy']['contract']
 
-            self.market_proxy = snx.web3.eth.contract(
-                address=market_proxy_address, abi=market_proxy_abi)
+        self.markets_by_id, self.markets_by_name = self.get_markets()
 
     # internals
     def _resolve_market(self, market_id: int, market_name: str):
@@ -31,33 +29,72 @@ class Spot:
         has_market_name = market_name is not None
 
         if not has_market_id and has_market_name:
-            if market_name not in SPOT_MARKETS_BY_NAME[self.snx.network_id]:
-                raise ValueError("Invalid market_name")
-            market_id = SPOT_MARKETS_BY_NAME[self.snx.network_id][market_name]
+            if market_name not in self.markets_by_name:
+                raise ValueError(f"Invalid market_name")
+            market_id = self.markets_by_name[market_name]['market_id']
 
-            if market_id == -1:
-                raise ValueError("Invalid market_name")
         elif has_market_id and not has_market_name:
-            if market_id not in SPOT_MARKETS_BY_ID[self.snx.network_id]:
+            if market_id not in self.markets_by_id:
                 raise ValueError("Invalid market_id")
-            market_name = SPOT_MARKETS_BY_ID[self.snx.network_id][market_id]
+            market_name = self.markets_by_id[market_id]['market_name']
         return market_id, market_name
 
     def _get_synth_contract(self, market_id: int = None, market_name: str = None):
         """Create a contract instance for a specified synth"""
         market_id, market_name = self._resolve_market(market_id, market_name)
-
-        if market_id == 0:
-            market_implementation = self.snx.contracts['USDProxy']['address']
-        else:
-            market_implementation = self.market_proxy.functions.getSynth(market_id).call()
-
-        return self.snx.web3.eth.contract(
-            address=market_implementation,
-            abi=self.snx.contracts['USDProxy']['abi'],
-        )
+        return self.markets_by_id[market_id]['contract']
 
     # read
+    def get_markets(self):
+        """Get all spot markets"""
+        # set some reasonable defaults to avoid infinite loops
+        MAX_ITER = 4
+        ITEMS_PER_ITER = 25
+        
+        num_iter = 0
+        synths = []
+        while num_iter < MAX_ITER:
+            addresses = multicall_erc7412(
+                self.snx,
+                self.market_proxy,
+                'getSynth',
+                range(num_iter * ITEMS_PER_ITER, (num_iter + 1) * ITEMS_PER_ITER)
+            )
+            
+            new_synths = [(i, address) for i, address in enumerate(addresses) if address != ADDRESS_ZERO]
+            synths.extend(new_synths)
+            
+            if len(new_synths) != len(addresses):
+                break
+            else:
+                num_iter += 1
+
+        # build dictionaries by id and name
+        markets_by_id = {
+            0: {
+                'market_name': 'sUSD',
+                'contract': self.snx.contracts['USDProxy']['contract'],
+            }
+        }
+        for (market_id, address) in synths:
+            synth_contract = self.snx.web3.eth.contract(
+                address=self.snx.web3.to_checksum_address(address),
+                abi=self.snx.contracts['USDProxy']['abi'],
+            )
+            markets_by_id[market_id] = {
+                'market_name': synth_contract.functions.symbol().call(),
+                'contract': synth_contract,
+            }
+        
+        markets_by_name = {
+            v['market_name']: {
+                'market_id': k,
+                'contract': v['contract'],
+            }
+            for k, v in markets_by_id.items()
+        }        
+        return markets_by_id, markets_by_name
+
     def get_balance(self, address: str = None, market_id: int = None, market_name: str = None):
         """Get the balance of a spot synth"""
         market_id, market_name = self._resolve_market(market_id, market_name)
@@ -136,7 +173,6 @@ class Spot:
         return order_data
 
     # transactions
-    # TODO: cancel order
     def approve(
         self,
         target_address: str,
@@ -270,11 +306,77 @@ class Spot:
             self.snx, self.market_proxy, 'settlePythOrder', [price_update_data, extra_data], {'value': 1})
 
         if submit:
-            self.logger.info(f'tx params: {tx_params}')
             tx_hash = self.snx.execute_transaction(tx_params)
             self.logger.info(
                 f"Settling order {order['id']}")
             self.logger.info(f"settle tx: {tx_hash}")
+            return tx_hash
+        else:
+            return tx_params
+
+    def atomic_order(
+        self,
+        side: Literal['buy', 'sell'],
+        size: int,
+        market_id: int = None,
+        market_name: str = None,
+        submit: bool = False,
+    ):
+        """Execute an atomic order to the spot market"""
+        market_id, market_name = self._resolve_market(market_id, market_name)
+
+        size_wei = ether_to_wei(size)
+
+        # prepare the transaction
+        tx_args = [
+            market_id,              # marketId
+            size_wei,               # amount provided
+            size_wei,               # amount received
+            self.snx.referrer,      # referrer
+        ]
+        tx_params = write_erc7412(
+            self.snx, self.market_proxy, side, tx_args)
+
+        if submit:
+            tx_hash = self.snx.execute_transaction(tx_params)
+            self.logger.info(
+                f"Committing {side} atomic order of size {size_wei} ({size}) to {market_name} (id: {market_id})")
+            self.logger.info(f"atomic {side} tx: {tx_hash}")
+            return tx_hash
+        else:
+            return tx_params
+
+    def wrap(
+        self,
+        size: int,
+        market_id: int = None,
+        market_name: str = None,
+        submit: bool = False,
+    ):
+        """Wrap or unwrap an asset on the spot market"""
+        market_id, market_name = self._resolve_market(market_id, market_name)
+
+        if size < 0:
+            side = 'unwrap'
+            size_wei = ether_to_wei(-size)
+        else:
+            side = 'wrap'
+            size_wei = ether_to_wei(size)
+
+        # prepare the transaction
+        tx_args = [
+            market_id,              # marketId
+            size_wei,               # amount provided
+            size_wei,               # amount received
+        ]
+        tx_params = write_erc7412(
+            self.snx, self.market_proxy, side, tx_args)
+
+        if submit:
+            tx_hash = self.snx.execute_transaction(tx_params)
+            self.logger.info(
+                f"{side} of size {size_wei} ({size}) to {market_name} (id: {market_id})")
+            self.logger.info(f"{side} tx: {tx_hash}")
             return tx_hash
         else:
             return tx_params

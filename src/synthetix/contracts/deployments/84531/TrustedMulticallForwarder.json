@@ -1,6 +1,102 @@
 {
-  "address": "0xAE788aaf52780741E12BF79Ad684B91Bb0EF4D92",
+  "address": "0xE2C5658cC5C448B48141168f3e475dF8f65A1e3e",
   "abi": [
+    {
+      "inputs": [],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        }
+      ],
+      "name": "AddressInsufficientBalance",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint48",
+          "name": "deadline",
+          "type": "uint48"
+        }
+      ],
+      "name": "ERC2771ForwarderExpiredRequest",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "signer",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "from",
+          "type": "address"
+        }
+      ],
+      "name": "ERC2771ForwarderInvalidSigner",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "requestedValue",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "msgValue",
+          "type": "uint256"
+        }
+      ],
+      "name": "ERC2771ForwarderMismatchedValue",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "target",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "forwarder",
+          "type": "address"
+        }
+      ],
+      "name": "ERC2771UntrustfulTarget",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "FailedInnerCall",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "currentNonce",
+          "type": "uint256"
+        }
+      ],
+      "name": "InvalidAccountNonce",
+      "type": "error"
+    },
     {
       "inputs": [],
       "name": "InvalidShortString",
@@ -21,6 +117,31 @@
       "anonymous": false,
       "inputs": [],
       "name": "EIP712DomainChanged",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "signer",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "nonce",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "bool",
+          "name": "success",
+          "type": "bool"
+        }
+      ],
+      "name": "ExecutedForwardRequest",
       "type": "event"
     },
     {
@@ -56,7 +177,7 @@
           "type": "bytes[]"
         }
       ],
-      "stateMutability": "payable",
+      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
@@ -70,7 +191,7 @@
             },
             {
               "internalType": "bool",
-              "name": "allowFailure",
+              "name": "requireSuccess",
               "type": "bool"
             },
             {
@@ -118,7 +239,7 @@
             },
             {
               "internalType": "bool",
-              "name": "allowFailure",
+              "name": "requireSuccess",
               "type": "bool"
             },
             {
@@ -281,39 +402,151 @@
               "type": "uint256"
             },
             {
-              "internalType": "uint256",
-              "name": "nonce",
-              "type": "uint256"
+              "internalType": "uint48",
+              "name": "deadline",
+              "type": "uint48"
             },
             {
               "internalType": "bytes",
               "name": "data",
               "type": "bytes"
+            },
+            {
+              "internalType": "bytes",
+              "name": "signature",
+              "type": "bytes"
             }
           ],
-          "internalType": "struct MinimalForwarder.ForwardRequest",
-          "name": "req",
+          "internalType": "struct ERC2771Forwarder.ForwardRequestData",
+          "name": "request",
           "type": "tuple"
-        },
-        {
-          "internalType": "bytes",
-          "name": "signature",
-          "type": "bytes"
         }
       ],
       "name": "execute",
-      "outputs": [
+      "outputs": [],
+      "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "inputs": [
         {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
-        },
-        {
-          "internalType": "bytes",
-          "name": "",
-          "type": "bytes"
+          "components": [
+            {
+              "internalType": "address",
+              "name": "from",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "to",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "value",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "gas",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint48",
+              "name": "deadline",
+              "type": "uint48"
+            },
+            {
+              "internalType": "bytes",
+              "name": "data",
+              "type": "bytes"
+            },
+            {
+              "internalType": "bytes",
+              "name": "signature",
+              "type": "bytes"
+            }
+          ],
+          "internalType": "struct ERC2771Forwarder.ForwardRequestData[]",
+          "name": "requests",
+          "type": "tuple[]"
         }
       ],
+      "name": "executeBatch",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "bool",
+              "name": "success",
+              "type": "bool"
+            },
+            {
+              "internalType": "bytes",
+              "name": "returnData",
+              "type": "bytes"
+            }
+          ],
+          "internalType": "struct TrustedMulticallForwarder.Result[]",
+          "name": "returnData",
+          "type": "tuple[]"
+        }
+      ],
+      "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "address",
+              "name": "from",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "to",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "value",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "gas",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint48",
+              "name": "deadline",
+              "type": "uint48"
+            },
+            {
+              "internalType": "bytes",
+              "name": "data",
+              "type": "bytes"
+            },
+            {
+              "internalType": "bytes",
+              "name": "signature",
+              "type": "bytes"
+            }
+          ],
+          "internalType": "struct ERC2771Forwarder.ForwardRequestData[]",
+          "name": "requests",
+          "type": "tuple[]"
+        },
+        {
+          "internalType": "address payable",
+          "name": "refundReceiver",
+          "type": "address"
+        }
+      ],
+      "name": "executeBatch",
+      "outputs": [],
       "stateMutability": "payable",
       "type": "function"
     },
@@ -390,19 +623,6 @@
     },
     {
       "inputs": [],
-      "name": "getCurrentBlockDifficulty",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "difficulty",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
       "name": "getCurrentBlockGasLimit",
       "outputs": [
         {
@@ -460,14 +680,27 @@
       "type": "function"
     },
     {
+      "inputs": [],
+      "name": "getPrevRandao",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "prevrandao",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
       "inputs": [
         {
           "internalType": "address",
-          "name": "from",
+          "name": "owner",
           "type": "address"
         }
       ],
-      "name": "getNonce",
+      "name": "nonces",
       "outputs": [
         {
           "internalType": "uint256",
@@ -523,7 +756,7 @@
           "type": "tuple[]"
         }
       ],
-      "stateMutability": "payable",
+      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
@@ -609,24 +842,24 @@
               "type": "uint256"
             },
             {
-              "internalType": "uint256",
-              "name": "nonce",
-              "type": "uint256"
+              "internalType": "uint48",
+              "name": "deadline",
+              "type": "uint48"
             },
             {
               "internalType": "bytes",
               "name": "data",
               "type": "bytes"
+            },
+            {
+              "internalType": "bytes",
+              "name": "signature",
+              "type": "bytes"
             }
           ],
-          "internalType": "struct MinimalForwarder.ForwardRequest",
-          "name": "req",
+          "internalType": "struct ERC2771Forwarder.ForwardRequestData",
+          "name": "request",
           "type": "tuple"
-        },
-        {
-          "internalType": "bytes",
-          "name": "signature",
-          "type": "bytes"
         }
       ],
       "name": "verify",
@@ -643,8 +876,10 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0x16abe97c6ab9e1aef5b7ff1fd5a1714cfded24e1a995eed8351e93559eecff84",
+  "deployTxnHash": "",
   "sourceName": "src/TrustedMulticallForwarder.sol",
   "contractName": "TrustedMulticallForwarder",
-  "deployedOn": "contract.TrustedMulticallForwarder"
+  "deployedOn": "contract.TrustedMulticallForwarder",
+  "gasUsed": 0,
+  "gasCost": "0"
 }

@@ -28,22 +28,46 @@ def decode_erc7412_error(snx, error):
     address = snx.web3.to_checksum_address(address)
 
     # decode the bytes data into the arguments for the oracle
-    output_types_oracle = ['uint8', 'uint64', 'bytes32[]']
-    tag, staleness_tolerance, raw_feed_ids = decode(output_types_oracle, data)
-    feed_ids = [encode_hex(raw_feed_id) for raw_feed_id in raw_feed_ids]
-    return address, feed_ids, (tag, staleness_tolerance, raw_feed_ids)
+    output_type_update_type = ['uint8']
+    update_type = decode(output_type_update_type, data)[0]
 
+    if update_type == 1:
+        output_types_oracle = ['uint8', 'uint64', 'bytes32[]']
+        update_type, staleness_tolerance, raw_feed_ids = decode(output_types_oracle, data)
+        
+        feed_ids = [encode_hex(raw_feed_id) for raw_feed_id in raw_feed_ids]
+        return address, feed_ids, (update_type, staleness_tolerance, raw_feed_ids)
+
+    elif update_type == 2:
+        output_types_oracle = ['uint8', 'uint64', 'bytes32']
+        update_type, publish_time, raw_feed_id = decode(output_types_oracle, data)
+
+        feed_id = encode_hex(raw_feed_id)
+        return address, feed_id, (update_type, publish_time, raw_feed_id)
 
 def make_fulfillment_request(snx, address, price_update_data, args):
     erc_contract = snx.web3.eth.contract(
         address=address,
-        abi=snx.contracts['ERC7412']['abi']
+        abi=snx.contracts['PythERC7412Wrapper']['abi']
     )
-    
-    encoded_args = encode(['uint8', 'uint64', 'bytes32[]', 'bytes[]'], [
-        *args,
-        price_update_data
-    ])
+
+    update_type, _, _ = args
+    if update_type == 1:
+        _, staleness_tolerance, feed_ids = args
+        encoded_args = encode(['uint8', 'uint64', 'bytes32[]', 'bytes[]'], [
+            update_type,
+            staleness_tolerance,
+            feed_ids,
+            price_update_data
+        ])        
+    elif update_type == 2:
+        _, publish_time, feed_id = args
+        encoded_args = encode(['uint8', 'uint64', 'bytes32[]', 'bytes[]'], [
+            update_type,
+            publish_time,
+            [feed_id],
+            price_update_data
+        ])
     
     # assume 1 wei per price update
     value = len(price_update_data) * 1
@@ -53,11 +77,42 @@ def make_fulfillment_request(snx, address, price_update_data, args):
     ).build_transaction({'value': value, 'gas': None})
     return update_tx['to'], update_tx['data'], update_tx['value']
 
+
+def handle_erc7412_error(snx, error, calls):
+    if type(error) is ContractCustomError and error.data.startswith(ORACLE_DATA_REQUIRED):
+        # decode error data
+        address, feed_id, args = decode_erc7412_error(snx, error.data)
+        update_type = args[0]
+        
+        if update_type == 1:
+            # fetch the data from pyth for those feed ids
+            price_update_data = snx.pyth.get_feeds_data(feed_id)
+
+            # create a new request
+            to, data, value = make_fulfillment_request(snx, address, price_update_data, args)
+            calls = calls[:-1] + [(to, False, value, data)] + calls[-1:]
+        elif update_type == 2:
+            # fetch the data from pyth for those feed ids
+            price_update_data, _, _ = snx.pyth.get_benchmark_data(feed_id, args[1])
+
+            # create a new request
+            to, data, value = make_fulfillment_request(snx, address, [price_update_data], args)
+            calls = calls[:-1] + [(to, False, value, data)] + calls[-1:]
+        else:
+            snx.logger.error(f'Unknown update type: {update_type}')
+            raise error
+            
+        calls = [(to, False, value, data)] + calls
+        return calls
+    else:
+        snx.logger.error(f'Error is not related to oracle data: {error}')
+        raise error
+
 def write_erc7412(snx, contract, function_name, args, tx_params={}, calls = []):
     # prepare the initial call
     this_call = [(
         contract.address,
-        False,
+        True,
         0 if 'value' not in tx_params else tx_params['value'],
         bytes.fromhex(contract.encodeABI(
             fn_name=function_name,
@@ -83,19 +138,10 @@ def write_erc7412(snx, contract, function_name, args, tx_params={}, calls = []):
             return tx_params
         except Exception as e:
             # check if the error is related to oracle data
-            if type(e) is ContractCustomError and e.data.startswith(ORACLE_DATA_REQUIRED):
-                # decode error data
-                address, feed_ids, args = decode_erc7412_error(snx, e.data)
-                
-                # fetch the data from pyth for those feed ids
-                price_update_data = snx.pyth.get_feeds_data(feed_ids)
-
-                # create a new request
-                to, data, value = make_fulfillment_request(snx, address, price_update_data, args)
-                calls = calls[:-1] + [(to, False, value, data)] + calls[-1:]
-            else:
-                snx.logger.error(f'Error is not related to oracle data: {e}')
-                raise e
+            snx.logger.info(f'Simulation failed, decoding the error')
+            
+            # handle the error by appending calls
+            calls = handle_erc7412_error(snx, e, calls)
 
 def call_erc7412(snx, contract, function_name, args, calls = [], block='latest'):
     # fix args
@@ -104,7 +150,7 @@ def call_erc7412(snx, contract, function_name, args, calls = [], block='latest')
     # prepare the initial calls
     this_call = (
         contract.address,
-        False,
+        True,
         0,
         contract.encodeABI(
             fn_name=function_name,
@@ -126,19 +172,11 @@ def call_erc7412(snx, contract, function_name, args, calls = [], block='latest')
             return decoded_result if len(decoded_result) > 1 else decoded_result[0]
 
         except Exception as e:
-            if type(e) is ContractCustomError and e.data.startswith(ORACLE_DATA_REQUIRED):
-                # decode error data
-                address, feed_ids, args = decode_erc7412_error(snx, e.data)
-                
-                # fetch the data from pyth for those feed ids
-                price_update_data = snx.pyth.get_feeds_data(feed_ids)
-
-                # create a new request
-                to, data, value = make_fulfillment_request(snx, address, price_update_data, args)
-                calls = calls[:-1] + [(to, False, value, data)] + calls[-1:]
-            else:
-                snx.logger.error(f'Error is not related to oracle data: {e}')
-                raise e
+            # check if the error is related to oracle data
+            snx.logger.info(f'Simulation failed, decoding the error')
+            
+            # handle the error by appending calls
+            calls = handle_erc7412_error(snx, e, calls)
 
 def multicall_erc7412(snx, contract, function_name, args_list, calls = [], block='latest'):
     # check if args is a list of lists or tuples
@@ -183,16 +221,8 @@ def multicall_erc7412(snx, contract, function_name, args_list, calls = [], block
             return decoded_results
 
         except Exception as e:
-            if type(e) is ContractCustomError and e.data.startswith(ORACLE_DATA_REQUIRED):
-                # decode error data
-                address, feed_ids, args = decode_erc7412_error(snx, e.data)
-                
-                # fetch the data from pyth for those feed ids
-                price_update_data = snx.pyth.get_feeds_data(feed_ids)
-
-                # create a new request
-                to, data, value = make_fulfillment_request(snx, address, price_update_data, args)
-                calls = [(to, False, value, data)] + calls
-            else:
-                snx.logger.error(f'Error is not related to oracle data: {e}')
-                raise e
+            # check if the error is related to oracle data
+            snx.logger.info(f'Simulation failed, decoding the error')
+            
+            # handle the error by appending calls
+            calls = handle_erc7412_error(snx, e, calls)
