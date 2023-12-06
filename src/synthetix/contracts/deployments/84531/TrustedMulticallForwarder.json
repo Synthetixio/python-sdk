@@ -191,7 +191,7 @@
             },
             {
               "internalType": "bool",
-              "name": "allowFailure",
+              "name": "requireSuccess",
               "type": "bool"
             },
             {
@@ -239,7 +239,7 @@
             },
             {
               "internalType": "bool",
-              "name": "allowFailure",
+              "name": "requireSuccess",
               "type": "bool"
             },
             {
@@ -876,10 +876,10 @@
   ],
   "constructorArgs": [],
   "linkedLibraries": {},
-  "deployTxnHash": "0xf51315c85c95ca71f3f310bc6bc67ca58f785ce5ac15c4bb167e3e35ade8a472",
+  "deployTxnHash": "",
   "sourceName": "src/TrustedMulticallForwarder.sol",
   "contractName": "TrustedMulticallForwarder",
   "deployedOn": "contract.TrustedMulticallForwarder",
-  "gasUsed": 2033965,
-  "gasCost": "1282091"
+  "gasUsed": 0,
+  "gasCost": "0"
 }

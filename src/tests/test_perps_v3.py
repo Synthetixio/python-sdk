@@ -165,6 +165,7 @@ def test_perps_settlement_strategy(snx, logger):
     assert settlement_strategy["feed_id"] is not None
     assert settlement_strategy["settlement_reward"] is not None
     assert settlement_strategy["disabled"] is not None
+    assert settlement_strategy["commitment_price_delay"] is not None
 
 
 def test_perps_order(snx, logger):
