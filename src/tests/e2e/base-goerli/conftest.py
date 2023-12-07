@@ -17,7 +17,10 @@ PRIVATE_KEY = os.environ.get("PRIVATE_KEY")
 def snx(pytestconfig):
     # TODO: add allowance checks
     return Synthetix(
-        provider_rpc=RPC, address=ADDRESS, private_key=PRIVATE_KEY, network_id=84531
+        provider_rpc=RPC,
+        address=ADDRESS,
+        private_key=PRIVATE_KEY,
+        network_id=84531,
     )
 
 
