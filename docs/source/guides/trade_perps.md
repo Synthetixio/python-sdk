@@ -123,16 +123,21 @@ After an order is submitted, you can check its status:
 {
     'market_id': 100,
     'account_id': 1,
-    'settlement_time': 1697215535,
+    'commitment_time': 1697215535,
     'size_delta': 0.1,
     'settlement_strategy_id': 1, 
     'acceptable_price': 1533.6071692221237,
+    'settlement_strategy': {
+        'settlement_delay': 15
+        'settlement_window_duration': 60
+    }
     ...
 }
 ```
 
 Note:
-* The `settlement_time` represents the unix timestamp when this order is eligible to be executed.
+* The `commitment_time` represents the unix timestamp when this order is was committed.
+* The `settlement_strategy` contains the parameters defining when the order can be executed, and when it expires.
 * The `size_delta` is set to 0 after the order is executed. If it shows 0, check the position to confirm it was filled.
 * You don't need to specify the market name when checking the order status, because accounts are limited to 1 open order at a time.
 

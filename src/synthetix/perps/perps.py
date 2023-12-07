@@ -29,6 +29,15 @@ class Perps:
         collateral_tx_hash = snx.perps.modify_collateral(amount=1000, market_name='sUSD', submit=True)
         order_tx_hash = snx.perps.commit_order(size=10, market_name='ETH', desired_fill_price=2000, submit=True)
 
+    An instance of this module is available as ``snx.perps``. If you are using a network without
+    perps deployed, the contracts will be unavailable and the methods will raise an error.
+
+    The following contracts are required:
+
+        - PerpsMarketProxy
+        - PerpsAccountProxy
+        - PythERC7412Wrapper
+
     :param Synthetix snx: An instance of the Synthetix class.
     :param Pyth pyth: An instance of the Pyth class.
     :param int | None default_account_id: The default ``account_id`` to use for transactions.
