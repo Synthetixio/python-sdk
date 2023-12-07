@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="synthetix",
-    version="1.0.4",
+    version="0.1.0",
     description="Synthetix protocol SDK",
     long_description="A library containing helpful functions for interacting with the Synthetix protocol",
     author="Synthetix DAO",
