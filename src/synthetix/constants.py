@@ -12,7 +12,6 @@ DEFAULT_GQL_ENDPOINT_PERPS = {
     10: "https://api.thegraph.com/subgraphs/name/kwenta/optimism-perps",
     420: "https://api.thegraph.com/subgraphs/name/kwenta/optimism-goerli-perps",
     84531: "https://subgraph.satsuma-prod.com/{api_key}/synthetix/perps-market-base-testnet/api",
-    8453: "https://subgraph.satsuma-prod.com/{api_key}/synthetix/perps-market-base-testnet/api",
 }
 
 DEFAULT_GQL_ENDPOINT_RATES = {

@@ -1,6 +1,7 @@
 from gql import gql
 
-candles = gql("""
+candles = gql(
+    """
     query(
         $last_id: ID!
         $asset: String!
@@ -30,9 +31,11 @@ candles = gql("""
             aggregatedPrices
         }
     }
-""")
+"""
+)
 
-transfers = gql("""
+transfers = gql(
+    """
     query(
         $last_id: ID!
         $min_timestamp: BigInt = 0
@@ -55,9 +58,11 @@ transfers = gql("""
             txHash
         }
     }
-""")
+"""
+)
 
-transfers_market = gql("""
+transfers_market = gql(
+    """
     query(
         $last_id: ID!
         $market_keys: [Bytes!]
@@ -82,9 +87,11 @@ transfers_market = gql("""
             txHash
         }
     }
-""")
+"""
+)
 
-transfers_account = gql("""
+transfers_account = gql(
+    """
     query(
         $last_id: ID!
         $account: Bytes!
@@ -109,9 +116,11 @@ transfers_account = gql("""
             txHash
         }
     }
-""")
+"""
+)
 
-trades_account = gql("""
+trades_account = gql(
+    """
     query(
         $last_id: ID!
         $account: Bytes!
@@ -148,9 +157,11 @@ trades_account = gql("""
 			fundingAccrued
         }
     }
-""")
+"""
+)
 
-trades_market = gql("""
+trades_market = gql(
+    """
     query(
         $last_id: ID!
         $market_keys: [Bytes!]
@@ -187,9 +198,11 @@ trades_market = gql("""
 			fundingAccrued
         }
     }
-""")
+"""
+)
 
-positions_market = gql("""
+positions_market = gql(
+    """
     query(
         $last_id: ID!
         $market_keys: [Bytes!]
@@ -234,9 +247,11 @@ positions_market = gql("""
 			exitPrice
         }
     }
-""")
+"""
+)
 
-positions_account = gql("""
+positions_account = gql(
+    """
     query(
         $last_id: ID!
         $account: Bytes!
@@ -281,9 +296,11 @@ positions_account = gql("""
 			exitPrice
         }
     }
-""")
+"""
+)
 
-funding_rates = gql("""
+funding_rates = gql(
+    """
     query(
         $last_id: ID!
         $market_keys: [Bytes!]
@@ -309,16 +326,17 @@ funding_rates = gql("""
             asset
         }
     }
-""")
+"""
+)
 
 queries = {
-    'candles': candles,
-    'transfers': transfers,
-    'transfers_account': transfers_account,
-    'transfers_market': transfers_market,
-    'trades_account': trades_account,
-    'trades_market': trades_market,
-    'positions_account': positions_account,
-    'positions_market': positions_market,
-    'funding_rates': funding_rates,
+    "candles": candles,
+    "transfers": transfers,
+    "transfers_account": transfers_account,
+    "transfers_market": transfers_market,
+    "trades_account": trades_account,
+    "trades_market": trades_market,
+    "positions_account": positions_account,
+    "positions_market": positions_market,
+    "funding_rates": funding_rates,
 }

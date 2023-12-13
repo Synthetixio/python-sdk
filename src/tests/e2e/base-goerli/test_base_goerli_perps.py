@@ -69,7 +69,11 @@ def test_open_position(snx, logger, account_id):
     """Test opening a position"""
     # commit order
     commit_tx = snx.perps.commit_order(
-        0.1, market_name="ETH", account_id=account_id, submit=True
+        0.1,
+        market_name="ETH",
+        account_id=account_id,
+        settlement_strategy_id=1,
+        submit=True,
     )
     snx.wait(commit_tx)
 
@@ -90,7 +94,11 @@ def test_close_position(snx, logger, account_id):
 
     # commit order
     commit_tx = snx.perps.commit_order(
-        -size, market_name="ETH", account_id=account_id, submit=True
+        -size,
+        market_name="ETH",
+        account_id=account_id,
+        settlement_strategy_id=1,
+        submit=True,
     )
     snx.wait(commit_tx)
 

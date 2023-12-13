@@ -1,5 +1,5 @@
 config = {
-    'candles': {
+    "candles": {
         "id": "String",
         "synth": "String",
         "open": "BigInt",
@@ -11,7 +11,7 @@ config = {
         "period": "BigInt",
         "aggregatedPrices": "BigInt",
     },
-    'transfers': {
+    "transfers": {
         "id": "String",
         "account": "Address",
         "timestamp": "BigInt",
@@ -20,7 +20,7 @@ config = {
         "market": "String",
         "txHash": "Address",
     },
-    'trades': {
+    "trades": {
         "id": "String",
         "timestamp": "BigInt",
         "account": "Address",
@@ -39,9 +39,9 @@ config = {
         "keeperFeesPaid": "Wei",
         "orderType": "String",
         "trackingCode": "String",
-        "fundingAccrued": "Wei"
+        "fundingAccrued": "Wei",
     },
-    'positions': {
+    "positions": {
         "id": "String",
         "lastTxHash": "Address",
         "openTimestamp": "BigInt",
@@ -70,9 +70,9 @@ config = {
         "entryPrice": "Wei",
         "avgEntryPrice": "Wei",
         "lastPrice": "Wei",
-        "exitPrice": "Wei"
+        "exitPrice": "Wei",
     },
-    'funding_rates': {
+    "funding_rates": {
         "id": "String",
         "timestamp": "BigInt",
         "marketKey": "Bytes",
@@ -80,6 +80,6 @@ config = {
         "market": "String",
         "sequenceLength": "BigInt",
         "fundingRate": "Wei",
-        "funding": "Wei"
-    }
+        "funding": "Wei",
+    },
 }
