@@ -94,7 +94,6 @@ def handle_erc7412_error(snx, error, calls):
             to, data, value = make_fulfillment_request(
                 snx, address, price_update_data, args
             )
-            calls = calls[:-1] + [(to, False, value, data)] + calls[-1:]
         elif update_type == 2:
             # fetch the data from pyth for those feed ids
             price_update_data, _, _ = snx.pyth.get_benchmark_data(feed_id, args[1])
@@ -103,7 +102,6 @@ def handle_erc7412_error(snx, error, calls):
             to, data, value = make_fulfillment_request(
                 snx, address, [price_update_data], args
             )
-            calls = calls[:-1] + [(to, False, value, data)] + calls[-1:]
         else:
             snx.logger.error(f"Unknown update type: {update_type}")
             raise error
