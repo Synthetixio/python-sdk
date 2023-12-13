@@ -33,7 +33,7 @@ def decode_erc7412_error(snx, error):
     output_type_update_type = ["uint8"]
     update_type = decode(output_type_update_type, data)[0]
 
-    if update_type == 1:
+    try:
         output_types_oracle = ["uint8", "uint64", "bytes32[]"]
         update_type, staleness_tolerance, raw_feed_ids = decode(
             output_types_oracle, data
@@ -41,13 +41,20 @@ def decode_erc7412_error(snx, error):
 
         feed_ids = [encode_hex(raw_feed_id) for raw_feed_id in raw_feed_ids]
         return address, feed_ids, (update_type, staleness_tolerance, raw_feed_ids)
+    except:
+        pass
 
-    elif update_type == 2:
+    try:
         output_types_oracle = ["uint8", "uint64", "bytes32"]
         update_type, publish_time, raw_feed_id = decode(output_types_oracle, data)
 
-        feed_id = encode_hex(raw_feed_id)
-        return address, feed_id, (update_type, publish_time, raw_feed_id)
+        feed_ids = [encode_hex(raw_feed_id)]
+        raw_feed_ids = [raw_feed_id]
+        return address, feed_ids, (update_type, publish_time, raw_feed_ids)
+    except:
+        pass
+
+    raise Exception("Error data can not be decoded")
 
 
 def make_fulfillment_request(snx, address, price_update_data, args):
@@ -55,19 +62,11 @@ def make_fulfillment_request(snx, address, price_update_data, args):
         address=address, abi=snx.contracts["PythERC7412Wrapper"]["abi"]
     )
 
-    update_type, _, _ = args
-    if update_type == 1:
-        _, staleness_tolerance, feed_ids = args
-        encoded_args = encode(
-            ["uint8", "uint64", "bytes32[]", "bytes[]"],
-            [update_type, staleness_tolerance, feed_ids, price_update_data],
-        )
-    elif update_type == 2:
-        _, publish_time, feed_id = args
-        encoded_args = encode(
-            ["uint8", "uint64", "bytes32[]", "bytes[]"],
-            [update_type, publish_time, [feed_id], price_update_data],
-        )
+    update_type, publish_time_or_staleness, feed_ids = args
+    encoded_args = encode(
+        ["uint8", "uint64", "bytes32[]", "bytes[]"],
+        [update_type, publish_time_or_staleness, feed_ids, price_update_data],
+    )
 
     # assume 1 wei per price update
     value = len(price_update_data) * 1
@@ -83,12 +82,12 @@ def handle_erc7412_error(snx, error, calls):
         ORACLE_DATA_REQUIRED
     ):
         # decode error data
-        address, feed_id, args = decode_erc7412_error(snx, error.data)
+        address, feed_ids, args = decode_erc7412_error(snx, error.data)
         update_type = args[0]
 
         if update_type == 1:
             # fetch the data from pyth for those feed ids
-            price_update_data = snx.pyth.get_feeds_data(feed_id)
+            price_update_data = snx.pyth.get_feeds_data(feed_ids)
 
             # create a new request
             to, data, value = make_fulfillment_request(
@@ -96,7 +95,7 @@ def handle_erc7412_error(snx, error, calls):
             )
         elif update_type == 2:
             # fetch the data from pyth for those feed ids
-            price_update_data, _, _ = snx.pyth.get_benchmark_data(feed_id, args[1])
+            price_update_data, _, _ = snx.pyth.get_benchmark_data(feed_ids[0], args[1])
 
             # create a new request
             to, data, value = make_fulfillment_request(
@@ -145,7 +144,7 @@ def write_erc7412(snx, contract, function_name, args, tx_params={}, calls=[]):
             return tx_params
         except Exception as e:
             # check if the error is related to oracle data
-            snx.logger.info(f"Simulation failed, decoding the error")
+            snx.logger.info(f"Simulation failed, decoding the error {e}")
 
             # handle the error by appending calls
             calls = handle_erc7412_error(snx, e, calls)
@@ -180,7 +179,7 @@ def call_erc7412(snx, contract, function_name, args, calls=[], block="latest"):
 
         except Exception as e:
             # check if the error is related to oracle data
-            snx.logger.info(f"Simulation failed, decoding the error")
+            snx.logger.info(f"Simulation failed, decoding the error {e}")
 
             # handle the error by appending calls
             calls = handle_erc7412_error(snx, e, calls)
@@ -233,7 +232,7 @@ def multicall_erc7412(
 
         except Exception as e:
             # check if the error is related to oracle data
-            snx.logger.info(f"Simulation failed, decoding the error")
+            snx.logger.info(f"Simulation failed, decoding the error {e}")
 
             # handle the error by appending calls
             calls = handle_erc7412_error(snx, e, calls)
