@@ -1,5 +1,5 @@
 """Module for interacting with Synthetix V3 spot markets."""
-from ..utils import ether_to_wei, wei_to_ether
+from ..utils import ether_to_wei, wei_to_ether, format_ether
 from ..utils.multicall import multicall_erc7412, write_erc7412
 from web3.constants import ADDRESS_ZERO
 from typing import Literal
@@ -45,6 +45,21 @@ class Spot:
         """Create a contract instance for a specified synth"""
         market_id, market_name = self._resolve_market(market_id, market_name)
         return self.markets_by_id[market_id]["contract"]
+
+    def _format_size(
+        self,
+        size: float,
+        market_id: int,
+    ):
+        """Format an order size given a market"""
+        market_id, market_name = self._resolve_market(market_id, None)
+
+        # hard-coding a catch for USDC with 6 decimals
+        if self.snx.network_id == 8453 and market_name == "sUSDC":
+            size_wei = format_ether(size, decimals=6)
+        else:
+            size_wei = format_ether(size)
+        return size_wei
 
     # read
     def get_markets(self):
@@ -414,16 +429,19 @@ class Spot:
 
         if size < 0:
             side = "unwrap"
+
             size_wei = ether_to_wei(-size)
+            received_wei = self._format_size(-size, market_id=market_id)
         else:
             side = "wrap"
-            size_wei = ether_to_wei(size)
+            size_wei = self._format_size(size, market_id=market_id)
+            received_wei = ether_to_wei(size)
 
         # prepare the transaction
         tx_args = [
             market_id,  # marketId
             size_wei,  # amount provided
-            size_wei,  # amount received
+            received_wei,  # amount received
         ]
         tx_params = write_erc7412(self.snx, self.market_proxy, side, tx_args)
 
