@@ -7,21 +7,51 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # constants
-RPC = os.environ.get("NETWORK_84531_RPC")
+RPC = os.environ.get("LOCAL_RPC")
 ADDRESS = os.environ.get("ADDRESS")
 PRIVATE_KEY = os.environ.get("PRIVATE_KEY")
+
+# find an address with a lot of usdc
+USDC_WHALE = "0x20FE51A9229EEf2cF8Ad9E89d91CAb9312cF3b7A"
 
 
 # fixtures
 @pytest.fixture(scope="module")
 def snx(pytestconfig):
-    # TODO: add allowance checks
-    return Synthetix(
+    # set up the snx instance
+    snx = Synthetix(
         provider_rpc=RPC,
         address=ADDRESS,
         private_key=PRIVATE_KEY,
-        network_id=84531,
+        network_id=8453,
     )
+
+    # check usdc balance
+    usdc_contract = snx.contracts["USDC"]["contract"]
+    usdc_balance = usdc_contract.functions.balanceOf(ADDRESS).call()
+    usdc_balance = usdc_balance / 10**6
+
+    # get some usdc
+    if usdc_balance < 10000:
+        transfer_amount = int((10000 - usdc_balance) * 10**6)
+        snx.web3.provider.make_request("anvil_impersonateAccount", [USDC_WHALE])
+
+        tx_params = usdc_contract.functions.transfer(
+            ADDRESS, transfer_amount
+        ).build_transaction(
+            {
+                "from": USDC_WHALE,
+                "nonce": snx.web3.eth.get_transaction_count(USDC_WHALE),
+            }
+        )
+
+        # Send the transaction directly without signing
+        tx_hash = snx.web3.eth.send_transaction(tx_params)
+        receipt = snx.wait(tx_hash)
+        if receipt["status"] != 1:
+            raise Exception("USDC Transfer failed")
+
+    return snx
 
 
 @pytest.fixture(scope="module")

@@ -13,9 +13,26 @@ def load_contracts(snx):
 
     # if true, load cannon contracts and override local contracts
     if snx.cannon_config is not None:
-        deployment_hash = get_deployment_hash(snx)
-        cannon_contracts = fetch_deploy_from_ipfs(snx, deployment_hash)
-        contracts.update(cannon_contracts)
+        # if the keys contain "package", "version", and "preset", then load from cannon
+        if snx.cannon_config.keys() >= {"package", "version", "preset"}:
+            package, version, preset = (
+                snx.cannon_config["package"],
+                snx.cannon_config["version"],
+                snx.cannon_config["preset"],
+            )
+            snx.logger.info(
+                f"Loading cannon contracts for {package}:{version}@{preset}"
+            )
+            deployment_hash = get_deployment_hash(snx)
+            cannon_contracts = fetch_deploy_from_ipfs(snx, deployment_hash)
+            contracts.update(cannon_contracts)
+        elif snx.cannon_config.keys() >= {"ipfs_hash"}:
+            deployment_hash = snx.cannon_config["ipfs_hash"]
+            snx.logger.info(
+                f"Loading cannon contracts at ipfs hash ipfs://{deployment_hash}"
+            )
+            cannon_contracts = fetch_deploy_from_ipfs(snx, deployment_hash)
+            contracts.update(cannon_contracts)
     return contracts
 
 
