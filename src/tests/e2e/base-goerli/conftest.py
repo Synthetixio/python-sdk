@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # constants
-RPC = os.environ.get("PROVIDER_RPC")
+RPC = os.environ.get("NETWORK_84531_RPC")
 ADDRESS = os.environ.get("ADDRESS")
 PRIVATE_KEY = os.environ.get("PRIVATE_KEY")
 

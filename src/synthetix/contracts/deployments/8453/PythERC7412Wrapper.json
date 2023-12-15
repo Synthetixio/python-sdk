@@ -1,0 +1,169 @@
+{
+  "address": "0xEb38e347F24ea04ffA945a475BdD949E0c383A0F",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_pythAddress",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "FeeRequired",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint8",
+          "name": "updateType",
+          "type": "uint8"
+        }
+      ],
+      "name": "NotSupported",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "oracleContract",
+          "type": "address"
+        },
+        {
+          "internalType": "bytes",
+          "name": "oracleQuery",
+          "type": "bytes"
+        }
+      ],
+      "name": "OracleDataRequired",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "OverflowInt256ToUint256",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "OverflowUint256ToInt256",
+      "type": "error"
+    },
+    {
+      "stateMutability": "payable",
+      "type": "fallback"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes",
+          "name": "signedOffchainData",
+          "type": "bytes"
+        }
+      ],
+      "name": "fulfillOracleQuery",
+      "outputs": [],
+      "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "priceId",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint64",
+          "name": "requestedTime",
+          "type": "uint64"
+        }
+      ],
+      "name": "getBenchmarkPrice",
+      "outputs": [
+        {
+          "internalType": "int256",
+          "name": "",
+          "type": "int256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "priceId",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "stalenessTolerance",
+          "type": "uint256"
+        }
+      ],
+      "name": "getLatestPrice",
+      "outputs": [
+        {
+          "internalType": "int256",
+          "name": "",
+          "type": "int256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "oracleId",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "pure",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "pythAddress",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "stateMutability": "payable",
+      "type": "receive"
+    }
+  ],
+  "constructorArgs": [
+    "0x8250f4aF4B972684F7b336503E2D6dFeDeB1487a"
+  ],
+  "linkedLibraries": {},
+  "deployTxnHash": "0x5bc4d91afeda4a21899bb28bd32226be9086bcd7a7c550d2382f17f171bd24ff",
+  "sourceName": "contracts/PythERC7412Wrapper.sol",
+  "contractName": "PythERC7412Wrapper",
+  "deployedOn": "contract.PythERC7412Wrapper",
+  "gasUsed": 1109299,
+  "gasCost": "1500000050"
+}

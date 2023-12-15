@@ -126,7 +126,6 @@ def write_erc7412(snx, contract, function_name, args, tx_params={}, calls=[]):
 
     while True:
         try:
-            snx.logger.info(f"Calls: {calls}")
             # unpack calls into the multicallThrough inputs
             total_value = sum([i[2] for i in calls])
 
