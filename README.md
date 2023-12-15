@@ -1,10 +1,4 @@
-[![GitHub](https://img.shields.io/badge/GitHub-Synthetix%20Python%20SDK-blue?logo=github&style=plastic)](https://github.com/synthetixio/python-sdk)
-
-[![pypi](https://img.shields.io/badge/pypi-Synthetix%20Python%20SDK-blue?logo=pypi&style=plastic)](https://pypi.org/project/synthetix/)
-
-[![Discord](https://img.shields.io/discord/413890591840272394.svg?color=768AD4&label=discord&logo=https%3A%2F%2Fdiscordapp.com%2Fassets%2F8c9701b98ad4372b58f13fd9f65f966e.svg)](https://discord.com/invite/Synthetix)
-
-[![Twitter Follow](https://img.shields.io/twitter/follow/synthetix_io.svg?label=synthetix_io&style=social)](https://twitter.com/synthetix_io)
+[![GitHub](https://img.shields.io/badge/GitHub-Synthetix%20Python%20SDK-blue?logo=github&style=plastic)](https://github.com/synthetixio/python-sdk) [![pypi](https://img.shields.io/badge/pypi-Synthetix%20Python%20SDK-blue?logo=pypi&style=plastic)](https://pypi.org/project/synthetix/) [![Discord](https://img.shields.io/discord/413890591840272394.svg?color=768AD4&label=discord&logo=https%3A%2F%2Fdiscordapp.com%2Fassets%2F8c9701b98ad4372b58f13fd9f65f966e.svg)](https://discord.com/invite/Synthetix) [![Twitter Follow](https://img.shields.io/twitter/follow/synthetix_io.svg?label=synthetix_io&style=social)](https://twitter.com/synthetix_io)
 
 # Synthetix Python SDK
 
