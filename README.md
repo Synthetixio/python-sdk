@@ -1,4 +1,4 @@
-[![GitHub](https://img.shields.io/badge/GitHub-Synthetix%20Python%SDK-blue?logo=github&style=plastic)](https://github.com/synthetixio/python-sdk)
+[![GitHub](https://img.shields.io/badge/GitHub-Synthetix%20Python%20SDK-blue?logo=github&style=plastic)](https://github.com/synthetixio/python-sdk)
 
 [![pypi](https://img.shields.io/badge/pypi-Synthetix%20Python%20SDK-blue?logo=pypi&style=plastic)](https://pypi.org/project/synthetix/)
 
