@@ -46,9 +46,6 @@ class Perps:
     :rtype: Perps
     """
 
-    # TODO: implement asyncio
-    # TODO: add waiting for transaction receipt
-
     def __init__(self, snx, pyth, default_account_id: int = None):
         self.snx = snx
         self.pyth = pyth

@@ -8,7 +8,35 @@ import requests
 
 
 class Spot:
-    """Class for interacting with Synthetix V3 spot markets."""
+    """
+    Class for interacting with Synthetix V3 spot market contracts. Provider methods for
+    wrapping and unwrapping assets, approvals, atomic orders, and async orders.
+
+    Use ``get_`` methods to fetch information about balances, allowances, and markets::
+
+        markets_by_id, markets_by_name = snx.perps.get_markets()
+        balance = snx.spot.get_balance(market_name='sUSD')
+        allowance = snx.spot.get_allowance(snx.spot.market_proxy.address, market_name='sUSD')
+
+    Other methods prepare transactions, and submit them to your RPC::
+
+        wrap_tx_hash = snx.spot.wrap(100, market_name='sUSDC', submit=True)
+        unwrap_tx_hash = snx.spot.wrap(-100, market_name='sUSDC', submit=True)
+        atomic_buy_tx_hash = snx.spot.atomic_order('buy', 100, market_name='sUSDC', submit=True)
+
+    An instance of this module is available as ``snx.spot``. If you are using a network without
+    spot contracts deployed, the contracts will be unavailable and the methods will raise an error.
+
+    The following contracts are required:
+
+        - SpotMarketProxy
+
+    :param Synthetix snx: An instance of the Synthetix class.
+    :param Pyth pyth: An instance of the Pyth class.
+
+    :return: An instance of the Spot class.
+    :rtype: Spot
+    """
 
     def __init__(self, snx, pyth):
         self.snx = snx
@@ -23,6 +51,17 @@ class Spot:
 
     # internals
     def _resolve_market(self, market_id: int, market_name: str):
+        """
+        Look up the market_id and market_name for a market. If only one is provided,
+        the other is resolved. If both are provided, they are checked for consistency.
+
+        :param int | None market_id: The id of the market. If not known, provide ``None``.
+        :param str | None market_name: The name of the market. If not known, provide ``None``.
+
+        :return: The ``market_id`` and ``market_name`` for the market.
+        :rtype: (int, str)
+        """
+
         """Resolve a market_id or market_name to a market_id and market_name"""
         if market_id is None and market_name is None:
             raise ValueError("Must provide a market_id or market_name")
@@ -42,7 +81,17 @@ class Spot:
         return market_id, market_name
 
     def _get_synth_contract(self, market_id: int = None, market_name: str = None):
-        """Create a contract instance for a specified synth"""
+        """
+        Private method to fetch the underlying synth contract for a market. Synths are
+        represented as an ERC20 token, so this is useful to do things like check allowances
+        or transfer tokens. This method requires a ``market_id`` or ``market_name`` to be provided.
+
+        :param int | None market_id: The id of the market.
+        :param str | None market_name: The name of the market.
+
+        :return: A contract object for the underlying synth.
+        :rtype: web3.eth.Contract
+        """
         market_id, market_name = self._resolve_market(market_id, market_name)
         return self.markets_by_id[market_id]["contract"]
 
@@ -51,7 +100,17 @@ class Spot:
         size: float,
         market_id: int,
     ):
-        """Format an order size given a market"""
+        """
+        Format the size of a synth for an order. This is used for synths whose base asset
+        does not use 18 decimals. For example, USDC uses 6 decimals, so we need to handle size
+        differently from other assets.
+
+        :param float size: The size as an ether value (e.g. 100).
+        :param int market_id: The id of the market.
+
+        :return: The formatted size in wei. (e.g. 100 = 100000000000000000000)
+        :rtype: int
+        """
         market_id, market_name = self._resolve_market(market_id, None)
 
         # hard-coding a catch for USDC with 6 decimals
@@ -63,7 +122,21 @@ class Spot:
 
     # read
     def get_markets(self):
-        """Get all spot markets"""
+        """
+        Fetches contracts and metadta about all spot markets on the network. This includes
+        the market id, synth name, contract address, and the underlying synth contract. Each
+        synth is an ERC20 token, so these contracts can be used for transfers and allowances.
+        The metadata is also used to simplify interactions in the SDK by mapping market ids
+        and names to their metadata::
+
+            >>> snx.spot.wrap(100, market_name='sUSDC', submit=True)
+
+        This will look up the market id for the sUSDC market and use that to wrap 100 USDC into
+        sUSDC.
+
+        :return: Market info keyed by ``market_id`` and ``market_name``.
+        :rtype: (dict, dict)
+        """
         # set some reasonable defaults to avoid infinite loops
         MAX_ITER = 4
         ITEMS_PER_ITER = 25
@@ -119,7 +192,18 @@ class Spot:
     def get_balance(
         self, address: str = None, market_id: int = None, market_name: str = None
     ):
-        """Get the balance of a spot synth"""
+        """
+        Get the balance of a spot synth. Provide either a ``market_id`` or ``market_name``
+        to choose the synth.
+
+        :param str | None address: The address to check the balance of. If not provided, the
+            current account will be used.
+        :param int | None market_id: The id of the market.
+        :param str | None market_name: The name of the market.
+
+        :return: The balance of the synth in ether.
+        :rtype: float
+        """
         market_id, market_name = self._resolve_market(market_id, market_name)
 
         if address is None:
