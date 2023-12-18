@@ -88,6 +88,10 @@ class Core:
             tx_hash = self.snx.execute_transaction(tx_params)
             self.logger.info(f"Creating account for {self.snx.address}")
             self.logger.info(f"create_account tx: {tx_hash}")
+
+            # wait for the transaction, then refetch the ids
+            self.snx.wait(tx_hash)
+            self.get_account_ids()
             return tx_hash
         else:
             return tx_params
