@@ -19,17 +19,10 @@ class Core:
             self.account_proxy = snx.contracts["AccountProxy"]["contract"]
 
             try:
-                self.get_account_ids()
+                self.get_account_ids(default_account_id=default_account_id)
             except Exception as e:
                 self.account_ids = []
                 self.logger.warning(f"Failed to fetch core accounts: {e}")
-
-            if default_account_id:
-                self.default_account_id = default_account_id
-            elif len(self.account_ids) > 0:
-                self.default_account_id = self.account_ids[0]
-            else:
-                self.default_account_id = None
 
     # read
     def get_usd_token(self):
@@ -37,7 +30,7 @@ class Core:
         usd_token = call_erc7412(self.snx, self.core_proxy, "getUsdToken", [])
         return self.snx.web3.to_checksum_address(usd_token)
 
-    def get_account_ids(self, address: str = None):
+    def get_account_ids(self, address: str = None, default_account_id: int = None):
         """Get the core account_ids owned by an account"""
         if not address:
             address = self.snx.address
@@ -52,6 +45,12 @@ class Core:
         )
 
         self.account_ids = account_ids
+        if default_account_id:
+            self.default_account_id = default_account_id
+        elif len(self.account_ids) > 0:
+            self.default_account_id = self.account_ids[0]
+        else:
+            self.default_account_id = None
         return account_ids
 
     def get_market_pool(self, market_id: int):
@@ -89,6 +88,10 @@ class Core:
             tx_hash = self.snx.execute_transaction(tx_params)
             self.logger.info(f"Creating account for {self.snx.address}")
             self.logger.info(f"create_account tx: {tx_hash}")
+
+            # wait for the transaction, then refetch the ids
+            self.snx.wait(tx_hash)
+            self.get_account_ids()
             return tx_hash
         else:
             return tx_params
