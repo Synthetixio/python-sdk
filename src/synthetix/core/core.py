@@ -45,7 +45,12 @@ class Core:
         )
 
         self.account_ids = account_ids
-
+        if default_account_id:
+            self.default_account_id = default_account_id
+        elif len(self.account_ids) > 0:
+            self.default_account_id = self.account_ids[0]
+        else:
+            self.default_account_id = None
         return account_ids
 
     def get_market_pool(self, market_id: int):
