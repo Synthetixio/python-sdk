@@ -406,6 +406,113 @@ class Spot:
         else:
             return tx_params
 
+    def atomic_order(
+        self,
+        side: Literal["buy", "sell"],
+        size: int,
+        market_id: int = None,
+        market_name: str = None,
+        submit: bool = False,
+    ):
+        """
+        Execute an atomic order on the spot market.
+
+        Atomically executes a buy or sell order for the given size.
+
+        Amounts are transferred directly, no need to settle later. This function
+        is useful for swapping sUSDC with sUSD on Base Andromeda contracts. The default
+        slippage is set to zero, since sUSDC and sUSD can be swapped 1:1::
+
+            atomic_order("sell", 100, market_name="sUSDC")
+
+        Requires either a ``market_id`` or ``market_name`` to be provided to resolve the market.
+
+        :param Literal["buy", "sell"] side: The side of the order (buy/sell).
+        :param int size: The order size in ether.
+        :param int market_id: The ID of the market.
+        :param str market_name: The name of the market.
+        :param bool submit: Whether to broadcast the transaction.
+
+        :return: The transaction dict if submit=False, otherwise the tx hash.
+        """
+        market_id, market_name = self._resolve_market(market_id, market_name)
+
+        size_wei = ether_to_wei(size)
+
+        # prepare the transaction
+        tx_args = [
+            market_id,  # marketId
+            size_wei,  # amount provided
+            size_wei,  # amount received
+            self.snx.referrer,  # referrer
+        ]
+        tx_params = write_erc7412(self.snx, self.market_proxy, side, tx_args)
+
+        if submit:
+            tx_hash = self.snx.execute_transaction(tx_params)
+            self.logger.info(
+                f"Committing {side} atomic order of size {size_wei} ({size}) to {market_name} (id: {market_id})"
+            )
+            self.logger.info(f"atomic {side} tx: {tx_hash}")
+            return tx_hash
+        else:
+            return tx_params
+
+    def wrap(
+        self,
+        size: int,
+        market_id: int = None,
+        market_name: str = None,
+        submit: bool = False,
+    ):
+        """
+        Wrap an underlying asset into a synth or unwrap back to the asset.
+
+        Wraps an asset into a synth if size > 0, unwraps if size < 0.
+        The default slippage is set to zero, since the synth and asset can be swapped 1:1.::
+
+            wrap(100, market_name="sUSDC")  # wrap 100 USDC into sUSDC
+            wrap(-100, market_name="sUSDC") # wrap 100 USDC into sUSDC
+
+        Requires either a ``market_id`` or ``market_name`` to be provided to resolve the market.
+
+        :param int size: The amount of the asset to wrap/unwrap.
+        :param int market_id: The ID of the market.
+        :param str market_name: The name of the market.
+        :param bool submit: Whether to broadcast the transaction.
+
+        :return: The transaction dict if submit=False, otherwise the tx hash.
+        """
+        market_id, market_name = self._resolve_market(market_id, market_name)
+
+        if size < 0:
+            side = "unwrap"
+
+            size_wei = ether_to_wei(-size)
+            received_wei = self._format_size(-size, market_id=market_id)
+        else:
+            side = "wrap"
+            size_wei = self._format_size(size, market_id=market_id)
+            received_wei = ether_to_wei(size)
+
+        # prepare the transaction
+        tx_args = [
+            market_id,  # marketId
+            size_wei,  # amount provided
+            received_wei,  # amount received
+        ]
+        tx_params = write_erc7412(self.snx, self.market_proxy, side, tx_args)
+
+        if submit:
+            tx_hash = self.snx.execute_transaction(tx_params)
+            self.logger.info(
+                f"{side} of size {size_wei} ({size}) to {market_name} (id: {market_id})"
+            )
+            self.logger.info(f"{side} tx: {tx_hash}")
+            return tx_hash
+        else:
+            return tx_params
+
     def commit_order(
         self,
         side: Literal["buy", "sell"],
@@ -559,113 +666,6 @@ class Spot:
             tx_hash = self.snx.execute_transaction(tx_params)
             self.logger.info(f"Settling order {order['id']}")
             self.logger.info(f"settle tx: {tx_hash}")
-            return tx_hash
-        else:
-            return tx_params
-
-    def atomic_order(
-        self,
-        side: Literal["buy", "sell"],
-        size: int,
-        market_id: int = None,
-        market_name: str = None,
-        submit: bool = False,
-    ):
-        """
-        Execute an atomic order on the spot market.
-
-        Atomically executes a buy or sell order for the given size.
-
-        Amounts are transferred directly, no need to settle later. This function
-        is useful for swapping sUSDC with sUSD on Base Andromeda contracts. The default
-        slippage is set to zero, since sUSDC and sUSD can be swapped 1:1::
-
-            atomic_order("sell", 100, market_name="sUSDC")
-
-        Requires either a ``market_id`` or ``market_name`` to be provided to resolve the market.
-
-        :param Literal["buy", "sell"] side: The side of the order (buy/sell).
-        :param int size: The order size in ether.
-        :param int market_id: The ID of the market.
-        :param str market_name: The name of the market.
-        :param bool submit: Whether to broadcast the transaction.
-
-        :return: The transaction dict if submit=False, otherwise the tx hash.
-        """
-        market_id, market_name = self._resolve_market(market_id, market_name)
-
-        size_wei = ether_to_wei(size)
-
-        # prepare the transaction
-        tx_args = [
-            market_id,  # marketId
-            size_wei,  # amount provided
-            size_wei,  # amount received
-            self.snx.referrer,  # referrer
-        ]
-        tx_params = write_erc7412(self.snx, self.market_proxy, side, tx_args)
-
-        if submit:
-            tx_hash = self.snx.execute_transaction(tx_params)
-            self.logger.info(
-                f"Committing {side} atomic order of size {size_wei} ({size}) to {market_name} (id: {market_id})"
-            )
-            self.logger.info(f"atomic {side} tx: {tx_hash}")
-            return tx_hash
-        else:
-            return tx_params
-
-    def wrap(
-        self,
-        size: int,
-        market_id: int = None,
-        market_name: str = None,
-        submit: bool = False,
-    ):
-        """
-        Wrap an underlying asset into a synth or unwrap back to the asset.
-
-        Wraps an asset into a synth if size > 0, unwraps if size < 0.
-        The default slippage is set to zero, since the synth and asset can be swapped 1:1.::
-
-            wrap(100, market_name="sUSDC")  # wrap 100 USDC into sUSDC
-            wrap(-100, market_name="sUSDC") # wrap 100 USDC into sUSDC
-
-        Requires either a ``market_id`` or ``market_name`` to be provided to resolve the market.
-
-        :param int size: The amount of the asset to wrap/unwrap.
-        :param int market_id: The ID of the market.
-        :param str market_name: The name of the market.
-        :param bool submit: Whether to broadcast the transaction.
-
-        :return: The transaction dict if submit=False, otherwise the tx hash.
-        """
-        market_id, market_name = self._resolve_market(market_id, market_name)
-
-        if size < 0:
-            side = "unwrap"
-
-            size_wei = ether_to_wei(-size)
-            received_wei = self._format_size(-size, market_id=market_id)
-        else:
-            side = "wrap"
-            size_wei = self._format_size(size, market_id=market_id)
-            received_wei = ether_to_wei(size)
-
-        # prepare the transaction
-        tx_args = [
-            market_id,  # marketId
-            size_wei,  # amount provided
-            received_wei,  # amount received
-        ]
-        tx_params = write_erc7412(self.snx, self.market_proxy, side, tx_args)
-
-        if submit:
-            tx_hash = self.snx.execute_transaction(tx_params)
-            self.logger.info(
-                f"{side} of size {size_wei} ({size}) to {market_name} (id: {market_id})"
-            )
-            self.logger.info(f"{side} tx: {tx_hash}")
             return tx_hash
         else:
             return tx_params
