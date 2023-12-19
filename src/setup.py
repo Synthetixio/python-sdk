@@ -4,7 +4,7 @@ setup(
     name="synthetix",
     version="0.1.1",
     description="Synthetix protocol SDK",
-    long_description=open("../README.md").read(),
+    long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
     author="Synthetix DAO",
     packages=find_packages(),
