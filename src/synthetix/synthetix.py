@@ -35,17 +35,17 @@ class Synthetix:
     requires a provider RPC endpoint and a wallet address::
 
             snx = Synthetix(
-                provider_rpc='https://optimism-mainnet.infura.io/v3/...',
-                network_id=10,
+                provider_rpc='https://base-mainnet.infura.io/v3/...',
+                network_id=8453,
                 address='0x12345...'
             )
 
     The class can be initialized with a private key to allow for transactions
-    to be sent::
+    to be signed and sent to your RPC::
 
                 snx = Synthetix(
-                    provider_rpc='https://optimism-mainnet.infura.io/v3/...',
-                    network_id=10,
+                    provider_rpc='https://base-mainnet.infura.io/v3/...',
+                    network_id=8453,
                     address='0x12345...',
                     private_key='0xabcde...'
                 )
@@ -54,7 +54,7 @@ class Synthetix:
         with the smart contracts. This must match the ``network_id``.
     :param str mainnet_rpc: A mainnet RPC endpoint to use for the provider that
         fetches deployments from the Cannon registry.
-    :param str ipfs_gateway: An IPFS gateway to use for fetching deployments.
+    :param str ipfs_gateway: An IPFS gateway to use for fetching deployments from Cannon.
     :param str address: Wallet address to use as a default. If a private key is
         specified, this address will be used to sign transactions.
     :param str private_key: Private key of the provided wallet address. If specified,
@@ -197,7 +197,7 @@ class Synthetix:
             price_service_endpoint = DEFAULT_PRICE_SERVICE_ENDPOINTS[self.network_id]
 
         self.pyth = Pyth(self, price_service_endpoint=price_service_endpoint)
-        self.core = Core(self, self.pyth, core_account_id)
+        self.core = Core(self, core_account_id)
         self.perps = Perps(self, self.pyth, perps_account_id)
         self.spot = Spot(self, self.pyth)
 

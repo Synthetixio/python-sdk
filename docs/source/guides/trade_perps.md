@@ -80,7 +80,7 @@ Before you can make trades, you'll need to deposit collateral into your account.
 
 ```python
 >>> snx.perps.get_collateral_balances()
-{'sUSD': 0.0, 'BTC': 0.0, 'ETH': 0.0, 'LINK': 0.0}
+{'sUSD': 0.0}
 
 >>> snx.get_susd_balance()
 {'balance': 1000.0}
@@ -103,7 +103,7 @@ Check your balance again to confirm the successful deposit:
 
 ```python
 >>> snx.perps.get_collateral_balances()
-{'sUSD': 100.0, 'BTC': 0.0, 'ETH': 0.0, 'LINK': 0.0}
+{'sUSD': 100.0}
 ```
 
 ## Submitting an Order
@@ -128,7 +128,8 @@ After an order is submitted, you can check its status:
     'settlement_strategy_id': 1, 
     'acceptable_price': 1533.6071692221237,
     'settlement_strategy': {
-        'settlement_delay': 15
+        'settlement_delay': 2,
+        'commitment_price_delay': 2,
         'settlement_window_duration': 60
     }
     ...
@@ -138,8 +139,21 @@ After an order is submitted, you can check its status:
 Note:
 * The `commitment_time` represents the unix timestamp when this order is was committed.
 * The `settlement_strategy` contains the parameters defining when the order can be executed, and when it expires.
+* The order can be settled `settlement_delay` seconds after the order is committed.
 * The `size_delta` is set to 0 after the order is executed. If it shows 0, check the position to confirm it was filled.
 * You don't need to specify the market name when checking the order status, because accounts are limited to 1 open order at a time.
+
+## Settling an order
+
+In most cases, you should expect an order to be settled by a keeper, who will call `settleOrder` for you. However, if your orders are expiring you can call the function yourself:
+
+```python
+settle_tx = snx.perps.settle_order(submit=True)
+```
+
+This will print logs as the required price data is fetched in order to settle the order. You can tell an order has settled two ways:
+* The `size_delta` on `snx.perps.get_order()` is reset to 0.
+* The `position_size` on `snx.perps.get_open_positions()` has updated for the market you are trading.
 
 ### Checking Your Position
 

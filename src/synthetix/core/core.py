@@ -6,11 +6,44 @@ import requests
 
 
 class Core:
-    """Class for interacting with Synthetix V3 core contracts."""
+    """
+    Class for interacting with Synthetix V3 core contracts.
 
-    def __init__(self, snx, pyth, default_account_id: int = None):
+    Provides methods for creating accounts, depositing and delegating
+    collateral, minting sUSD, and interacting with liquidity pools.
+
+    Use ``get_`` methods to fetch information about accounts, collateral,
+    and pools::
+
+        account_ids = snx.core.get_account_ids()
+        usd_token = snx.core.get_usd_token()
+        available_collateral = snx.core.get_available_collateral()
+
+    Other methods prepare transactions to create accounts, deposit collateral,
+    mint sUSD, etc. and submit them to the user's RPC::
+
+        create_account_tx = snx.core.create_account(submit=True)
+        deposit_tx = snx.core.deposit(amount=100, token='USDC', submit=True)
+        mint_tx = snx.core.mint_usd(amount=50, submit=True)
+
+    An instance of this module is available as ``snx.core``. If you are using a
+    network without core contracts deployed, the contracts will be unavailable and
+    the methods will raise an error.
+
+    The following contracts are required:
+
+        - CoreProxy
+        - AccountProxy
+
+    :param Synthetix snx: An instance of the Synthetix class
+    :param int default_account_id: The default account ID to use
+
+    :return: An instance of the Core class
+    :rtype: Core
+    """
+
+    def __init__(self, snx, default_account_id: int = None):
         self.snx = snx
-        self.pyth = pyth
         self.logger = snx.logger
 
         # check if perps is deployed on this network
@@ -26,12 +59,24 @@ class Core:
 
     # read
     def get_usd_token(self):
-        """Get the USD token address"""
+        """Get the address of the USD stablecoin token."""
         usd_token = call_erc7412(self.snx, self.core_proxy, "getUsdToken", [])
         return self.snx.web3.to_checksum_address(usd_token)
 
     def get_account_ids(self, address: str = None, default_account_id: int = None):
-        """Get the core account_ids owned by an account"""
+        """
+        Get the core account IDs owned by an address.
+
+        Fetches the account IDs for the given address by checking the balance of
+        the AccountProxy contract, which is an NFT owned by the address.
+        If no address is provided, uses the connected wallet address.
+
+        :param str address: The address to get accounts for. Uses connected address if not provided.
+        :param int default_account_id: The default account ID to set after fetching.
+
+        :return: A list of account IDs owned by the address.
+        :rtype: list
+        """
         if not address:
             address = self.snx.address
 
@@ -53,13 +98,20 @@ class Core:
             self.default_account_id = None
         return account_ids
 
-    def get_market_pool(self, market_id: int):
-        """Get the information for a pool"""
-        pool = self.core_proxy.functions.getMarketPool(market_id).call()
-        return pool
-
     def get_available_collateral(self, token_address: str, account_id: int = None):
-        """Get the available collateral for an account"""
+        """
+        Get the available collateral for an account for a specified collateral type
+        of ``token_address``.
+
+        Fetches the amount of undelegated collateral available for withdrawal
+        for a given token and account.
+
+        :param str token_address: The address of the collateral token.
+        :param int account_id: The ID of the account to check. Uses default if not provided.
+
+        :return: The available collateral as an ether value.
+        :rtype: float
+        """
         if not account_id:
             account_id = self.default_account_id
 
@@ -73,7 +125,20 @@ class Core:
 
     # write
     def create_account(self, account_id: int = None, submit: bool = False):
-        """Create a core account"""
+        """
+        Create a new Synthetix account on the core system.
+
+        This function will mint an account NFT to the connected address. Each account
+        can have separate LP positions.
+
+        :param int account_id: The ID of the new account. If not provided,
+            the next available ID will be used.
+        :param bool submit: If True, immediately submit the transaction to
+            the blockchain. If False, build the transaction but do not submit.
+
+        :return: The transaction hash if submitted, else the unsigned transaction data.
+        :rtype: str | dict
+        """
         if not account_id:
             tx_args = []
         else:
@@ -103,7 +168,20 @@ class Core:
         account_id: int = None,
         submit: bool = False,
     ):
-        """Deposit collateral to a core account"""
+        """
+        Deposit collateral into the specified account. In order to deposit,
+        the ``token_address`` must be enabled as collateral on the core system.
+
+        Deposits an ``amount`` of ``token`` as collateral into the ``account_id``.
+
+        :param int amount: The amount of tokens to deposit as collateral.
+        :param str token: The address of the token to deposit.
+        :param int account_id: The ID of the account to deposit into. Uses default if not provided.
+        :param bool submit: If True, immediately submit the transaction.
+
+        :return: The transaction hash if submitted, else the unsigned transaction.
+        :rtype: str | dict
+        """
         if not account_id:
             account_id = self.default_account_id
 
@@ -131,7 +209,21 @@ class Core:
         account_id: int = None,
         submit: bool = False,
     ):
-        """Deposit collateral to a core account"""
+        """
+        Withdraw collateral from the specified account. In order to withdraw,
+        the account must have undelegated collateral for ``token_address`` and
+        must be past the withdrawal delay.
+
+        Withdraws an `amount` of `token` collateral from the `account_id`.
+
+        :param int amount: The amount of tokens to withdraw from the account.
+        :param str token: The address of the token to withdraw.
+        :param int account_id: The ID of the account to withdraw from. Uses default if not provided.
+        :param bool submit: If True, immediately submit the transaction.
+
+        :return: The transaction hash if submitted, else the unsigned transaction.
+        :rtype: str | dict
+        """
         if not account_id:
             account_id = self.default_account_id
 
@@ -163,7 +255,24 @@ class Core:
         account_id: int = None,
         submit: bool = False,
     ):
-        """Delegate collateral to a pool"""
+        """
+        Delegate collateral for an account to a pool. In order to delegate,
+        the account must have undelegated collateral for ``token_address`` and
+        the pool must be accepting collateral for ``token_address``.
+
+        Delegates an ``amount`` of ``token_address`` collateral to ``pool_id`` with
+        ``leverage`` ratio from ``account_id``.
+
+        :param str token_address: The address of the collateral token to delegate.
+        :param float amount: The amount of collateral to delegate.
+        :param int pool_id: The ID of the pool to delegate to.
+        :param float leverage: The leverage ratio, default 1.
+        :param int account_id: The account ID. Uses default if not provided.
+        :param bool submit: If True, submit the transaction.
+
+        :return: The transaction hash if submitted, else the unsigned transaction
+        :rtype: str | dict
+        """
         if not account_id:
             account_id = self.default_account_id
 
@@ -195,7 +304,22 @@ class Core:
         account_id: int = None,
         submit: bool = False,
     ):
-        """Mint USD against a core account"""
+        """
+        Mint sUSD to a core account. In order to mint, the account must have
+        capacity to mint given the settings of the pool.
+
+        Mints ``amount`` of sUSD against ``token_address`` collateral in ``pool_id``
+        for ``account_id``.
+
+        :param str token_address: The collateral token address.
+        :param float amount: The amount of sUSD to mint.
+        :param int pool_id: The ID of the pool to mint against.
+        :param int account_id: The account ID. Uses default if not provided.
+        :param bool submit: If True, submit the transaction.
+
+        :return: The transaction hash if submitted, else the unsigned transaction
+        :rtype: str | dict
+        """
         if not account_id:
             account_id = self.default_account_id
 
