@@ -2,9 +2,10 @@ from setuptools import setup, find_packages
 
 setup(
     name="synthetix",
-    version="0.1.0",
+    version="0.1.1",
     description="Synthetix protocol SDK",
-    long_description="A library containing helpful functions for interacting with the Synthetix protocol",
+    long_description=open("../README.md").read(),
+    long_description_content_type="text/markdown",
     author="Synthetix DAO",
     packages=find_packages(),
     install_requires=[
