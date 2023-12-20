@@ -198,7 +198,7 @@ def multicall_erc7412(
     these_calls = [
         (
             contract.address,
-            False,
+            True,
             0,
             contract.encodeABI(fn_name=function_name, args=args),
         )
