@@ -47,6 +47,16 @@ def test_modify_collateral(snx, logger, account_id):
     margin_info_start = snx.perps.get_margin_info(account_id)
     susd_balance_start = snx.get_susd_balance()
 
+    # check allowance
+    allowance = snx.spot.get_allowance(
+        snx.perps.market_proxy.address, market_name="sUSD"
+    )
+    if allowance < 100:
+        approve_tx = snx.spot.approve(
+            snx.perps.market_proxy.address, market_name="sUSD", submit=True
+        )
+        snx.wait(approve_tx)
+
     # modify collateral
     modify_tx = snx.perps.modify_collateral(
         100, market_name="sUSD", account_id=account_id, submit=True

@@ -51,6 +51,24 @@ def snx(pytestconfig):
         if receipt["status"] != 1:
             raise Exception("USDC Transfer failed")
 
+        # wrap some USDC
+        approve_tx_1 = snx.approve(
+            usdc_contract.address, snx.spot.market_proxy.address, submit=True
+        )
+        snx.wait(approve_tx_1)
+
+        wrap_tx = snx.spot.wrap(5000, market_name="sUSDC", submit=True)
+        snx.wait(wrap_tx)
+
+        # sell some for sUSD
+        approve_tx_2 = snx.spot.approve(
+            snx.spot.market_proxy.address, market_name="sUSDC", submit=True
+        )
+        snx.wait(approve_tx_2)
+
+        susd_tx = snx.spot.atomic_order("sell", 2500, market_name="sUSDC", submit=True)
+        snx.wait(susd_tx)
+
     return snx
 
 
