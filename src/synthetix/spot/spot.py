@@ -46,8 +46,7 @@ class Spot:
         # check if spot is deployed on this network
         if "SpotMarketProxy" in snx.contracts:
             self.market_proxy = snx.contracts["SpotMarketProxy"]["contract"]
-
-        self.markets_by_id, self.markets_by_name = self.get_markets()
+            self.markets_by_id, self.markets_by_name = self.get_markets()
 
     # internals
     def _resolve_market(self, market_id: int, market_name: str):
