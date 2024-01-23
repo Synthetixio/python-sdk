@@ -25,8 +25,8 @@ Initialize the client using the following code:
 from synthetix import Synthetix
 
 snx = Synthetix(
-    provider_rpc="https://base-goerli.g.alchemy.com/v2/<api key>",
-    network_id=84531,
+    provider_rpc="https://base-sepolia.g.alchemy.com/v2/<api key>",
+    network_id=84532,
     address="<your address>",
     private_key="<your private key>"
 )
@@ -41,8 +41,8 @@ pip install python-dotenv
 Next, create a `.env` file in your project directory and add the following lines:
 
 ```
-PROVIDER_RPC=https://base-goerli.g.alchemy.com/v2/<api key>
-NETWORK=84531
+PROVIDER_RPC=https://base-sepolia.g.alchemy.com/v2/<api key>
+NETWORK=84532
 ADDRESS=<your address>
 PRIVATE_KEY=<your private key>
 ```
