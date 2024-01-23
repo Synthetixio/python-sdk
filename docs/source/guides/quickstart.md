@@ -33,10 +33,16 @@ To use the library, initialize the `Synthetix` object that can be used to intera
 ```python
 from synthetix import Synthetix
 
-# Base Goerli
+# Base Mainnet
 snx = Synthetix(
-    provider_url="https://base-goerli.infura.io/v3/<your-infura-project-id>",
-    network=84531,
+    provider_url="https://base-mainnet.infura.io/v3/<your-infura-project-id>",
+    network=8453,
+)
+
+# Base Sepolia
+snx = Synthetix(
+    provider_url="https://base-sepolia.infura.io/v3/<your-infura-project-id>",
+    network=84532,
 )
 
 # Optimism Mainnet
