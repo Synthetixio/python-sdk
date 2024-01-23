@@ -114,7 +114,7 @@ class Spot:
         market_id, market_name = self._resolve_market(market_id, None)
 
         # hard-coding a catch for USDC with 6 decimals
-        if self.snx.network_id == 8453 and market_name == "sUSDC":
+        if self.snx.network_id in [8453, 84532] and market_name == "sUSDC":
             size_wei = format_ether(size, decimals=6)
         else:
             size_wei = format_ether(size)
