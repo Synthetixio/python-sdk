@@ -10,7 +10,7 @@ load_dotenv()
 # Add a command-line option to pytest to accept network_id
 def pytest_addoption(parser):
     parser.addoption(
-        "--network_id", action="store", help="Network ID for testing", default=84531
+        "--network_id", action="store", help="Network ID for testing", default=84532
     )
 
 
