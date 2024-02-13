@@ -1,4 +1,5 @@
 """Module initializing a connection to the Pyth price service."""
+
 import base64
 import requests
 from .constants import PRICE_FEED_IDS
@@ -117,9 +118,51 @@ class Pyth:
 
             # parse the response
             response_data = response.json()
+            self.snx.logger.info(response_data)
 
             price_update_data = base64.b64decode(response_data["vaa"])
             publish_time = response_data["publishTime"]
+
+            return price_update_data, feed_id, publish_time
+        except Exception as err:
+            print(err)
+            return None
+
+    def get_benchmark_data_v2(self, feed_id: str, publish_time: int):
+        """
+        Fetch benchmark Pyth data for feed id and timestamp. This is the most reliable way to
+        specify the exact feed you want to fetch data for a timestamp in the past. The feed ids can be found
+        in the Pyth price service documentation, or at a price service API. Feed ids are also
+        provided in the revert for ``OracleDataRequired`` errors.
+
+        This functions uses the V2 endpoint to fetch the data.
+
+        Usage::
+
+            >>> snx.pyth.get_benchmark_data_v2('0x12345...', 1621203900)
+            ([b'...'], '0x12345...', 1621203900)
+
+        :param str feed_id: A Pyth feed id
+        :return: Tuple of price update data, feed id, and publish time
+        :rtype: (bytes, str, int) | None
+        """
+        self.snx.logger.info(
+            f"Fetching benchmark data (V2) for {feed_id} at {publish_time}"
+        )
+        url = f"{self._price_service_endpoint}/v2/updates/price/{publish_time}"
+        params = {
+            "ids[]": [feed_id],
+        }
+
+        try:
+            response = requests.get(url, params, timeout=10)
+
+            # parse the response
+            response_data = response.json()
+
+            hex_data = f'0x{response_data[0]["binary"]["data"][0]}'
+            publish_time = response_data[0]["parsed"][0]["price"]["publish_time"]
+            price_update_data = base64.b64decode(hex_data)
 
             return price_update_data, feed_id, publish_time
         except Exception as err:
