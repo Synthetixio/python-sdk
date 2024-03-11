@@ -1,4 +1,5 @@
 """Module for interacting with Synthetix V3 Core."""
+
 from ..utils import ether_to_wei, wei_to_ether
 from ..utils.multicall import call_erc7412, multicall_erc7412, write_erc7412
 import time
@@ -278,6 +279,10 @@ class Core:
 
         amount_wei = ether_to_wei(amount)
         leverage_wei = ether_to_wei(leverage)
+
+        self.logger.info(
+            f"Delegating {amount_wei} {token_address} to pool id {pool_id} for account {account_id}"
+        )
 
         tx_params = write_erc7412(
             self.snx,
