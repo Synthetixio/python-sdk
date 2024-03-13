@@ -1,4 +1,5 @@
 """Module for interacting with Synthetix V3 spot markets."""
+
 from ..utils import ether_to_wei, wei_to_ether, format_ether
 from ..utils.multicall import multicall_erc7412, write_erc7412
 from web3.constants import ADDRESS_ZERO
@@ -146,8 +147,8 @@ class Spot:
         :rtype: (dict, dict)
         """
         # set some reasonable defaults to avoid infinite loops
-        MAX_ITER = 4
-        ITEMS_PER_ITER = 25
+        MAX_ITER = 20
+        ITEMS_PER_ITER = 5
 
         num_iter = 0
         synths = []

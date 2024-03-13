@@ -354,7 +354,7 @@ class Synthetix:
                 tx_data["gas"] = 1500000
 
         if self.is_fireblocks_ipc:
-            tx_token = self.web3.eth.send_raw_transaction(tx_data)
+            tx_token = self.web3.eth.send_transaction(tx_data)
         else:
             signed_txn = self.web3.eth.account.sign_transaction(
                 tx_data, private_key=self.private_key
