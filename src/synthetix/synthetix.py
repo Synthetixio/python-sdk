@@ -507,11 +507,13 @@ class Synthetix:
             tx_args = []
 
         tx_params = self._get_tx_params(value=value_wei)
+        self.logger.info(tx_params)
         tx_params = weth_contract.functions[fn_name](*tx_args).build_transaction(
             tx_params
         )
 
         if submit:
+            self.logger.info(f"Raw tx params: {tx_params}")
             tx_hash = self.execute_transaction(tx_params)
             self.logger.info(f"Wrapping {amount} ETH for {self.address}")
             self.logger.info(f"wrap_eth tx: {tx_hash}")

@@ -62,3 +62,17 @@ def contracts(pytestconfig, snx):
         "usdc": usdc,
         "snx": snx,
     }
+
+
+@pytest.fixture(scope="module")
+def core_account_id(pytestconfig, snx):
+    # create a core account
+    tx_hash = snx.core.create_account(submit=True)
+    tx_receipt = snx.wait(tx_hash)
+
+    assert tx_hash is not None
+    assert tx_receipt is not None
+    assert tx_receipt.status == 1
+
+    account_id = snx.core.account_ids[-1]
+    return account_id

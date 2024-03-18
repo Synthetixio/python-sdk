@@ -1,4 +1,5 @@
 """Module for interacting with Synthetix V3 spot markets."""
+
 from ..utils import ether_to_wei, wei_to_ether, format_ether
 from ..utils.multicall import multicall_erc7412, write_erc7412
 from web3.constants import ADDRESS_ZERO
@@ -113,7 +114,10 @@ class Spot:
         market_id, market_name = self._resolve_market(market_id, None)
 
         # hard-coding a catch for USDC with 6 decimals
-        if self.snx.network_id in [8453, 84532] and market_name == "sUSDC":
+        # also arbitrum sepolia DAI has 6 decimals
+        if (
+            self.snx.network_id in [8453, 84532, 421614] and market_name in "sUSDC"
+        ) or (self.snx.network_id == 421614 and market_name in "sDAI"):
             size_wei = format_ether(size, decimals=6)
         else:
             size_wei = format_ether(size)
