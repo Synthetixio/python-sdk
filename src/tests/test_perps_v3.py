@@ -1,3 +1,4 @@
+import pytest
 from pytest import raises
 from synthetix import Synthetix
 from dotenv import load_dotenv
@@ -234,6 +235,7 @@ def test_perps_commit_order(snx, logger):
     assert order["data"] is not None
 
 
+@pytest.mark.skip(reason="Disabling since we don't know the account is liquidatable")
 def test_perps_liquidate(snx, logger):
     """User can call the static liquidate function"""
     liquidate = snx.perps.liquidate()
@@ -244,6 +246,7 @@ def test_perps_liquidate(snx, logger):
     assert liquidate["data"] is not None
 
 
+@pytest.mark.skip(reason="Disabling since we don't know there is an open order")
 def test_perps_settle_order(snx, logger):
     """User can prepare a settlement transaction using ERC7412"""
     settle = snx.perps.settle_order()
