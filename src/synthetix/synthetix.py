@@ -159,6 +159,7 @@ class Synthetix:
         self.rpc_signers = web3.eth.accounts
         if address == ADDRESS_ZERO and len(self.rpc_signers) > 0:
             self.address = self.rpc_signers[0]
+            self.logger.info(f"Using RPC signer: {self.address}")
         else:
             self.address = address
 
