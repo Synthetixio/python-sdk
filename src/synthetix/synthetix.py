@@ -139,23 +139,28 @@ class Synthetix:
 
         # init account variables
         self.private_key = private_key
-        self.address = address
         self.use_estimate_gas = use_estimate_gas
         self.cannon_config = cannon_config
         self.provider_rpc = provider_rpc
         self.mainnet_rpc = mainnet_rpc
         self.ipfs_gateway = ipfs_gateway
-        self.is_fireblocks_ipc = is_fireblocks_ipc
 
         # init chain provider
         if provider_rpc.startswith("http"):
             web3 = Web3(Web3.HTTPProvider(self.provider_rpc))
         elif provider_rpc.startswith("wss"):
             web3 = Web3(Web3.WebsocketProvider(self.provider_rpc))
-        elif provider_rpc.endswith("ipc") and self.is_fireblocks_ipc:
+        elif provider_rpc.endswith("ipc"):
             web3 = Web3(Web3.IPCProvider(self.provider_rpc))
         else:
             raise Exception("Provider RPC endpoint is invalid")
+
+        # check for RPC signers
+        self.rpc_signers = web3.eth.accounts
+        if address == ADDRESS_ZERO and len(self.rpc_signers) > 0:
+            self.address = self.rpc_signers[0]
+        else:
+            self.address = address
 
         # check if the chain_id matches
         if web3.eth.chain_id != network_id:
@@ -344,7 +349,8 @@ class Synthetix:
         :return: A transaction hash
         :rtype: str
         """
-        if self.private_key is None and not self.is_fireblocks_ipc:
+        is_rpc_signer = tx_data["from"] in self.rpc_signers
+        if not is_rpc_signer and self.private_key is None:
             raise Exception("No private key specified.")
 
         if "gas" not in tx_data:
@@ -353,7 +359,7 @@ class Synthetix:
             else:
                 tx_data["gas"] = 1500000
 
-        if self.is_fireblocks_ipc:
+        if is_rpc_signer:
             tx_token = self.web3.eth.send_transaction(tx_data)
         else:
             signed_txn = self.web3.eth.account.sign_transaction(
