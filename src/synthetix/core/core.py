@@ -1,6 +1,6 @@
 """Module for interacting with Synthetix V3 Core."""
 
-from ..utils import ether_to_wei, wei_to_ether
+from ..utils import ether_to_wei, wei_to_ether, format_ether
 from ..utils.multicall import call_erc7412, multicall_erc7412, write_erc7412
 import time
 import requests
@@ -166,6 +166,7 @@ class Core:
         self,
         token_address: str,
         amount: float,
+        decimals: int = 18,
         account_id: int = None,
         submit: bool = False,
     ):
@@ -186,7 +187,7 @@ class Core:
         if not account_id:
             account_id = self.default_account_id
 
-        amount_wei = ether_to_wei(amount)
+        amount_wei = format_ether(amount, decimals)
 
         tx_params = self.snx._get_tx_params()
         tx_params = self.core_proxy.functions.deposit(
@@ -206,6 +207,7 @@ class Core:
     def withdraw(
         self,
         amount: float,
+        decimals: int = 18,
         token_address: str = None,
         account_id: int = None,
         submit: bool = False,
@@ -231,7 +233,7 @@ class Core:
         if not token_address:
             token_address = self.get_usd_token()
 
-        amount_wei = ether_to_wei(amount)
+        amount_wei = format_ether(amount, decimals)
 
         tx_args = [account_id, token_address, amount_wei]
 

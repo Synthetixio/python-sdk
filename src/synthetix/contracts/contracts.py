@@ -110,27 +110,35 @@ def fetch_deploy_from_ipfs(snx, ipfs_hash):
 
 
 def parse_contracts(snx, deploy_data):
-    contracts = dict()
+    contracts = {"packages": {}}
     recursive_search(deploy_data, contracts)
-    return {
+    parsed_contracts = {
         k: {
-            "address": v["address"],
+            "address": snx.web3.to_checksum_address(v["address"]),
             "abi": v["abi"],
-            "contract": snx.web3.eth.contract(address=v["address"], abi=v["abi"]),
+            "contract": snx.web3.eth.contract(
+                address=snx.web3.to_checksum_address(v["address"]), abi=v["abi"]
+            ),
         }
         for k, v in contracts.items()
+        if k != "packages"
     }
+    parsed_contracts["packages"] = contracts["packages"]
+    return parsed_contracts
 
 
-def recursive_search(deploy_data, contracts):
+def recursive_search(deploy_data, contracts, last_key=None):
     """recursively search through deployment data to extract contracts"""
     if isinstance(deploy_data, dict):
         for key, value in deploy_data.items():
             if key == "contracts" and value:
                 for contract_name, artifacts in value.items():
                     contracts[contract_name] = artifacts
+                    if last_key not in contracts["packages"]:
+                        contracts["packages"][last_key] = {}
+                    contracts["packages"][last_key][contract_name] = artifacts
             if isinstance(value, (dict, list)):
-                recursive_search(value, contracts)
+                recursive_search(value, contracts, last_key=key)
     elif isinstance(deploy_data, list):
         for item in deploy_data:
             recursive_search(item, contracts)
