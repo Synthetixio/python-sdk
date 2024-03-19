@@ -87,7 +87,7 @@ class Synthetix:
         self,
         provider_rpc: str,
         mainnet_rpc: str = "https://eth.llamarpc.com",
-        ipfs_gateway: str = "https://ipfs.io/ipfs",
+        ipfs_gateway: str = "https://ipfs.synthetix.io/ipfs/",
         address: str = ADDRESS_ZERO,
         private_key: str = None,
         network_id: int = None,
