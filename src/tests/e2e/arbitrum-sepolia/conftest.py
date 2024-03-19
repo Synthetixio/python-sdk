@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # constants
-RPC = os.environ.get("NETWORK_421614_RPC")
+RPC = os.environ.get("LOCAL_RPC")
 ADDRESS = os.environ.get("ADDRESS")
 PRIVATE_KEY = os.environ.get("PRIVATE_KEY")
 
@@ -64,7 +64,7 @@ def contracts(pytestconfig, snx):
     }
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def core_account_id(pytestconfig, snx):
     # create a core account
     tx_hash = snx.core.create_account(submit=True)
