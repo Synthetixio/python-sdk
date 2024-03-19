@@ -512,7 +512,6 @@ class Synthetix:
         )
 
         if submit:
-            self.logger.info(f"Raw tx params: {tx_params}")
             tx_hash = self.execute_transaction(tx_params)
             self.logger.info(f"Wrapping {amount} ETH for {self.address}")
             self.logger.info(f"wrap_eth tx: {tx_hash}")
