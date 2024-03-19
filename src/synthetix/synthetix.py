@@ -507,7 +507,6 @@ class Synthetix:
             tx_args = []
 
         tx_params = self._get_tx_params(value=value_wei)
-        self.logger.info(tx_params)
         tx_params = weth_contract.functions[fn_name](*tx_args).build_transaction(
             tx_params
         )
