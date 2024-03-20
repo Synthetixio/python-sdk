@@ -156,8 +156,8 @@ class Synthetix:
 
         # check for RPC signers
         self.rpc_signers = web3.eth.accounts
-        if address == ADDRESS_ZERO and len(self.rpc_signers) > 0:
-            self.address = self.rpc_signers[0]
+        if address == ADDRESS_ZERO and len(web3.eth.accounts) > 0:
+            self.address = web3.eth.accounts[0]
             self.logger.info(f"Using RPC signer: {self.address}")
         else:
             self.address = address
@@ -349,7 +349,7 @@ class Synthetix:
         :return: A transaction hash
         :rtype: str
         """
-        is_rpc_signer = tx_data["from"] in self.rpc_signers
+        is_rpc_signer = tx_data["from"] in self.web3.eth.accounts
         if not is_rpc_signer and self.private_key is None:
             raise Exception("No private key specified.")
 
