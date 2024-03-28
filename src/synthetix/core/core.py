@@ -282,6 +282,10 @@ class Core:
         amount_wei = ether_to_wei(amount)
         leverage_wei = ether_to_wei(leverage)
 
+        self.logger.info(
+            f"Delegating {amount_wei} {token_address} to pool id {pool_id} for account {account_id}"
+        )
+
         tx_params = write_erc7412(
             self.snx,
             self.core_proxy,

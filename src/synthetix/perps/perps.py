@@ -1,4 +1,5 @@
 """Module for interacting with Synthetix Perps V3."""
+
 import time
 import requests
 from eth_utils import decode_hex
@@ -265,6 +266,10 @@ class Perps:
             self.snx, self.market_proxy, "getMarketSummary", inputs, calls=calls
         )
 
+        interest_rate = call_erc7412(
+            self.snx, self.market_proxy, "interestRate", (), calls=calls
+        )
+
         if len(market_ids) != len(markets):
             self.logger.warning("Failed to fetch some market summaries")
 
@@ -287,6 +292,7 @@ class Perps:
                     "skew": wei_to_ether(skew),
                     "size": wei_to_ether(size),
                     "max_open_interest": wei_to_ether(max_open_interest),
+                    "interest_rate": wei_to_ether(interest_rate),
                     "current_funding_rate": wei_to_ether(current_funding_rate),
                     "current_funding_velocity": wei_to_ether(current_funding_velocity),
                     "index_price": wei_to_ether(index_price),
@@ -589,7 +595,7 @@ class Perps:
         else:
             calls = []
 
-        pnl, accrued_funding, position_size = call_erc7412(
+        pnl, accrued_funding, position_size, owed_interest = call_erc7412(
             self.snx,
             self.market_proxy,
             "getOpenPosition",
@@ -600,6 +606,7 @@ class Perps:
             "pnl": wei_to_ether(pnl),
             "accrued_funding": wei_to_ether(accrued_funding),
             "position_size": wei_to_ether(position_size),
+            "owed_interest": wei_to_ether(owed_interest),
         }
 
     def get_open_positions(
@@ -664,9 +671,12 @@ class Perps:
                 "market_name": market_names[ind],
                 "pnl": wei_to_ether(pnl),
                 "accrued_funding": wei_to_ether(accrued_funding),
+                "owed_interest": wei_to_ether(owedInterest),
                 "position_size": wei_to_ether(position_size),
             }
-            for ind, (pnl, accrued_funding, position_size) in enumerate(open_positions)
+            for ind, (pnl, accrued_funding, position_size, owedInterest) in enumerate(
+                open_positions
+            )
             if abs(position_size) > 0
         }
         return open_positions

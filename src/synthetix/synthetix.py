@@ -138,7 +138,6 @@ class Synthetix:
 
         # init account variables
         self.private_key = private_key
-        self.address = address
         self.use_estimate_gas = use_estimate_gas
         self.cannon_config = cannon_config
         self.provider_rpc = provider_rpc
@@ -150,8 +149,18 @@ class Synthetix:
             web3 = Web3(Web3.HTTPProvider(self.provider_rpc))
         elif provider_rpc.startswith("wss"):
             web3 = Web3(Web3.WebsocketProvider(self.provider_rpc))
+        elif provider_rpc.endswith("ipc"):
+            web3 = Web3(Web3.IPCProvider(self.provider_rpc))
         else:
             raise Exception("Provider RPC endpoint is invalid")
+
+        # check for RPC signers
+        self.rpc_signers = web3.eth.accounts
+        if address == ADDRESS_ZERO and len(web3.eth.accounts) > 0:
+            self.address = web3.eth.accounts[0]
+            self.logger.info(f"Using RPC signer: {self.address}")
+        else:
+            self.address = address
 
         # check if the chain_id matches
         if web3.eth.chain_id != network_id:
@@ -340,7 +349,8 @@ class Synthetix:
         :return: A transaction hash
         :rtype: str
         """
-        if self.private_key is None:
+        is_rpc_signer = tx_data["from"] in self.web3.eth.accounts
+        if not is_rpc_signer and self.private_key is None:
             raise Exception("No private key specified.")
 
         if "gas" not in tx_data:
@@ -349,10 +359,13 @@ class Synthetix:
             else:
                 tx_data["gas"] = 1500000
 
-        signed_txn = self.web3.eth.account.sign_transaction(
-            tx_data, private_key=self.private_key
-        )
-        tx_token = self.web3.eth.send_raw_transaction(signed_txn.rawTransaction)
+        if is_rpc_signer:
+            tx_token = self.web3.eth.send_transaction(tx_data)
+        else:
+            signed_txn = self.web3.eth.account.sign_transaction(
+                tx_data, private_key=self.private_key
+            )
+            tx_token = self.web3.eth.send_raw_transaction(signed_txn.rawTransaction)
 
         # increase nonce
         self.nonce += 1

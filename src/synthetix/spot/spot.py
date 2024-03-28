@@ -150,8 +150,8 @@ class Spot:
         :rtype: (dict, dict)
         """
         # set some reasonable defaults to avoid infinite loops
-        MAX_ITER = 4
-        ITEMS_PER_ITER = 25
+        MAX_ITER = 20
+        ITEMS_PER_ITER = 5
 
         num_iter = 0
         synths = []
