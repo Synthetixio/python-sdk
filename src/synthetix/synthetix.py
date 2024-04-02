@@ -1,8 +1,5 @@
-import asyncio
-import time
 import logging
 import warnings
-import web3
 from web3 import Web3
 from web3.constants import ADDRESS_ZERO
 from web3.types import TxParams
@@ -24,7 +21,6 @@ from .core import Core
 from .perps import Perps
 from .spot import Spot
 
-# from .alerts import Alerts
 from .queries import Queries
 
 warnings.filterwarnings("ignore")
