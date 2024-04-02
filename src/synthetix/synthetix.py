@@ -319,27 +319,34 @@ class Synthetix:
         receipt = self.web3.eth.wait_for_transaction_receipt(tx_hash, timeout=timeout)
         return receipt
 
-    def _send_transaction(self, tx_data: dict, reset_nonce: bool = False):
+    def _send_transaction(self, tx_data: dict):
+        """
+        Send a prepared transaction to the connected RPC. If the RPC has a signer for
+        the account in the `from` field, the transaction is sent directly to the RPC.
+        For other addresses, if a private key is provided, the transaction is signed
+        and sent to the RPC. Otherwise, this function will raise an error.
+
+        :param dict tx_data: transaction data
+        :return: A transaction hash
+        :rtype: str
+        """
+
         is_rpc_signer = tx_data["from"] in self.web3.eth.accounts
         if not is_rpc_signer and self.private_key is None:
             raise Exception("No private key specified.")
 
-        if reset_nonce:
-            self.nonce = self.web3.eth.get_transaction_count(self.address)
-            tx_data["nonce"] = self.nonce
-
         if is_rpc_signer:
-            tx_token = self.web3.eth.send_transaction(tx_data)
+            tx_hash = self.web3.eth.send_transaction(tx_data)
         else:
             signed_txn = self.web3.eth.account.sign_transaction(
                 tx_data, private_key=self.private_key
             )
-            tx_token = self.web3.eth.send_raw_transaction(signed_txn.rawTransaction)
+            tx_hash = self.web3.eth.send_raw_transaction(signed_txn.rawTransaction)
 
         self.nonce += 1
-        return tx_token
+        return self.web3.to_hex(tx_hash)
 
-    def execute_transaction(self, tx_data: dict):
+    def execute_transaction(self, tx_data: dict, reset_nonce: bool = False):
         """
         Execute a provided transaction. This function will be signed with the provided
         private key and submitted to the connected RPC. The ``Synthetix`` object tracks
@@ -347,6 +354,8 @@ class Synthetix:
         provided.
 
         :param dict tx_data: transaction data
+        :param bool reset_nonce: call the RPC to get the current nonce, otherwise use the
+            stored nonce
         :return: A transaction hash
         :rtype: str
         """
@@ -358,14 +367,18 @@ class Synthetix:
             else:
                 tx_data["gas"] = 1500000
 
+        if reset_nonce:
+            self.nonce = self.web3.eth.get_transaction_count(self.address)
+            tx_data["nonce"] = self.nonce
+
         try:
-            tx_token = self._send_transaction(tx_data)
-            return self.web3.to_hex(tx_token)
+            self.logger.info(f"Tx data: {tx_data}")
+            tx_hash = self._send_transaction(tx_data)
+            return tx_hash
         except ValueError as e:
             if "nonce too low" in str(e):
                 self.logger.info("Nonce too low, resetting nonce and retrying.")
-                tx_token = self._send_transaction(tx_data, reset_nonce=True)
-                return self.web3.to_hex(tx_token)
+                return self.execute_transaction(tx_data, reset_nonce=True)
             else:
                 raise Exception(f"Transaction failed: {e}")
 
