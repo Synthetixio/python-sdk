@@ -169,10 +169,6 @@ class Synthetix:
             self.multicall,
         ) = self._load_contracts()
 
-        # init alerts
-        # if telegram_token and telegram_channel_name:
-        #     self.alerts = Alerts(telegram_token, telegram_channel_name)
-
         # init queries
         if not gql_endpoint_perps and self.network_id in DEFAULT_GQL_ENDPOINT_PERPS:
             gql_endpoint_perps = DEFAULT_GQL_ENDPOINT_PERPS[self.network_id]
