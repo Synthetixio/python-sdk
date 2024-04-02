@@ -1,8 +1,5 @@
-import asyncio
-import time
 import logging
 import warnings
-import web3
 from web3 import Web3
 from web3.constants import ADDRESS_ZERO
 from web3.types import TxParams
@@ -10,6 +7,7 @@ from .constants import (
     DEFAULT_NETWORK_ID,
     DEFAULT_TRACKING_CODE,
     DEFAULT_SLIPPAGE,
+    DEFAULT_GAS_MULTIPLIER,
     DEFAULT_GQL_ENDPOINT_PERPS,
     DEFAULT_GQL_ENDPOINT_RATES,
     DEFAULT_PRICE_SERVICE_ENDPOINTS,
@@ -23,7 +21,6 @@ from .core import Core
 from .perps import Perps
 from .spot import Spot
 
-# from .alerts import Alerts
 from .queries import Queries
 
 warnings.filterwarnings("ignore")
@@ -93,8 +90,8 @@ class Synthetix:
         network_id: int = None,
         core_account_id: int = None,
         perps_account_id: int = None,
-        tracking_code: str = None,
-        referrer: str = None,
+        tracking_code: str = DEFAULT_TRACKING_CODE,
+        referrer: str = DEFAULT_REFERRER,
         max_price_impact: float = DEFAULT_SLIPPAGE,
         use_estimate_gas: bool = True,
         cannon_config: dict = None,
@@ -102,8 +99,7 @@ class Synthetix:
         gql_endpoint_rates: str = None,
         satsuma_api_key: str = None,
         price_service_endpoint: str = None,
-        telegram_token: str = None,
-        telegram_channel_name: str = None,
+        gas_multiplier: float = DEFAULT_GAS_MULTIPLIER,
     ):
         # set up logging
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -121,21 +117,6 @@ class Synthetix:
         else:
             network_id = int(network_id)
 
-        if tracking_code:
-            self.tracking_code = tracking_code
-        else:
-            self.tracking_code = DEFAULT_TRACKING_CODE
-
-        if referrer:
-            self.referrer = referrer
-        else:
-            self.referrer = DEFAULT_REFERRER
-
-        if max_price_impact:
-            self.max_price_impact = max_price_impact
-        else:
-            self.max_price_impact = DEFAULT_SLIPPAGE
-
         # init account variables
         self.private_key = private_key
         self.use_estimate_gas = use_estimate_gas
@@ -143,6 +124,10 @@ class Synthetix:
         self.provider_rpc = provider_rpc
         self.mainnet_rpc = mainnet_rpc
         self.ipfs_gateway = ipfs_gateway
+        self.gas_multiplier = gas_multiplier
+        self.max_price_impact = max_price_impact
+        self.tracking_code = tracking_code
+        self.referrer = referrer
 
         # init chain provider
         if provider_rpc.startswith("http"):
@@ -179,10 +164,6 @@ class Synthetix:
             self.susd_token,
             self.multicall,
         ) = self._load_contracts()
-
-        # init alerts
-        # if telegram_token and telegram_channel_name:
-        #     self.alerts = Alerts(telegram_token, telegram_channel_name)
 
         # init queries
         if not gql_endpoint_perps and self.network_id in DEFAULT_GQL_ENDPOINT_PERPS:
@@ -338,7 +319,34 @@ class Synthetix:
         receipt = self.web3.eth.wait_for_transaction_receipt(tx_hash, timeout=timeout)
         return receipt
 
-    def execute_transaction(self, tx_data: dict):
+    def _send_transaction(self, tx_data: dict):
+        """
+        Send a prepared transaction to the connected RPC. If the RPC has a signer for
+        the account in the `from` field, the transaction is sent directly to the RPC.
+        For other addresses, if a private key is provided, the transaction is signed
+        and sent to the RPC. Otherwise, this function will raise an error.
+
+        :param dict tx_data: transaction data
+        :return: A transaction hash
+        :rtype: str
+        """
+
+        is_rpc_signer = tx_data["from"] in self.web3.eth.accounts
+        if not is_rpc_signer and self.private_key is None:
+            raise Exception("No private key specified.")
+
+        if is_rpc_signer:
+            tx_hash = self.web3.eth.send_transaction(tx_data)
+        else:
+            signed_txn = self.web3.eth.account.sign_transaction(
+                tx_data, private_key=self.private_key
+            )
+            tx_hash = self.web3.eth.send_raw_transaction(signed_txn.rawTransaction)
+
+        self.nonce += 1
+        return self.web3.to_hex(tx_hash)
+
+    def execute_transaction(self, tx_data: dict, reset_nonce: bool = False):
         """
         Execute a provided transaction. This function will be signed with the provided
         private key and submitted to the connected RPC. The ``Synthetix`` object tracks
@@ -346,31 +354,33 @@ class Synthetix:
         provided.
 
         :param dict tx_data: transaction data
+        :param bool reset_nonce: call the RPC to get the current nonce, otherwise use the
+            stored nonce
         :return: A transaction hash
         :rtype: str
         """
-        is_rpc_signer = tx_data["from"] in self.web3.eth.accounts
-        if not is_rpc_signer and self.private_key is None:
-            raise Exception("No private key specified.")
-
         if "gas" not in tx_data:
             if self.use_estimate_gas:
-                tx_data["gas"] = int(self.web3.eth.estimate_gas(tx_data) * 1.2)
+                tx_data["gas"] = int(
+                    self.web3.eth.estimate_gas(tx_data) * self.gas_multiplier
+                )
             else:
                 tx_data["gas"] = 1500000
 
-        if is_rpc_signer:
-            tx_token = self.web3.eth.send_transaction(tx_data)
-        else:
-            signed_txn = self.web3.eth.account.sign_transaction(
-                tx_data, private_key=self.private_key
-            )
-            tx_token = self.web3.eth.send_raw_transaction(signed_txn.rawTransaction)
+        if reset_nonce:
+            self.nonce = self.web3.eth.get_transaction_count(self.address)
+            tx_data["nonce"] = self.nonce
 
-        # increase nonce
-        self.nonce += 1
-
-        return self.web3.to_hex(tx_token)
+        try:
+            self.logger.info(f"Tx data: {tx_data}")
+            tx_hash = self._send_transaction(tx_data)
+            return tx_hash
+        except ValueError as e:
+            if "nonce too low" in str(e):
+                self.logger.info("Nonce too low, resetting nonce and retrying.")
+                return self.execute_transaction(tx_data, reset_nonce=True)
+            else:
+                raise Exception(f"Transaction failed: {e}")
 
     def get_susd_balance(self, address: str = None, legacy: bool = False) -> dict:
         """
