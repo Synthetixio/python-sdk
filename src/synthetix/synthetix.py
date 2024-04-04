@@ -116,12 +116,6 @@ class Synthetix:
     ):
         self.logger = setup_logging()
 
-        # set default values
-        if network_id is None:
-            network_id = DEFAULT_NETWORK_ID
-        else:
-            network_id = int(network_id)
-
         # init account variables
         self.private_key = private_key
         self.use_estimate_gas = use_estimate_gas
@@ -149,15 +143,32 @@ class Synthetix:
         if address == ADDRESS_ZERO and len(web3.eth.accounts) > 0:
             self.address = web3.eth.accounts[0]
             self.logger.info(f"Using RPC signer: {self.address}")
-        else:
+        elif address == ADDRESS_ZERO and self.private_key is not None:
+            self.address = web3.eth.account.from_key(self.private_key).address
+            self.logger.info(f"Using private key signer: {self.address}")
+        elif address != ADDRESS_ZERO and self.private_key is not None:
+            # check the address matches the private key
+            if web3.eth.account.from_key(self.private_key).address != address:
+                raise Exception("Private key does not match the provided address")
             self.address = address
+        else:
+            # set address without private key
+            self.address = address
+            self.logger.info(f"Using provided address without private key: {self.address}")
 
-        # check if the chain_id matches
-        if web3.eth.chain_id != network_id:
+        # check network id
+        if network_id is None:
+            self.logger.info(
+                f"Setting network_id from RPC chain_id: {web3.eth.chain_id}"
+            )
+            network_id = web3.eth.chain_id
+        elif web3.eth.chain_id != network_id:
             raise Exception("The RPC `chain_id` must match the stored `network_id`")
         else:
-            self.nonce = web3.eth.get_transaction_count(self.address)
+            network_id = int(network_id)
 
+        # set nonce
+        self.nonce = web3.eth.get_transaction_count(self.address)
         self.web3 = web3
         self.network_id = network_id
 
