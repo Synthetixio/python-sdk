@@ -26,6 +26,19 @@ from .queries import Queries
 warnings.filterwarnings("ignore")
 
 
+def setup_logging():
+    # set up logging
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+
+    if not logger.handlers:
+        logger.addHandler(handler)
+    return logger
+
+
 class Synthetix:
     """
     The main class for interacting with the Synthetix protocol. The class
@@ -101,15 +114,7 @@ class Synthetix:
         price_service_endpoint: str = None,
         gas_multiplier: float = DEFAULT_GAS_MULTIPLIER,
     ):
-        # set up logging
-        self.logger = logging.getLogger(self.__class__.__name__)
-        self.logger.setLevel(logging.INFO)
-
-        handler = logging.StreamHandler()
-        handler.setFormatter(
-            logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-        )
-        self.logger.addHandler(handler)
+        self.logger = setup_logging()
 
         # set default values
         if network_id is None:
