@@ -1,5 +1,4 @@
 import os
-import logging
 import pytest
 from synthetix import Synthetix
 from dotenv import load_dotenv
@@ -12,7 +11,7 @@ ADDRESS = os.environ.get("ADDRESS")
 PRIVATE_KEY = os.environ.get("PRIVATE_KEY")
 
 # find an address with a lot of usdc
-USDC_WHALE = "0x20FE51A9229EEf2cF8Ad9E89d91CAb9312cF3b7A"
+USDC_WHALE = "0xD34EA7278e6BD48DefE656bbE263aEf11101469c"
 
 
 # fixtures
@@ -32,8 +31,8 @@ def snx(pytestconfig):
     usdc_balance = usdc_balance / 10**6
 
     # get some usdc
-    if usdc_balance < 10000:
-        transfer_amount = int((10000 - usdc_balance) * 10**6)
+    if usdc_balance < 100000:
+        transfer_amount = int((100000 - usdc_balance) * 10**6)
         snx.web3.provider.make_request("anvil_impersonateAccount", [USDC_WHALE])
 
         tx_params = usdc_contract.functions.transfer(
@@ -57,7 +56,7 @@ def snx(pytestconfig):
         )
         snx.wait(approve_tx_1)
 
-        wrap_tx = snx.spot.wrap(5000, market_name="sUSDC", submit=True)
+        wrap_tx = snx.spot.wrap(75000, market_name="sUSDC", submit=True)
         snx.wait(wrap_tx)
 
         # sell some for sUSD
@@ -66,7 +65,7 @@ def snx(pytestconfig):
         )
         snx.wait(approve_tx_2)
 
-        susd_tx = snx.spot.atomic_order("sell", 2500, market_name="sUSDC", submit=True)
+        susd_tx = snx.spot.atomic_order("sell", 50000, market_name="sUSDC", submit=True)
         snx.wait(susd_tx)
 
     return snx

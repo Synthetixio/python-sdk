@@ -4,8 +4,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # tests
-TEST_COLLATERAL_AMOUNT = 100
-TEST_POSITION_SIZE_USD = 200
+MARKET_NAMES = ["ETH", "BTC", "SOL", "SNX", "WIF", "W"]
+TEST_COLLATERAL_AMOUNT = 1000
+TEST_POSITION_SIZE_USD = 500
 
 
 def test_perps_module(snx, logger):
@@ -81,14 +82,7 @@ def test_modify_collateral(snx, account_id):
 
 @pytest.mark.parametrize(
     "market_name",
-    [
-        "ETH",
-        "BTC",
-        "SOL",
-        "SNX",
-        "WIF",
-        "W",
-    ],
+    MARKET_NAMES,
 )
 def test_account_flow(snx, new_account_id, market_name):
     # check allowance
@@ -162,3 +156,122 @@ def test_account_flow(snx, new_account_id, market_name):
     # check the result
     position = snx.perps.get_open_position(market_name="ETH", account_id=new_account_id)
     assert position["position_size"] == 0
+
+
+@pytest.mark.parametrize(
+    ["market_1", "market_2"],
+    [
+        ("ETH", "BTC"),
+        ("ETH", "SOL"),
+        ("SNX", "WIF"),
+        ("W", "BTC"),
+    ],
+)
+def test_multiple_positions(snx, new_account_id, market_1, market_2):
+    # check allowance
+    allowance = snx.spot.get_allowance(
+        snx.perps.market_proxy.address, market_name="sUSD"
+    )
+    if allowance < TEST_COLLATERAL_AMOUNT:
+        approve_tx = snx.spot.approve(
+            snx.perps.market_proxy.address, market_name="sUSD", submit=True
+        )
+        snx.wait(approve_tx)
+
+    # deposit collateral
+    modify_tx = snx.perps.modify_collateral(
+        TEST_COLLATERAL_AMOUNT,
+        market_name="sUSD",
+        account_id=new_account_id,
+        submit=True,
+    )
+    modify_receipt = snx.wait(modify_tx)
+    assert modify_receipt["status"] == 1
+
+    ## order 1
+    # check the price
+    index_price_1 = snx.perps.markets_by_name[market_1]["index_price"]
+
+    # commit order
+    position_size_1 = TEST_POSITION_SIZE_USD / index_price_1
+    commit_tx_1 = snx.perps.commit_order(
+        position_size_1,
+        market_name=market_1,
+        account_id=new_account_id,
+        settlement_strategy_id=0,
+        submit=True,
+    )
+    commit_receipt_1 = snx.wait(commit_tx_1)
+    assert commit_receipt_1["status"] == 1
+
+    # wait for the order settlement
+    settle_tx_1 = snx.perps.settle_order(account_id=new_account_id, submit=True)
+    settle_receipt_1 = snx.wait(settle_tx_1)
+    assert settle_receipt_1["status"] == 1
+
+    ## order 2
+    # check the price
+    index_price_2 = snx.perps.markets_by_name[market_2]["index_price"]
+
+    # commit order
+    position_size_2 = TEST_POSITION_SIZE_USD / index_price_2
+    commit_tx_2 = snx.perps.commit_order(
+        position_size_2,
+        market_name=market_2,
+        account_id=new_account_id,
+        settlement_strategy_id=0,
+        submit=True,
+    )
+    commit_receipt_2 = snx.wait(commit_tx_2)
+    assert commit_receipt_2["status"] == 1
+
+    # wait for the order settlement
+    settle_tx_2 = snx.perps.settle_order(account_id=new_account_id, submit=True)
+    settle_receipt_2 = snx.wait(settle_tx_2)
+    assert settle_receipt_2["status"] == 1
+
+    # get the position sizes
+    positions = snx.perps.get_open_positions(account_id=new_account_id)
+    size_1 = positions[market_1]["position_size"]
+    size_2 = positions[market_2]["position_size"]
+    assert round(size_1, 12) == round(position_size_1, 12)
+    assert round(size_2, 12) == round(position_size_2, 12)
+
+    ## order 1
+    # commit order
+    commit_tx_3 = snx.perps.commit_order(
+        -size_1,
+        market_name=market_1,
+        account_id=new_account_id,
+        settlement_strategy_id=0,
+        submit=True,
+    )
+    commit_receipt_3 = snx.wait(commit_tx_3)
+    assert commit_receipt_3["status"] == 1
+
+    # wait for the order settlement
+    settle_tx_3 = snx.perps.settle_order(account_id=new_account_id, submit=True)
+    settle_receipt_3 = snx.wait(settle_tx_3)
+    assert settle_receipt_3["status"] == 1
+
+    ## order 2
+    # commit order
+    commit_tx_4 = snx.perps.commit_order(
+        -size_2,
+        market_name=market_2,
+        account_id=new_account_id,
+        settlement_strategy_id=0,
+        submit=True,
+    )
+    commit_receipt_4 = snx.wait(commit_tx_4)
+    assert commit_receipt_4["status"] == 1
+
+    # wait for the order settlement
+    settle_tx_4 = snx.perps.settle_order(account_id=new_account_id, submit=True)
+    settle_receipt_4 = snx.wait(settle_tx_4)
+    assert settle_receipt_4["status"] == 1
+
+    # check the result
+    positions = snx.perps.get_open_positions(account_id=new_account_id)
+    assert market_1 not in positions
+    assert market_2 not in positions
