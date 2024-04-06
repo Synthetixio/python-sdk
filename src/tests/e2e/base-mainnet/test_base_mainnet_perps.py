@@ -1,10 +1,11 @@
-from pytest import raises
-from synthetix import Synthetix
+import pytest
 from dotenv import load_dotenv
 
 load_dotenv()
 
 # tests
+TEST_COLLATERAL_AMOUNT = 100
+TEST_POSITION_SIZE_USD = 200
 
 
 def test_perps_module(snx, logger):
@@ -41,7 +42,7 @@ def test_perps_account_fetch(snx, logger, account_id):
     assert account_id in account_ids
 
 
-def test_modify_collateral(snx, logger, account_id):
+def test_modify_collateral(snx, account_id):
     """Test modify collateral"""
     # get starting collateral and sUSD balance
     margin_info_start = snx.perps.get_margin_info(account_id)
@@ -51,7 +52,7 @@ def test_modify_collateral(snx, logger, account_id):
     allowance = snx.spot.get_allowance(
         snx.perps.market_proxy.address, market_name="sUSD"
     )
-    if allowance < 100:
+    if allowance < TEST_COLLATERAL_AMOUNT:
         approve_tx = snx.spot.approve(
             snx.perps.market_proxy.address, market_name="sUSD", submit=True
         )
@@ -59,7 +60,7 @@ def test_modify_collateral(snx, logger, account_id):
 
     # modify collateral
     modify_tx = snx.perps.modify_collateral(
-        100, market_name="sUSD", account_id=account_id, submit=True
+        TEST_COLLATERAL_AMOUNT, market_name="sUSD", account_id=account_id, submit=True
     )
     snx.wait(modify_tx)
 
@@ -72,49 +73,92 @@ def test_modify_collateral(snx, logger, account_id):
         > margin_info_start["total_collateral_value"]
     )
     assert susd_balance_end["balance"] < susd_balance_start["balance"]
-    assert susd_balance_end["balance"] == susd_balance_start["balance"] - 100
+    assert (
+        susd_balance_end["balance"]
+        == susd_balance_start["balance"] - TEST_COLLATERAL_AMOUNT
+    )
 
 
-def test_open_position(snx, logger, account_id):
-    """Test opening a position"""
+@pytest.mark.parametrize(
+    "market_name",
+    [
+        "ETH",
+        "BTC",
+        "SOL",
+        "SNX",
+        "WIF",
+        "W",
+    ],
+)
+def test_account_flow(snx, new_account_id, market_name):
+    # check allowance
+    allowance = snx.spot.get_allowance(
+        snx.perps.market_proxy.address, market_name="sUSD"
+    )
+    if allowance < TEST_COLLATERAL_AMOUNT:
+        approve_tx = snx.spot.approve(
+            snx.perps.market_proxy.address, market_name="sUSD", submit=True
+        )
+        snx.wait(approve_tx)
+
+    # deposit collateral
+    modify_tx = snx.perps.modify_collateral(
+        TEST_COLLATERAL_AMOUNT,
+        market_name="sUSD",
+        account_id=new_account_id,
+        submit=True,
+    )
+    modify_receipt = snx.wait(modify_tx)
+    assert modify_receipt["status"] == 1
+
+    # check the price
+    index_price = snx.perps.markets_by_name[market_name]["index_price"]
+
     # commit order
+    position_size = TEST_POSITION_SIZE_USD / index_price
     commit_tx = snx.perps.commit_order(
-        0.1,
-        market_name="ETH",
-        account_id=account_id,
+        position_size,
+        market_name=market_name,
+        account_id=new_account_id,
         settlement_strategy_id=0,
         submit=True,
     )
-    snx.wait(commit_tx)
+    commit_receipt = snx.wait(commit_tx)
+    assert commit_receipt["status"] == 1
 
     # wait for the order settlement
-    settle_tx = snx.perps.settle_order(account_id=account_id, submit=True)
-    snx.wait(settle_tx)
+    settle_tx = snx.perps.settle_order(account_id=new_account_id, submit=True)
+    settle_receipt = snx.wait(settle_tx)
+    assert settle_receipt["status"] == 1
 
     # check the result
-    position = snx.perps.get_open_position(market_name="ETH", account_id=account_id)
-    assert position["position_size"] == 0.1
+    position = snx.perps.get_open_position(
+        market_name=market_name, account_id=new_account_id
+    )
+    assert round(position["position_size"], 12) == round(position_size, 12)
 
-
-def test_close_position(snx, logger, account_id):
-    """Test closing a position"""
     # get the position size
-    position = snx.perps.get_open_position(market_name="ETH", account_id=account_id)
+    position = snx.perps.get_open_position(
+        market_name=market_name, account_id=new_account_id
+    )
     size = position["position_size"]
 
     # commit order
-    commit_tx = snx.perps.commit_order(
+    commit_tx_2 = snx.perps.commit_order(
         -size,
-        market_name="ETH",
-        account_id=account_id,
+        market_name=market_name,
+        account_id=new_account_id,
         settlement_strategy_id=0,
         submit=True,
     )
-    snx.wait(commit_tx)
+    commit_receipt_2 = snx.wait(commit_tx_2)
+    assert commit_receipt_2["status"] == 1
 
     # wait for the order settlement
-    snx.perps.settle_order(account_id=account_id, submit=True)
+    settle_tx_2 = snx.perps.settle_order(account_id=new_account_id, submit=True)
+    settle_receipt_2 = snx.wait(settle_tx_2)
+    assert settle_receipt_2["status"] == 1
 
     # check the result
-    position = snx.perps.get_open_position(market_name="ETH", account_id=account_id)
+    position = snx.perps.get_open_position(market_name="ETH", account_id=new_account_id)
     assert position["position_size"] == 0

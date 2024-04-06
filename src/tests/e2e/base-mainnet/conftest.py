@@ -103,6 +103,18 @@ def account_id(pytestconfig, snx, logger):
     close_positions_and_withdraw(snx, final_account_id)
 
 
+@pytest.fixture(scope="function")
+def new_account_id(pytestconfig, snx, logger):
+    logger.info("Creating a new perps account")
+    create_tx = snx.perps.create_account(submit=True)
+    snx.wait(create_tx)
+
+    account_ids = snx.perps.get_account_ids()
+    new_account_id = account_ids[-1]
+
+    yield new_account_id
+
+
 def close_positions_and_withdraw(snx, account_id):
     # close positions
     positions = snx.perps.get_open_positions(account_id=account_id)

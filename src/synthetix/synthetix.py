@@ -154,7 +154,9 @@ class Synthetix:
         else:
             # set address without private key
             self.address = address
-            self.logger.info(f"Using provided address without private key: {self.address}")
+            self.logger.info(
+                f"Using provided address without private key: {self.address}"
+            )
 
         # check network id
         if network_id is None:
@@ -388,12 +390,12 @@ class Synthetix:
             tx_data["nonce"] = self.nonce
 
         try:
-            self.logger.info(f"Tx data: {tx_data}")
+            self.logger.debug(f"Tx data: {tx_data}")
             tx_hash = self._send_transaction(tx_data)
             return tx_hash
         except ValueError as e:
             if "nonce too low" in str(e):
-                self.logger.info("Nonce too low, resetting nonce and retrying.")
+                self.logger.warning("Nonce too low, resetting nonce and retrying.")
                 return self.execute_transaction(tx_data, reset_nonce=True)
             else:
                 raise Exception(f"Transaction failed: {e}")
