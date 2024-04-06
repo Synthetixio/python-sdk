@@ -1,3 +1,4 @@
+import argparse
 import logging
 import warnings
 from web3 import Web3
@@ -26,10 +27,17 @@ from .queries import Queries
 warnings.filterwarnings("ignore")
 
 
-def setup_logging():
+def setup_logging(debug: bool, verbose: int):
+    if debug:
+        log_level = logging.DEBUG
+    elif verbose >= 2:
+        log_level = logging.DEBUG
+    else:
+        log_level = logging.INFO
+
     # set up logging
     logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
+    logger.setLevel(log_level)
 
     handler = logging.StreamHandler()
     handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
@@ -37,6 +45,23 @@ def setup_logging():
     if not logger.handlers:
         logger.addHandler(handler)
     return logger
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Synthetix SDK")
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="count",
+        default=0,
+        help="Increase verbosity (-v, -vv, -vvv)",
+    )
+    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
+
+    # Add this line to handle the case when no arguments are provided
+    args, _ = parser.parse_known_args()
+
+    return args
 
 
 class Synthetix:
@@ -114,7 +139,9 @@ class Synthetix:
         price_service_endpoint: str = None,
         gas_multiplier: float = DEFAULT_GAS_MULTIPLIER,
     ):
-        self.logger = setup_logging()
+        args = parse_args()
+        self.logger = setup_logging(args.debug, args.verbose)
+        # self.logger = setup_logging(True, 0)
 
         # init account variables
         self.private_key = private_key
