@@ -1,5 +1,5 @@
 {
-  "address": "0xF4Df9Dd327Fd30695d478c3c8a2fffAddcdD0d31",
+  "address": "0x764F4C95FDA0D6f8114faC54f6709b1B45f919a1",
   "abi": [
     {
       "inputs": [
@@ -3047,12 +3047,6 @@
           "internalType": "uint256",
           "name": "depositedCollateralValue",
           "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "reportedDebt",
-          "type": "uint256"
         }
       ],
       "name": "MarketUsdDeposited",
@@ -3101,12 +3095,6 @@
           "indexed": false,
           "internalType": "uint256",
           "name": "depositedCollateralValue",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "reportedDebt",
           "type": "uint256"
         }
       ],
