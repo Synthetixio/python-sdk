@@ -901,11 +901,9 @@ class Perps:
         )
 
         # check if order is ready to be settled
-        self.logger.info(f"settlement time: {settlement_time}")
-        self.logger.info(f"current time: {time.time()}")
         if settlement_time > time.time():
             duration = settlement_time - time.time()
-            self.logger.info(f"Waiting {duration} seconds until order can be settled")
+            self.logger.info(f"Waiting {round(duration, 4)} seconds to settle order")
             time.sleep(duration)
         else:
             # TODO: check if expired

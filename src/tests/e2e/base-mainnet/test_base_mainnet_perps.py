@@ -28,9 +28,10 @@ def test_perps_markets(snx, logger):
     assert markets_by_id is not None
     assert markets_by_name is not None
 
-    required_keys = ["ETH", "BTC"]
-    for key in required_keys:
-        assert key in markets_by_name, f"Key {key} is missing in markets_by_name"
+    for market in MARKET_NAMES:
+        assert (
+            market in markets_by_name
+        ), f"Market {market} is missing in markets_by_name"
 
 
 def test_perps_account_fetch(snx, logger, account_id):
