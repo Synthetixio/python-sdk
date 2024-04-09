@@ -1,5 +1,5 @@
 {
-  "address": "0xE6C5f05C415126E6b81FCc3619f65Db2fCAd58D0",
+  "address": "0xf53Ca60F031FAf0E347D44FbaA4870da68250c8d",
   "abi": [
     {
       "inputs": [
@@ -1389,6 +1389,30 @@
           "internalType": "uint128",
           "name": "accountId",
           "type": "uint128"
+        },
+        {
+          "internalType": "uint128",
+          "name": "marketId",
+          "type": "uint128"
+        }
+      ],
+      "name": "getOpenPositionSize",
+      "outputs": [
+        {
+          "internalType": "int128",
+          "name": "positionSize",
+          "type": "int128"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint128",
+          "name": "accountId",
+          "type": "uint128"
         }
       ],
       "name": "getRequiredMargins",
@@ -2182,6 +2206,30 @@
       "inputs": [
         {
           "internalType": "uint128",
+          "name": "marketId",
+          "type": "uint128"
+        },
+        {
+          "internalType": "uint128",
+          "name": "settlementStrategyId",
+          "type": "uint128"
+        }
+      ],
+      "name": "getSettlementRewardCost",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint128",
           "name": "accountId",
           "type": "uint128"
         },
@@ -2903,6 +2951,43 @@
         },
         {
           "indexed": false,
+          "internalType": "int256",
+          "name": "availableMargin",
+          "type": "int256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "requiredMaintenanceMargin",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "liquidationReward",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "flagReward",
+          "type": "uint256"
+        }
+      ],
+      "name": "AccountFlaggedForLiquidation",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint128",
+          "name": "accountId",
+          "type": "uint128"
+        },
+        {
+          "indexed": false,
           "internalType": "uint256",
           "name": "reward",
           "type": "uint256"
@@ -3240,6 +3325,19 @@
           "internalType": "uint256",
           "name": "maxMarketSize",
           "type": "uint256"
+        }
+      ],
+      "name": "MaxMarketSizeSet",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint128",
+          "name": "marketId",
+          "type": "uint128"
         },
         {
           "indexed": false,
@@ -3248,7 +3346,7 @@
           "type": "uint256"
         }
       ],
-      "name": "MaxMarketSizesSet",
+      "name": "MaxMarketValueSet",
       "type": "event"
     },
     {
@@ -3600,13 +3698,27 @@
           "type": "uint128"
         }
       ],
-      "name": "getMaxMarketSizes",
+      "name": "getMaxMarketSize",
       "outputs": [
         {
           "internalType": "uint256",
           "name": "maxMarketSize",
           "type": "uint256"
-        },
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint128",
+          "name": "marketId",
+          "type": "uint128"
+        }
+      ],
+      "name": "getMaxMarketValue",
+      "outputs": [
         {
           "internalType": "uint256",
           "name": "maxMarketValue",
@@ -3853,6 +3965,19 @@
           "internalType": "uint256",
           "name": "maxMarketSize",
           "type": "uint256"
+        }
+      ],
+      "name": "setMaxMarketSize",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint128",
+          "name": "marketId",
+          "type": "uint128"
         },
         {
           "internalType": "uint256",
@@ -3860,7 +3985,7 @@
           "type": "uint256"
         }
       ],
-      "name": "setMaxMarketSizes",
+      "name": "setMaxMarketValue",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"

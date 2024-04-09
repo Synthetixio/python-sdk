@@ -1,5 +1,5 @@
 {
-  "address": "0xA4fE63F8ea9657990eA8E05Ebfa5C19a7D4d7337",
+  "address": "0xaD2fE7cd224c58871f541DAE01202F93928FEF72",
   "abi": [
     {
       "inputs": [
@@ -584,6 +584,54 @@
           "internalType": "address",
           "name": "marketOwner",
           "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint128",
+          "name": "synthMarketId",
+          "type": "uint128"
+        }
+      ],
+      "name": "getNominatedMarketOwner",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "marketOwner",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint128",
+          "name": "synthMarketId",
+          "type": "uint128"
+        }
+      ],
+      "name": "getPriceData",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "buyFeedId",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "sellFeedId",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "strictPriceStalenessTolerance",
+          "type": "uint256"
         }
       ],
       "stateMutability": "view",
@@ -1296,6 +1344,25 @@
         }
       ],
       "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint128",
+          "name": "marketId",
+          "type": "uint128"
+        }
+      ],
+      "name": "getMarketSkew",
+      "outputs": [
+        {
+          "internalType": "int256",
+          "name": "marketSkew",
+          "type": "int256"
+        }
+      ],
+      "stateMutability": "view",
       "type": "function"
     },
     {
@@ -2867,6 +2934,30 @@
           "internalType": "uint128",
           "name": "marketId",
           "type": "uint128"
+        }
+      ],
+      "name": "getWrapper",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "wrapCollateralType",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "maxWrappableAmount",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint128",
+          "name": "marketId",
+          "type": "uint128"
         },
         {
           "internalType": "address",
@@ -3848,5 +3939,6 @@
   "contractName": "",
   "deployedOn": "invoke.upgradeSpotMarketProxy",
   "gasUsed": 0,
-  "gasCost": "0"
+  "gasCost": "0",
+  "highlight": true
 }

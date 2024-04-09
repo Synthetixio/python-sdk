@@ -1,5 +1,5 @@
 {
-  "address": "0x69980C3296416820623b3e3b30703A74e2320bC8",
+  "address": "0xc43708f8987Df3f3681801e5e640667D86Ce3C30",
   "abi": [
     {
       "type": "constructor",
@@ -381,11 +381,11 @@
     "0"
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0xb5c336c0978bf00ca0b676958c6bd4708669ec6c38a068a3af9a65ce58692546",
+  "deployTxnHash": "0x0cc8970d5bc56b2196fd8bc2008fe8c2c1bf3d23ba0b4d818dc85df201914141",
   "sourceName": "src/MintableToken.sol",
   "contractName": "MintableToken",
   "deployedOn": "contract.MintableToken",
   "highlight": true,
-  "gasUsed": 774833,
-  "gasCost": "1500000254"
+  "gasUsed": 774845,
+  "gasCost": "1000291"
 }
