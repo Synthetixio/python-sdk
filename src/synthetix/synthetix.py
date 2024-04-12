@@ -143,6 +143,9 @@ class Synthetix:
         if address == ADDRESS_ZERO and len(web3.eth.accounts) > 0:
             self.address = web3.eth.accounts[0]
             self.logger.info(f"Using RPC signer: {self.address}")
+        elif address in web3.eth.accounts:
+            self.address = address
+            self.logger.info(f"Using RPC signer: {self.address}")
         elif address == ADDRESS_ZERO and self.private_key is not None:
             self.address = web3.eth.account.from_key(self.private_key).address
             self.logger.info(f"Using private key signer: {self.address}")
@@ -154,7 +157,9 @@ class Synthetix:
         else:
             # set address without private key
             self.address = address
-            self.logger.info(f"Using provided address without private key: {self.address}")
+            self.logger.info(
+                f"Using provided address without private key: {self.address}"
+            )
 
         # check network id
         if network_id is None:
