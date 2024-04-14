@@ -139,11 +139,16 @@ class Synthetix:
             raise Exception("Provider RPC endpoint is invalid")
 
         # check for RPC signers
-        self.rpc_signers = web3.eth.accounts
-        if address == ADDRESS_ZERO and len(web3.eth.accounts) > 0:
-            self.address = web3.eth.accounts[0]
+        try:
+            self.rpc_signers = web3.eth.accounts
+        except Exception as e:
+            self.logger.error(f"Error getting RPC signers: {e}")
+            self.rpc_signers = []
+
+        if address == ADDRESS_ZERO and len(self.rpc_signers) > 0:
+            self.address = self.rpc_signers[0]
             self.logger.info(f"Using RPC signer: {self.address}")
-        elif address in web3.eth.accounts:
+        elif address in self.rpc_signers:
             self.address = address
             self.logger.info(f"Using RPC signer: {self.address}")
         elif address == ADDRESS_ZERO and self.private_key is not None:
