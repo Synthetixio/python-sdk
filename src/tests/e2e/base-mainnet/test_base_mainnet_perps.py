@@ -24,7 +24,7 @@ def test_perps_markets(snx):
     markets_by_id, markets_by_name = snx.perps.get_markets()
 
     snx.logger.info(f"Markets by id: {markets_by_id}")
-    logger.info(f"Markets by name: {markets_by_name}")
+    snx.logger.info(f"Markets by name: {markets_by_name}")
 
     assert markets_by_id is not None
     assert markets_by_name is not None
