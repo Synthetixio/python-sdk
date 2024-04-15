@@ -9,19 +9,19 @@ load_dotenv()
 TEST_AMOUNT = 100
 
 
-def test_spot_module(snx, logger):
+def test_spot_module(snx):
     """The instance has a spot module"""
     assert snx.spot is not None
     assert snx.spot.market_proxy is not None
 
 
-def test_spot_markets(snx, logger):
+def test_spot_markets(snx):
     """The instance has an sUSDC market"""
     assert "sUSDC" in snx.spot.markets_by_name
     assert snx.spot.markets_by_name["sUSDC"]["contract"] is not None
 
 
-def test_spot_wrap(snx, logger):
+def test_spot_wrap(snx):
     """The instance can wrap USDC for sUSDC"""
     usdc = snx.contracts["MintableToken"]["contract"]
 
@@ -57,7 +57,7 @@ def test_spot_wrap(snx, logger):
     assert new_synth_balance == synth_balance + TEST_AMOUNT
 
 
-def test_spot_unwrap(snx, logger):
+def test_spot_unwrap(snx):
     """The instance can unwrap sUSDC for USDC"""
     usdc = snx.contracts["MintableToken"]["contract"]
     susdc = snx.spot.markets_by_name["sUSDC"]["contract"]
@@ -95,7 +95,7 @@ def test_spot_unwrap(snx, logger):
     assert new_synth_balance == synth_balance - TEST_AMOUNT
 
 
-def test_spot_atomic_sell(snx, logger):
+def test_spot_atomic_sell(snx):
     """The instance can wrap USDC for sUSDC and sell for sUSD"""
     usdc = snx.contracts["MintableToken"]["contract"]
     susdc = snx.spot.markets_by_name["sUSDC"]["contract"]
@@ -147,7 +147,7 @@ def test_spot_atomic_sell(snx, logger):
     assert new_susdc_balance == susdc_balance
 
 
-def test_spot_atomic_buy(snx, logger):
+def test_spot_atomic_buy(snx):
     """The instance can buy sUSDC for sUSD"""
     susd = snx.spot.markets_by_name["sUSD"]["contract"]
 

@@ -16,7 +16,7 @@ USDC_WHALE = "0xD34EA7278e6BD48DefE656bbE263aEf11101469c"
 
 # fixtures
 @pytest.fixture(scope="module")
-def snx(pytestconfig):
+def snx():
     # set up the snx instance
     snx = Synthetix(
         provider_rpc=RPC,
@@ -72,7 +72,7 @@ def snx(pytestconfig):
 
 
 @pytest.fixture(scope="module")
-def account_id(pytestconfig, snx, logger):
+def account_id(snx):
     # check if an account exists
     account_ids = snx.perps.get_account_ids()
 
@@ -82,14 +82,14 @@ def account_id(pytestconfig, snx, logger):
         positions = snx.perps.get_open_positions(account_id=account_id)
 
         if margin_info["total_collateral_value"] == 0 and len(positions) == 0:
-            logger.info(f"Account {account_id} is empty")
+            snx.logger.info(f"Account {account_id} is empty")
             final_account_id = account_id
             break
         else:
-            logger.info(f"Account {account_id} has margin")
+            snx.logger.info(f"Account {account_id} has margin")
 
     if final_account_id is None:
-        logger.info("Creating a new perps account")
+        snx.logger.info("Creating a new perps account")
 
         create_tx = snx.perps.create_account(submit=True)
         snx.wait(create_tx)
@@ -103,8 +103,8 @@ def account_id(pytestconfig, snx, logger):
 
 
 @pytest.fixture(scope="function")
-def new_account_id(pytestconfig, snx, logger):
-    logger.info("Creating a new perps account")
+def new_account_id(snx):
+    snx.logger.info("Creating a new perps account")
     create_tx = snx.perps.create_account(submit=True)
     snx.wait(create_tx)
 

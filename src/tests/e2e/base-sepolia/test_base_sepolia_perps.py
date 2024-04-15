@@ -1,15 +1,35 @@
 import pytest
+import math
 from dotenv import load_dotenv
 
 load_dotenv()
 
 # tests
-MARKET_NAMES = ["ETH", "BTC", "SOL", "SNX", "WIF", "W"]
+MARKET_NAMES = [
+    "ETH",
+    "BTC",
+    "SOL",
+    "SNX",
+    "WIF",
+    "W",
+    "ARB",
+    "AVAX",
+    "BNB",
+    "BONK",
+    "DOGE",
+    "ENA",
+    "FTM",
+    "MATIC",
+    "OP",
+    "ORDI",
+    "PEPE",
+    "RUNE",
+]
 TEST_COLLATERAL_AMOUNT = 100
 TEST_POSITION_SIZE_USD = 50
 
 
-def test_perps_module(snx, logger):
+def test_perps_module(snx):
     """The instance has a perps module"""
     assert snx.perps is not None
     assert snx.perps.market_proxy is not None
@@ -19,11 +39,11 @@ def test_perps_module(snx, logger):
     assert snx.perps.markets_by_name is not None
 
 
-def test_perps_markets(snx, logger):
+def test_perps_markets(snx):
     markets_by_id, markets_by_name = snx.perps.get_markets()
 
-    logger.info(f"Markets by id: {markets_by_id}")
-    logger.info(f"Markets by name: {markets_by_name}")
+    snx.logger.info(f"Markets by id: {markets_by_id}")
+    snx.logger.info(f"Markets by name: {markets_by_name}")
 
     assert markets_by_id is not None
     assert markets_by_name is not None
@@ -34,10 +54,10 @@ def test_perps_markets(snx, logger):
         ), f"Market {market} is missing in markets_by_name"
 
 
-def test_perps_account_fetch(snx, logger, account_id):
+def test_perps_account_fetch(snx, account_id):
     """The instance can fetch account ids"""
     account_ids = snx.perps.get_account_ids()
-    logger.info(
+    snx.logger.info(
         f"Address: {snx.address} - accounts: {len(account_ids)} - account_ids: {account_ids}"
     )
     assert len(account_ids) > 0
@@ -157,3 +177,18 @@ def test_account_flow(snx, new_account_id, market_name):
     # check the result
     position = snx.perps.get_open_position(market_name="ETH", account_id=new_account_id)
     assert position["position_size"] == 0
+
+    # check the margin and withdraw
+    margin_info = snx.perps.get_margin_info(new_account_id)
+    snx.logger.info(f"Margin info: {margin_info}")
+    withdrawable_margin = margin_info["withdrawable_margin"]
+    withdrawable_margin = math.floor(withdrawable_margin * 1e8) / 1e8
+
+    modify_tx_2 = snx.perps.modify_collateral(
+        -withdrawable_margin,
+        market_name="sUSD",
+        account_id=new_account_id,
+        submit=True,
+    )
+    modify_receipt_2 = snx.wait(modify_tx_2)
+    assert modify_receipt_2["status"] == 1

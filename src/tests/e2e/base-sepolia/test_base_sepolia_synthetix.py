@@ -6,7 +6,7 @@ load_dotenv()
 # tests
 
 
-def test_snx(snx, logger):
+def test_snx(snx):
     """The instance has a Synthetix instance"""
     assert snx is not None
 
