@@ -21,10 +21,8 @@ def snx():
     # set up the snx instance
     snx = Synthetix(
         provider_rpc=RPC,
-        address=ADDRESS,
-        private_key=PRIVATE_KEY,
         referrer=KWENTA_REFERRER,
-        network_id=8453,
+        is_fork=True,
     )
 
     # check usdc balance
@@ -38,7 +36,7 @@ def snx():
         snx.web3.provider.make_request("anvil_impersonateAccount", [USDC_WHALE])
 
         tx_params = usdc_contract.functions.transfer(
-            ADDRESS, transfer_amount
+            snx.address, transfer_amount
         ).build_transaction(
             {
                 "from": USDC_WHALE,

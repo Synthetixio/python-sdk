@@ -123,7 +123,7 @@ def test_account_flow(snx, new_account_id, market_name):
     assert commit_receipt["status"] == 1
 
     # wait for the order settlement
-    settle_tx = snx.perps.settle_order(account_id=new_account_id, submit=True)
+    settle_tx = snx.perps.settle_order(account_id=new_account_id, max_tx_tries=5, submit=True)
     settle_receipt = snx.wait(settle_tx)
     assert settle_receipt["status"] == 1
 
@@ -151,7 +151,7 @@ def test_account_flow(snx, new_account_id, market_name):
     assert commit_receipt_2["status"] == 1
 
     # wait for the order settlement
-    settle_tx_2 = snx.perps.settle_order(account_id=new_account_id, submit=True)
+    settle_tx_2 = snx.perps.settle_order(account_id=new_account_id, max_tx_tries=5, submit=True)
     settle_receipt_2 = snx.wait(settle_tx_2)
     assert settle_receipt_2["status"] == 1
 
@@ -222,7 +222,7 @@ def test_multiple_positions(snx, new_account_id, market_1, market_2):
     assert commit_receipt_1["status"] == 1
 
     # wait for the order settlement
-    settle_tx_1 = snx.perps.settle_order(account_id=new_account_id, submit=True)
+    settle_tx_1 = snx.perps.settle_order(account_id=new_account_id, max_tx_tries=5, submit=True)
     settle_receipt_1 = snx.wait(settle_tx_1)
     assert settle_receipt_1["status"] == 1
 
@@ -243,7 +243,7 @@ def test_multiple_positions(snx, new_account_id, market_1, market_2):
     assert commit_receipt_2["status"] == 1
 
     # wait for the order settlement
-    settle_tx_2 = snx.perps.settle_order(account_id=new_account_id, submit=True)
+    settle_tx_2 = snx.perps.settle_order(account_id=new_account_id, max_tx_tries=5, submit=True)
     settle_receipt_2 = snx.wait(settle_tx_2)
     assert settle_receipt_2["status"] == 1
 
@@ -267,7 +267,7 @@ def test_multiple_positions(snx, new_account_id, market_1, market_2):
     assert commit_receipt_3["status"] == 1
 
     # wait for the order settlement
-    settle_tx_3 = snx.perps.settle_order(account_id=new_account_id, submit=True)
+    settle_tx_3 = snx.perps.settle_order(account_id=new_account_id, max_tx_tries=5, submit=True)
     settle_receipt_3 = snx.wait(settle_tx_3)
     assert settle_receipt_3["status"] == 1
 
@@ -284,7 +284,7 @@ def test_multiple_positions(snx, new_account_id, market_1, market_2):
     assert commit_receipt_4["status"] == 1
 
     # wait for the order settlement
-    settle_tx_4 = snx.perps.settle_order(account_id=new_account_id, submit=True)
+    settle_tx_4 = snx.perps.settle_order(account_id=new_account_id, max_tx_tries=5, submit=True)
     settle_receipt_4 = snx.wait(settle_tx_4)
     assert settle_receipt_4["status"] == 1
 

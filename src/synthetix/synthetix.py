@@ -138,10 +138,10 @@ class Synthetix:
         satsuma_api_key: str = None,
         price_service_endpoint: str = None,
         gas_multiplier: float = DEFAULT_GAS_MULTIPLIER,
+        is_fork: bool = False,
     ):
         args = parse_args()
         self.logger = setup_logging(args.debug, args.verbose)
-        # self.logger = setup_logging(True, 0)
 
         # init account variables
         self.private_key = private_key
@@ -154,6 +154,7 @@ class Synthetix:
         self.max_price_impact = max_price_impact
         self.tracking_code = tracking_code
         self.referrer = referrer
+        self.is_fork = is_fork
 
         # init chain provider
         if provider_rpc.startswith("http"):
