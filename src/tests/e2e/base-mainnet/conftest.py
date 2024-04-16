@@ -12,6 +12,7 @@ PRIVATE_KEY = os.environ.get("PRIVATE_KEY")
 
 # find an address with a lot of usdc
 USDC_WHALE = "0xD34EA7278e6BD48DefE656bbE263aEf11101469c"
+KWENTA_REFERRER = "0x3bD64247d879AF879e6f6e62F81430186391Bdb8"
 
 
 # fixtures
@@ -22,6 +23,7 @@ def snx():
         provider_rpc=RPC,
         address=ADDRESS,
         private_key=PRIVATE_KEY,
+        referrer=KWENTA_REFERRER,
         network_id=8453,
     )
 
