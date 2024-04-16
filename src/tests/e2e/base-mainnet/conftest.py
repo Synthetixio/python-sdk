@@ -1,5 +1,4 @@
 import os
-import logging
 import pytest
 from synthetix import Synthetix
 from dotenv import load_dotenv
@@ -12,17 +11,19 @@ ADDRESS = os.environ.get("ADDRESS")
 PRIVATE_KEY = os.environ.get("PRIVATE_KEY")
 
 # find an address with a lot of usdc
-USDC_WHALE = "0x20FE51A9229EEf2cF8Ad9E89d91CAb9312cF3b7A"
+USDC_WHALE = "0xD34EA7278e6BD48DefE656bbE263aEf11101469c"
+KWENTA_REFERRER = "0x3bD64247d879AF879e6f6e62F81430186391Bdb8"
 
 
 # fixtures
 @pytest.fixture(scope="module")
-def snx(pytestconfig):
+def snx():
     # set up the snx instance
     snx = Synthetix(
         provider_rpc=RPC,
         address=ADDRESS,
         private_key=PRIVATE_KEY,
+        referrer=KWENTA_REFERRER,
         network_id=8453,
     )
 
@@ -32,8 +33,8 @@ def snx(pytestconfig):
     usdc_balance = usdc_balance / 10**6
 
     # get some usdc
-    if usdc_balance < 10000:
-        transfer_amount = int((10000 - usdc_balance) * 10**6)
+    if usdc_balance < 100000:
+        transfer_amount = int((100000 - usdc_balance) * 10**6)
         snx.web3.provider.make_request("anvil_impersonateAccount", [USDC_WHALE])
 
         tx_params = usdc_contract.functions.transfer(
@@ -57,7 +58,7 @@ def snx(pytestconfig):
         )
         snx.wait(approve_tx_1)
 
-        wrap_tx = snx.spot.wrap(5000, market_name="sUSDC", submit=True)
+        wrap_tx = snx.spot.wrap(75000, market_name="sUSDC", submit=True)
         snx.wait(wrap_tx)
 
         # sell some for sUSD
@@ -66,14 +67,14 @@ def snx(pytestconfig):
         )
         snx.wait(approve_tx_2)
 
-        susd_tx = snx.spot.atomic_order("sell", 2500, market_name="sUSDC", submit=True)
+        susd_tx = snx.spot.atomic_order("sell", 50000, market_name="sUSDC", submit=True)
         snx.wait(susd_tx)
 
     return snx
 
 
 @pytest.fixture(scope="module")
-def account_id(pytestconfig, snx, logger):
+def account_id(snx):
     # check if an account exists
     account_ids = snx.perps.get_account_ids()
 
@@ -83,14 +84,14 @@ def account_id(pytestconfig, snx, logger):
         positions = snx.perps.get_open_positions(account_id=account_id)
 
         if margin_info["total_collateral_value"] == 0 and len(positions) == 0:
-            logger.info(f"Account {account_id} is empty")
+            snx.logger.info(f"Account {account_id} is empty")
             final_account_id = account_id
             break
         else:
-            logger.info(f"Account {account_id} has margin")
+            snx.logger.info(f"Account {account_id} has margin")
 
     if final_account_id is None:
-        logger.info("Creating a new perps account")
+        snx.logger.info("Creating a new perps account")
 
         create_tx = snx.perps.create_account(submit=True)
         snx.wait(create_tx)
@@ -101,6 +102,18 @@ def account_id(pytestconfig, snx, logger):
     yield final_account_id
 
     close_positions_and_withdraw(snx, final_account_id)
+
+
+@pytest.fixture(scope="function")
+def new_account_id(snx):
+    snx.logger.info("Creating a new perps account")
+    create_tx = snx.perps.create_account(submit=True)
+    snx.wait(create_tx)
+
+    account_ids = snx.perps.get_account_ids()
+    new_account_id = account_ids[-1]
+
+    yield new_account_id
 
 
 def close_positions_and_withdraw(snx, account_id):

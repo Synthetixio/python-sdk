@@ -1,7 +1,7 @@
 import os
-import logging
 import pytest
 from synthetix import Synthetix
+from synthetix.utils import wei_to_ether, format_ether
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -11,21 +11,40 @@ RPC = os.environ.get("NETWORK_84532_RPC")
 ADDRESS = os.environ.get("ADDRESS")
 PRIVATE_KEY = os.environ.get("PRIVATE_KEY")
 
+# find an address with a lot of usdc
+USDC_WHALE = "0xD34EA7278e6BD48DefE656bbE263aEf11101469c"
+
 
 # fixtures
 @pytest.fixture(scope="module")
 def snx(pytestconfig):
-    # TODO: add allowance checks
-    return Synthetix(
+    # set up the snx instance
+    snx = Synthetix(
         provider_rpc=RPC,
         address=ADDRESS,
         private_key=PRIVATE_KEY,
         network_id=84532,
     )
 
+    # check balances
+    usdc_contract = snx.contracts["MintableToken"]["contract"]
+    usdc_balance = usdc_contract.functions.balanceOf(ADDRESS).call()
+    usdc_balance = format_ether(usdc_balance, 6)
+
+    susdc_contract = snx.spot._get_synth_contract(market_name="sUSDC")
+    susdc_balance = susdc_contract.functions.balanceOf(ADDRESS).call()
+    susdc_balance = wei_to_ether(susdc_balance)
+
+    susd_contract = snx.spot._get_synth_contract(market_name="sUSD")
+    susd_balance = susd_contract.functions.balanceOf(ADDRESS).call()
+    susd_balance = wei_to_ether(susd_balance)
+
+    assert usdc_balance > 10000
+    return snx
+
 
 @pytest.fixture(scope="module")
-def account_id(pytestconfig, snx, logger):
+def account_id(pytestconfig, snx):
     # check if an account exists
     account_ids = snx.perps.get_account_ids()
 
@@ -34,15 +53,15 @@ def account_id(pytestconfig, snx, logger):
         margin_info = snx.perps.get_margin_info(account_id)
         positions = snx.perps.get_open_positions(account_id=account_id)
 
-        if margin_info["total_collateral_value"] == 0 and len(positions) == 0:
-            logger.info(f"Account {account_id} is empty")
+        if margin_info["total_collateral_value"] <= 0.0001 and len(positions) == 0:
+            snx.logger.info(f"Account {account_id} is empty")
             final_account_id = account_id
             break
         else:
-            logger.info(f"Account {account_id} has margin")
+            snx.logger.info(f"Account {account_id} has margin")
 
     if final_account_id is None:
-        logger.info("Creating a new perps account")
+        snx.logger.info("Creating a new perps account")
 
         create_tx = snx.perps.create_account(submit=True)
         snx.wait(create_tx)
@@ -53,6 +72,18 @@ def account_id(pytestconfig, snx, logger):
     yield final_account_id
 
     close_positions_and_withdraw(snx, final_account_id)
+
+
+@pytest.fixture(scope="function")
+def new_account_id(pytestconfig, snx, logger):
+    logger.info("Creating a new perps account")
+    create_tx = snx.perps.create_account(submit=True)
+    snx.wait(create_tx)
+
+    account_ids = snx.perps.get_account_ids()
+    new_account_id = account_ids[-1]
+
+    yield new_account_id
 
 
 def close_positions_and_withdraw(snx, account_id):

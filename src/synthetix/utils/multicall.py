@@ -108,7 +108,7 @@ def handle_erc7412_error(snx, error, calls):
         calls = [(to, True, value, data)] + calls
         return calls
     else:
-        snx.logger.error(f"Error is not related to oracle data: {error}")
+        snx.logger.debug(f"Error is not related to oracle data")
         raise error
 
 
@@ -139,11 +139,11 @@ def write_erc7412(snx, contract, function_name, args, tx_params={}, calls=[]):
             tx_params["gas"] = int(tx_params["gas"] * 1.15)
 
             # if simulation passes, return the transaction
-            snx.logger.info(f"Simulated tx successfully: {tx_params}")
+            snx.logger.debug(f"Simulated tx successfully: {tx_params}")
             return tx_params
         except Exception as e:
             # check if the error is related to oracle data
-            snx.logger.info(f"Simulation failed, decoding the error {e}")
+            snx.logger.debug(f"Simulation failed, decoding the error {e}")
 
             # handle the error by appending calls
             calls = handle_erc7412_error(snx, e, calls)
@@ -178,7 +178,7 @@ def call_erc7412(snx, contract, function_name, args, calls=[], block="latest"):
 
         except Exception as e:
             # check if the error is related to oracle data
-            snx.logger.info(f"Simulation failed, decoding the error {e}")
+            snx.logger.debug(f"Simulation failed, decoding the error {e}")
 
             # handle the error by appending calls
             calls = handle_erc7412_error(snx, e, calls)
@@ -231,7 +231,7 @@ def multicall_erc7412(
 
         except Exception as e:
             # check if the error is related to oracle data
-            snx.logger.info(f"Simulation failed, decoding the error {e}")
+            snx.logger.debug(f"Simulation failed, decoding the error {e}")
 
             # handle the error by appending calls
             calls = handle_erc7412_error(snx, e, calls)

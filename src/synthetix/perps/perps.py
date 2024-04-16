@@ -901,11 +901,9 @@ class Perps:
         )
 
         # check if order is ready to be settled
-        self.logger.info(f"settlement time: {settlement_time}")
-        self.logger.info(f"current time: {time.time()}")
         if settlement_time > time.time():
             duration = settlement_time - time.time()
-            self.logger.info(f"Waiting {duration} seconds until order can be settled")
+            self.logger.info(f"Waiting {round(duration, 4)} seconds to settle order")
             time.sleep(duration)
         else:
             # TODO: check if expired
@@ -931,7 +929,7 @@ class Perps:
                     calls=calls,
                 )
             except Exception as e:
-                self.logger.info(f"settleOrder error: {e}")
+                self.logger.error(f"settleOrder error: {e}")
                 tx_tries += 1
                 time.sleep(tx_delay)
                 continue
@@ -942,7 +940,7 @@ class Perps:
                 self.logger.info(f"settle tx: {tx_hash}")
 
                 receipt = self.snx.wait(tx_hash)
-                self.logger.info(f"settle receipt: {receipt}")
+                self.logger.debug(f"settle receipt: {receipt}")
 
                 # check the order
                 order = self.get_order(account_id)
