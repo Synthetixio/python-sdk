@@ -139,9 +139,17 @@ class Synthetix:
             raise Exception("Provider RPC endpoint is invalid")
 
         # check for RPC signers
-        self.rpc_signers = web3.eth.accounts
-        if address == ADDRESS_ZERO and len(web3.eth.accounts) > 0:
-            self.address = web3.eth.accounts[0]
+        try:
+            self.rpc_signers = web3.eth.accounts
+        except Exception as e:
+            self.logger.error(f"Error getting RPC signers: {e}")
+            self.rpc_signers = []
+
+        if address == ADDRESS_ZERO and len(self.rpc_signers) > 0:
+            self.address = self.rpc_signers[0]
+            self.logger.info(f"Using RPC signer: {self.address}")
+        elif address in self.rpc_signers:
+            self.address = address
             self.logger.info(f"Using RPC signer: {self.address}")
         elif address == ADDRESS_ZERO and self.private_key is not None:
             self.address = web3.eth.account.from_key(self.private_key).address
@@ -151,10 +159,13 @@ class Synthetix:
             if web3.eth.account.from_key(self.private_key).address != address:
                 raise Exception("Private key does not match the provided address")
             self.address = address
+            self.logger.info(f"Using private key signer: {self.address}")
         else:
             # set address without private key
             self.address = address
-            self.logger.info(f"Using provided address without private key: {self.address}")
+            self.logger.info(
+                f"Using provided address without private key: {self.address}"
+            )
 
         # check network id
         if network_id is None:
