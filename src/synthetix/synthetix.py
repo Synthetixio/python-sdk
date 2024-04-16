@@ -159,6 +159,7 @@ class Synthetix:
             if web3.eth.account.from_key(self.private_key).address != address:
                 raise Exception("Private key does not match the provided address")
             self.address = address
+            self.logger.info(f"Using private key signer: {self.address}")
         else:
             # set address without private key
             self.address = address
