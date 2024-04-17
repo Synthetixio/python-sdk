@@ -1,9 +1,7 @@
 """Module for interacting with Synthetix Perps V3."""
 
 import time
-import requests
 from eth_utils import decode_hex
-from eth_abi import encode
 from ..utils import ether_to_wei, wei_to_ether
 from ..utils.multicall import (
     call_erc7412,
