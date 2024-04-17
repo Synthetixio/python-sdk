@@ -2,8 +2,6 @@
 
 from ..utils import ether_to_wei, wei_to_ether, format_ether
 from ..utils.multicall import call_erc7412, multicall_erc7412, write_erc7412
-import time
-import requests
 
 
 class Core:
@@ -145,10 +143,7 @@ class Core:
         else:
             tx_args = [account_id]
 
-        tx_params = self.snx._get_tx_params()
-        tx_params = self.core_proxy.functions.createAccount(*tx_args).build_transaction(
-            tx_params
-        )
+        tx_params = write_erc7412(self.snx, self.core_proxy, "createAccount", tx_args)
 
         if submit:
             tx_hash = self.snx.execute_transaction(tx_params)
@@ -189,10 +184,16 @@ class Core:
 
         amount_wei = format_ether(amount, decimals)
 
-        tx_params = self.snx._get_tx_params()
-        tx_params = self.core_proxy.functions.deposit(
-            account_id, token_address, amount_wei
-        ).build_transaction(tx_params)
+        tx_params = write_erc7412(
+            self.snx,
+            self.core_proxy,
+            "deposit",
+            (
+                account_id,
+                token_address,
+                amount_wei,
+            ),
+        )
 
         if submit:
             tx_hash = self.snx.execute_transaction(tx_params)

@@ -5,6 +5,7 @@ from web3._utils.abi import get_abi_output_types
 from eth_abi import decode, encode
 from eth_utils import encode_hex, decode_hex
 
+
 # constants
 ORACLE_DATA_REQUIRED = "0xcf2cabdf"
 
@@ -117,8 +118,21 @@ def handle_erc7412_error(snx, error, calls):
         calls = [(to, True, value, data)] + calls
         return calls
     else:
-        snx.logger.debug(f"Error is not related to oracle data")
-        raise error
+        try:
+            is_nonce_error = (
+                "message" in error.args[0]
+                and "nonce" in error.args[0]["message"].lower()
+            )
+        except:
+            is_nonce_error = False
+
+        if is_nonce_error:
+            snx.logger.debug(f"Error is related to nonce, resetting nonce")
+            snx.nonce = snx.web3.eth.get_transaction_count(snx.address)
+            return calls
+        else:
+            snx.logger.debug(f"Error is not related to oracle data")
+            raise error
 
 
 def write_erc7412(snx, contract, function_name, args, tx_params={}, calls=[]):
