@@ -243,8 +243,8 @@ class Synthetix:
 
         self.pyth = Pyth(self, price_service_endpoint=price_service_endpoint)
         self.core = Core(self, core_account_id)
-        self.perps = Perps(self, self.pyth, perps_account_id)
-        self.spot = Spot(self, self.pyth)
+        self.spot = Spot(self)
+        self.perps = Perps(self, perps_account_id)
 
     def _load_contracts(self):
         """

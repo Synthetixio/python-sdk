@@ -1,4 +1,5 @@
 """Module initializing a connection to the Pyth price service."""
+
 import base64
 import requests
 from .constants import PRICE_FEED_IDS
@@ -34,8 +35,10 @@ class Pyth:
         self.snx = snx
 
         self._price_service_endpoint = price_service_endpoint
-        if snx.network_id in PRICE_FEED_IDS:
-            self.price_feed_ids = PRICE_FEED_IDS[snx.network_id]
+        self.price_feed_ids = {}
+        # if snx.network_id in PRICE_FEED_IDS:
+        #     # otherwise use constants
+        #     self.price_feed_ids = PRICE_FEED_IDS[snx.network_id]
 
     def get_tokens_data(self, tokens: [str]):
         """
@@ -114,6 +117,7 @@ class Pyth:
 
         try:
             response = requests.get(url, params, timeout=10)
+            self.snx.logger.info(f"Response: {response.json()}")
 
             # parse the response
             response_data = response.json()
@@ -123,7 +127,7 @@ class Pyth:
 
             return price_update_data, feed_id, publish_time
         except Exception as err:
-            print(err)
+            self.snx.logger.error(f"Error fetching benchmark data: {err}")
             return None
 
     def get_latest_data(self, feed_id: str):

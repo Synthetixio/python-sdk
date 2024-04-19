@@ -39,9 +39,8 @@ class Spot:
     :rtype: Spot
     """
 
-    def __init__(self, snx, pyth):
+    def __init__(self, snx):
         self.snx = snx
-        self.pyth = pyth
         self.logger = snx.logger
 
         # check if spot is deployed on this network
