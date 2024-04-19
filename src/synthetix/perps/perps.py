@@ -679,6 +679,44 @@ class Perps:
         }
         return open_positions
 
+    def get_quote(
+        self,
+        size: float,
+        price: float = None,
+        market_id: int = None,
+        market_name: str = None,
+    ):
+        """
+        Get a quote for the size of an order in a specified market. The quote includes
+        the provided price and the fill price of the order after price impact. Provide
+        either a ``market_id`` or ``market_name``.
+
+        :param float size: The size of the order to quote.
+        :param float | None price: The price to quote the order at. If not provided, the current market price is used.
+        :param int | None market_id: The id of the market to quote the order for.
+        :param str | None market_name: The name of the market to quote the order for.
+        :return: A dictionary with the quote information.
+        :rtype: dict
+        """
+        market_id, market_name = self._resolve_market(market_id, market_name)
+
+        if not price:
+            price = self.markets_by_id[market_id]["index_price"]
+        else:
+            price = price
+
+        fill_price = call_erc7412(
+            self.snx,
+            self.market_proxy,
+            "fillPrice",
+            (market_id, ether_to_wei(size), ether_to_wei(price)),
+        )
+
+        return {
+            "index_price": price,
+            "fill_price": wei_to_ether(fill_price),
+        }
+
     # transactions
     def create_account(self, account_id: int = None, submit: bool = False):
         """
