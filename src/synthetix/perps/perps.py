@@ -701,18 +701,24 @@ class Perps:
         market_id, market_name = self._resolve_market(market_id, market_name)
 
         if not price:
+            oracle_call = self._prepare_oracle_call([market_name])
+            calls = [oracle_call]
+
+            # TODO: get the pyth price for the call above
             price = self.markets_by_id[market_id]["index_price"]
         else:
-            price = price
+            price = ether_to_wei(price)
 
         fill_price = call_erc7412(
             self.snx,
             self.market_proxy,
             "fillPrice",
-            (market_id, ether_to_wei(size), ether_to_wei(price)),
+            (market_id, ether_to_wei(size), price),
+            calls=calls,
         )
 
         return {
+            "order_size": size,
             "index_price": price,
             "fill_price": wei_to_ether(fill_price),
         }
