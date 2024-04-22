@@ -65,7 +65,7 @@ class Perps:
                 self.get_markets()
 
                 # update pyth price feed ids
-                self.snx.pyth.price_feed_ids.update(
+                self.snx.pyth.update_price_feed_ids(
                     {
                         market: self.markets_by_name[market]["feed_id"]
                         for market in self.markets_by_name
