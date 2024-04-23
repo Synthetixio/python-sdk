@@ -53,6 +53,11 @@ def test_perps_markets(snx):
             market in markets_by_name
         ), f"Market {market} is missing in markets_by_name"
 
+        market_summary = markets_by_name[market]
+        assert market_summary["market_name"] == market
+        assert market_summary["index_price"] > 0
+        assert market_summary["feed_id"] is not None
+
 
 def test_perps_account_fetch(snx, logger, account_id):
     """The instance can fetch account ids"""
@@ -179,7 +184,9 @@ def test_account_flow(snx, new_account_id, market_name):
     assert settle_receipt_2["status"] == 1
 
     # check the result
-    position = snx.perps.get_open_position(market_name="ETH", account_id=new_account_id)
+    position = snx.perps.get_open_position(
+        market_name=market_name, account_id=new_account_id
+    )
     assert position["position_size"] == 0
 
     # check the margin and withdraw
