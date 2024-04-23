@@ -389,9 +389,6 @@ class Spot:
         # fix the amount
         amount = 2**256 - 1 if amount is None else ether_to_wei(amount)
         synth_contract = self._get_synth_contract(market_id)
-        tx_data = synth_contract.encodeABI(
-            fn_name="approve", args=[target_address, amount]
-        )
 
         tx_params = self.snx._get_tx_params()
         tx_params = synth_contract.functions.approve(

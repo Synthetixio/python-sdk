@@ -140,16 +140,19 @@ class Perps:
             for market_name in filtered_market_names
         ]
         if not self.snx.is_fork:
-            price_update_data = self.snx.pyth.get_feeds_data(feed_ids)
+            pyth_data = self.snx.pyth.get_price_from_ids(feed_ids)
+            price_update_data = pyth_data["price_update_data"]
         else:
             # if it's a fork, get the price for the latest block
             # this avoids providing "future" prices to the contract on a fork
             block = self.snx.web3.eth.get_block("latest")
-            pyth_responses = [
-                self.snx.pyth.get_benchmark_data(feed_id, block.timestamp)
-                for feed_id in feed_ids
-            ]
-            price_update_data = [response[0] for response in pyth_responses if response]
+
+            # set a manual 60 second staleness
+            publish_time = block.timestamp - 60
+            pyth_data = self.snx.pyth.get_price_from_ids(
+                feed_ids, publish_time=publish_time
+            )
+            price_update_data = pyth_data["price_update_data"]
 
         # prepare the oracle call
         raw_feed_ids = [decode_hex(feed_id) for feed_id in feed_ids]
@@ -164,7 +167,9 @@ class Perps:
         value = len(market_names)
 
         # return this formatted for the multicall
-        return [(to, True, value, data)]
+        # set `require_success` to False in this case, since sometimes
+        # the wrapper will return an error if the price has already been updated
+        return [(to, False, value, data)]
 
     # read
     # TODO: get_market_settings

@@ -1,7 +1,7 @@
 import time
 
 # constants
-TEST_SYMBOLS = ["ETH", "BTC", "WIF"]
+TEST_SYMBOLS = ["ETH", "BTC", "WIF", "SNX"]
 TEST_LOOKBACK_SECONDS = 60
 
 
