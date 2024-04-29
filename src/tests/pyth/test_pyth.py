@@ -84,3 +84,44 @@ def test_pyth_get_price_from_symbols_with_timestamp(snx):
     all_symbols = [meta["symbol"] for meta in latest_prices["meta"].values()]
     assert all([feed_id in latest_prices["meta"] for feed_id in query_feed_ids])
     assert all([symbol in all_symbols for symbol in TEST_SYMBOLS])
+
+
+def test_pyth_cache_exists(snx):
+    # fetch some prices
+    snx.pyth.get_price_from_symbols(TEST_SYMBOLS)
+    feed_ids = [snx.pyth.price_feed_ids[symbol] for symbol in TEST_SYMBOLS]
+    key = ",".join(sorted(feed_ids))
+
+    # check that they are all in the cache
+    assert key in snx.pyth._cache
+    assert snx.pyth._cache[key] is not None
+    assert snx.pyth._cache[key]["price_update_data"] is not None
+    assert snx.pyth._cache[key]["timestamp"] > 0
+
+
+def test_pyth_cache_usage(snx):
+    # fetch some prices
+    pyth_data_og = snx.pyth.get_price_from_symbols(TEST_SYMBOLS)
+
+    # fetch them again
+    pyth_data_cache = snx.pyth.get_price_from_symbols(TEST_SYMBOLS)
+
+    # check that the timestamps are the exact same
+    assert pyth_data_og["timestamp"] == pyth_data_cache["timestamp"]
+
+
+def test_pyth_no_cache(snx):
+    # set ttl to zero
+    snx.pyth.cache_ttl = 0
+
+    # fetch some prices
+    pyth_data_og = snx.pyth.get_price_from_symbols(TEST_SYMBOLS)
+
+    # wait
+    time.sleep(2)
+
+    # fetch them again
+    pyth_data_cache = snx.pyth.get_price_from_symbols(TEST_SYMBOLS)
+
+    # check that the timestamps are different
+    assert pyth_data_og["timestamp"] < pyth_data_cache["timestamp"]
