@@ -63,21 +63,11 @@ class Perps:
 
             try:
                 self.get_markets()
-
-                # update pyth price feed ids
-                self.snx.pyth.update_price_feed_ids(
-                    {
-                        market: self.markets_by_name[market]["feed_id"]
-                        for market in self.markets_by_name
-                    }
-                )
             except Exception as e:
                 self.logger.warning(f"Failed to fetch markets: {e}")
 
     # internals
-    def _resolve_market(
-        self, market_id: int, market_name: str, collateral: bool = False
-    ):
+    def _resolve_market(self, market_id: int, market_name: str):
         """
         Look up the market_id and market_name for a market. If only one is provided,
         the other is resolved. If both are provided, they are checked for consistency.
@@ -206,18 +196,6 @@ class Perps:
             self.snx, self.market_proxy, "metadata", market_ids
         )
 
-        self.market_meta = {
-            market_id: {
-                "name": market_metadata[ind][0],
-                "symbol": market_metadata[ind][1],
-            }
-            for ind, market_id in enumerate(market_ids)
-        }
-
-        # fetch the market summaries
-        market_summaries = self.get_market_summaries(market_ids)
-        markets_by_id = {summary["market_id"]: summary for summary in market_summaries}
-
         # fetch settlement strategies to get feed_ids
         settlement_strategy_inputs = [(market_id, 0) for market_id in market_ids]
         settlement_strategies = multicall_erc7412(
@@ -226,10 +204,27 @@ class Perps:
             "getSettlementStrategy",
             settlement_strategy_inputs,
         )
-        # loop through results and add to markets_by_id
-        for ind, strategy in enumerate(settlement_strategies):
-            feed_id = strategy[4]
-            markets_by_id[market_ids[ind]]["feed_id"] = encode_hex(feed_id)
+
+        self.market_meta = {
+            market_id: {
+                "name": market_metadata[ind][0],
+                "symbol": market_metadata[ind][1],
+                "feed_id": encode_hex(settlement_strategies[ind][4]),
+            }
+            for ind, market_id in enumerate(market_ids)
+        }
+
+        # update pyth price feed ids
+        self.snx.pyth.update_price_feed_ids(
+            {
+                self.market_meta[market]["symbol"]: self.market_meta[market]["feed_id"]
+                for market in self.market_meta
+            }
+        )
+
+        # fetch the market summaries
+        market_summaries = self.get_market_summaries(market_ids)
+        markets_by_id = {summary["market_id"]: summary for summary in market_summaries}
 
         # make markets by market name
         markets_by_name = {
@@ -326,6 +321,7 @@ class Perps:
                 {
                     "market_id": market_id,
                     "market_name": self.market_meta[market_id]["symbol"],
+                    "feed_id": self.market_meta[market_id]["feed_id"],
                     "skew": wei_to_ether(skew),
                     "size": wei_to_ether(size),
                     "max_open_interest": wei_to_ether(max_open_interest),

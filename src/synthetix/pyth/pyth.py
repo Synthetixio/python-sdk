@@ -1,10 +1,8 @@
 """Module initializing a connection to the Pyth price service."""
 
-import json
-from eth_utils import decode_hex
-import base64
+import time
 import requests
-from .constants import PRICE_FEED_IDS
+from eth_utils import decode_hex
 
 
 class Pyth:
@@ -29,17 +27,50 @@ class Pyth:
 
     :param Synthetix snx: Synthetix class instance
     :param str price_service_endpoint: Pyth price service endpoint
+    :param int cache_ttl: Cache time-to-live in seconds
     :return: Pyth class instance
     :rtype: Pyth
     """
 
-    def __init__(self, snx, price_service_endpoint: str = None):
+    def __init__(self, snx, cache_ttl, price_service_endpoint: str = None):
         self.snx = snx
         self.logger = snx.logger
 
         self._price_service_endpoint = price_service_endpoint
         self.price_feed_ids = {}
         self.symbol_lookup = {}
+
+        # set up a cache
+        self.cache_ttl = cache_ttl
+        self._cache = {}
+
+    def _check_cache(self, feed_ids: [str]):
+        """
+        Check the cache for the latest price data for a list of feed ids. The cache
+        is used to store the latest price data for a list of feed ids. The cache
+        is invalidated after a certain time-to-live.
+
+        :param [str] feed_ids: List of feed ids to fetch data for
+        :return: Cached price data
+        :rtype: dict | None
+        """
+        self._purge_cache()
+        cache_key = ",".join(sorted(feed_ids))
+        if cache_key in self._cache:
+            cache_data = self._cache[cache_key]
+            if int(time.time()) - cache_data["timestamp"] < self.cache_ttl:
+                return cache_data
+        return None
+
+    def _purge_cache(self):
+        """
+        Purge the cache of all data that is past the time-to-live.
+        """
+        self._cache = {
+            k: v
+            for k, v in self._cache.items()
+            if int(time.time()) - v["timestamp"] < self.cache_ttl
+        }
 
     def update_price_feed_ids(self, feed_ids: dict):
         """
@@ -105,7 +136,17 @@ class Pyth:
                 for feed_data in response_data["parsed"]
             }
 
-            return {"price_update_data": price_update_data, "meta": meta}
+            pyth_data = {
+                "timestamp": int(time.time()),
+                "price_update_data": price_update_data,
+                "meta": meta,
+            }
+
+            # update the cache
+            # only update if ttl > 0
+            if self.cache_ttl > 0:
+                self._cache[",".join(sorted(feed_ids))] = pyth_data
+            return pyth_data
         except Exception as err:
             self.logger.error(f"Error fetching latest price data: {err}")
             return None
@@ -136,8 +177,18 @@ class Pyth:
         :return: Dictionary with price update data and metadata
         :rtype: dict | None
         """
-        pyth_data = self._fetch_prices(feed_ids, publish_time=publish_time)
-        return pyth_data
+        # check the cache
+        cached_data = (
+            self._check_cache(feed_ids)
+            if self.cache_ttl > 0 and publish_time is None
+            else None
+        )
+        if cached_data:
+            self.logger.info("Using cached Pyth data")
+            return cached_data
+        else:
+            pyth_data = self._fetch_prices(feed_ids, publish_time=publish_time)
+            return pyth_data
 
     def get_price_from_symbols(self, symbols: [str], publish_time: int | None = None):
         """
@@ -175,5 +226,15 @@ class Pyth:
             self.logger.error(f"Feed ids not found for symbols: {missing_symbols}")
             return None
 
-        pyth_data = self._fetch_prices(feed_ids, publish_time=publish_time)
-        return pyth_data
+        # check the cache
+        cached_data = (
+            self._check_cache(feed_ids)
+            if self.cache_ttl > 0 and publish_time is None
+            else None
+        )
+        if cached_data:
+            self.logger.info("Using cached Pyth data")
+            return cached_data
+        else:
+            pyth_data = self._fetch_prices(feed_ids, publish_time=publish_time)
+            return pyth_data
