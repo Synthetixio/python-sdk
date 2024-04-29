@@ -143,7 +143,9 @@ class Pyth:
             }
 
             # update the cache
-            self._cache[",".join(sorted(feed_ids))] = pyth_data
+            # only update if ttl > 0
+            if self.cache_ttl > 0:
+                self._cache[",".join(sorted(feed_ids))] = pyth_data
             return pyth_data
         except Exception as err:
             self.logger.error(f"Error fetching latest price data: {err}")
@@ -176,7 +178,11 @@ class Pyth:
         :rtype: dict | None
         """
         # check the cache
-        cached_data = self._check_cache(feed_ids) if publish_time is None else None
+        cached_data = (
+            self._check_cache(feed_ids)
+            if self.cache_ttl > 0 and publish_time is None
+            else None
+        )
         if cached_data:
             self.logger.info("Using cached Pyth data")
             return cached_data
@@ -221,7 +227,11 @@ class Pyth:
             return None
 
         # check the cache
-        cached_data = self._check_cache(feed_ids) if publish_time is None else None
+        cached_data = (
+            self._check_cache(feed_ids)
+            if self.cache_ttl > 0 and publish_time is None
+            else None
+        )
         if cached_data:
             self.logger.info("Using cached Pyth data")
             return cached_data

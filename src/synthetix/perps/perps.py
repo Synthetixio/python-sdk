@@ -321,6 +321,7 @@ class Perps:
                 {
                     "market_id": market_id,
                     "market_name": self.market_meta[market_id]["symbol"],
+                    "feed_id": self.market_meta[market_id]["feed_id"],
                     "skew": wei_to_ether(skew),
                     "size": wei_to_ether(size),
                     "max_open_interest": wei_to_ether(max_open_interest),
