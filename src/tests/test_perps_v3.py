@@ -169,6 +169,48 @@ def test_perps_settlement_strategy(snx, logger):
     assert settlement_strategy["commitment_price_delay"] is not None
 
 
+def test_perps_quote(snx):
+    """The instance can fetch a quote"""
+    long_quote = snx.perps.get_quote(1, market_id=100)
+    short_quote = snx.perps.get_quote(-1, market_id=100)
+
+    assert long_quote is not None
+    assert long_quote["order_size"] is not None
+    assert long_quote["index_price"] is not None
+    assert long_quote["fill_price"] is not None
+    assert long_quote["required_margin"] is not None
+
+    assert short_quote is not None
+    assert short_quote["order_size"] is not None
+    assert short_quote["index_price"] is not None
+    assert short_quote["fill_price"] is not None
+    assert short_quote["required_margin"] is not None
+
+    # the short fill price should be less than the long fill price
+    assert short_quote["fill_price"] < long_quote["fill_price"]
+
+
+def test_perps_quote_with_price(snx):
+    """The instance can fetch a quote with a fill price"""
+    long_quote = snx.perps.get_quote(1, price=2500, market_id=100)
+    short_quote = snx.perps.get_quote(-1, price=2500, market_id=100)
+
+    assert long_quote is not None
+    assert long_quote["order_size"] is not None
+    assert long_quote["index_price"] is not None
+    assert long_quote["fill_price"] is not None
+    assert long_quote["required_margin"] is not None
+
+    assert short_quote is not None
+    assert short_quote["order_size"] is not None
+    assert short_quote["index_price"] is not None
+    assert short_quote["fill_price"] is not None
+    assert short_quote["required_margin"] is not None
+
+    # the short fill price should be less than the long fill price
+    assert short_quote["fill_price"] < long_quote["fill_price"]
+
+
 def test_perps_order(snx, logger):
     """The instance can fetch an order for an account"""
     order = snx.perps.get_order(fetch_settlement_strategy=False)
@@ -226,6 +268,7 @@ def test_perps_modify_collateral(snx, logger):
     assert deposit_tx is not None
 
 
+@pytest.mark.skip(reason="Disabling since we don't know the account has margin")
 def test_perps_commit_order(snx, logger):
     """User can prepare a commit order transaction"""
     order = snx.perps.commit_order(1, market_name="ETH")

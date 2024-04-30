@@ -132,6 +132,7 @@ class Perps:
         if not self.snx.is_fork:
             pyth_data = self.snx.pyth.get_price_from_ids(feed_ids)
             price_update_data = pyth_data["price_update_data"]
+            price_metadata = pyth_data["meta"]
         else:
             # if it's a fork, get the price for the latest block
             # this avoids providing "future" prices to the contract on a fork
@@ -143,6 +144,7 @@ class Perps:
                 feed_ids, publish_time=publish_time
             )
             price_update_data = pyth_data["price_update_data"]
+            price_metadata = pyth_data["meta"]
 
         # prepare the oracle call
         raw_feed_ids = [decode_hex(feed_id) for feed_id in feed_ids]
@@ -159,7 +161,7 @@ class Perps:
         # return this formatted for the multicall
         # set `require_success` to False in this case, since sometimes
         # the wrapper will return an error if the price has already been updated
-        return [(to, False, value, data)]
+        return [(to, False, value, data)], price_metadata
 
     # read
     # TODO: get_market_settings
@@ -288,7 +290,7 @@ class Perps:
         # TODO: Fetch for market names
         # get fresh prices to provide to the oracle
         if self.erc7412_enabled:
-            calls = self._prepare_oracle_call()
+            calls, _ = self._prepare_oracle_call()
         else:
             calls = []
 
@@ -348,7 +350,7 @@ class Perps:
 
         # get a fresh price to provide to the oracle
         if self.erc7412_enabled:
-            calls = self._prepare_oracle_call()
+            calls, _ = self._prepare_oracle_call()
         else:
             calls = []
 
@@ -467,7 +469,7 @@ class Perps:
 
         # get fresh prices to provide to the oracle
         if self.erc7412_enabled:
-            calls = self._prepare_oracle_call()
+            calls, _ = self._prepare_oracle_call()
         else:
             calls = []
 
@@ -556,7 +558,7 @@ class Perps:
 
         # get fresh prices to provide to the oracle
         if self.erc7412_enabled:
-            calls = self._prepare_oracle_call()
+            calls, _ = self._prepare_oracle_call()
         else:
             calls = []
 
@@ -578,7 +580,7 @@ class Perps:
 
         # get fresh prices to provide to the oracle
         if self.erc7412_enabled:
-            calls = self._prepare_oracle_call()
+            calls, _ = self._prepare_oracle_call()
         else:
             calls = []
 
@@ -619,7 +621,7 @@ class Perps:
 
         # get a fresh price to provide to the oracle
         if self.erc7412_enabled:
-            calls = self._prepare_oracle_call([market_name])
+            calls, _ = self._prepare_oracle_call([market_name])
         else:
             calls = []
 
@@ -684,7 +686,7 @@ class Perps:
 
         # get a fresh price to provide to the oracle
         if self.erc7412_enabled:
-            calls = self._prepare_oracle_call(market_names)
+            calls, _ = self._prepare_oracle_call(market_names)
         else:
             calls = []
 
@@ -707,6 +709,66 @@ class Perps:
             if abs(position_size) > 0
         }
         return open_positions
+
+    def get_quote(
+        self,
+        size: float,
+        price: float = None,
+        market_id: int = None,
+        market_name: str = None,
+        account_id: int = None,
+        include_required_margin: bool = True,
+    ):
+        """
+        Get a quote for the size of an order in a specified market. The quote includes
+        the provided price and the fill price of the order after price impact. If a price
+        is not provided, a price will be fetched from Pyth. Provide either a ``market_id``
+        or ``market_name``.
+
+        :param float size: The size of the order to quote.
+        :param float | None price: The price to quote the order at. If not provided, the current market price is used.
+        :param int | None market_id: The id of the market to quote the order for.
+        :param str | None market_name: The name of the market to quote the order for.
+        :return: A dictionary with the quote information.
+        :rtype: dict
+        """
+        if not account_id:
+            account_id = self.default_account_id
+
+        market_id, market_name = self._resolve_market(market_id, market_name)
+        feed_id = self.markets_by_id[market_id]["feed_id"]
+
+        if not price:
+            calls, meta = self._prepare_oracle_call([market_name])
+            price = meta[feed_id]["price"]
+        else:
+            calls = []
+            price = price
+
+        fill_price = call_erc7412(
+            self.snx,
+            self.market_proxy,
+            "fillPrice",
+            (market_id, ether_to_wei(size), ether_to_wei(price)),
+            calls=calls,
+        )
+
+        result = {
+            "order_size": size,
+            "index_price": price,
+            "fill_price": wei_to_ether(fill_price),
+        }
+
+        if include_required_margin and account_id:
+            required_margin = call_erc7412(
+                self.snx,
+                self.market_proxy,
+                "requiredMarginForOrderWithPrice",
+                (account_id, market_id, ether_to_wei(size), ether_to_wei(price)),
+                calls=calls,
+            )
+            result["required_margin"] = wei_to_ether(required_margin)
+        return result
 
     # transactions
     def create_account(self, account_id: int = None, submit: bool = False):
