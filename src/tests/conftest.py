@@ -22,15 +22,15 @@ def network_id(pytestconfig):
 # fixtures
 @pytest.fixture(scope="module")
 def snx(pytestconfig):
-    network_id = pytestconfig.getoption("network_id")
+    network_id = int(pytestconfig.getoption("network_id"))
     rpc_key = f"NETWORK_{network_id}_RPC"
     rpc = os.environ.get(rpc_key)
     address = os.environ.get("ADDRESS")
     if not rpc or not address:
         raise ValueError(f"RPC not specified for network ID {network_id}")
 
-    snx = Synthetix(provider_rpc=rpc, address=address, network_id=network_id)
-    snx.logger.info(f"Using network ID {network_id}")
+    snx = Synthetix(provider_rpc=rpc, address=address)
+    assert snx.network_id == network_id
     return snx
 
 

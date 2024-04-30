@@ -1,7 +1,7 @@
 """Module for interacting with Synthetix Perps V3."""
 
 import time
-from eth_utils import decode_hex
+from eth_utils import encode_hex, decode_hex
 from ..utils import ether_to_wei, wei_to_ether
 from ..utils.multicall import (
     call_erc7412,
@@ -45,15 +45,10 @@ class Perps:
     :rtype: Perps
     """
 
-    def __init__(self, snx, pyth, default_account_id: int = None):
+    def __init__(self, snx, default_account_id: int = None):
         self.snx = snx
-        self.pyth = pyth
         self.logger = snx.logger
-
-        if "PythERC7412Wrapper" in snx.contracts:
-            self.erc7412_enabled = False
-        else:
-            self.erc7412_enabled = False
+        self.erc7412_enabled = True
 
         # check if perps is deployed on this network
         if "PerpsMarketProxy" in snx.contracts:
@@ -72,9 +67,7 @@ class Perps:
                 self.logger.warning(f"Failed to fetch markets: {e}")
 
     # internals
-    def _resolve_market(
-        self, market_id: int, market_name: str, collateral: bool = False
-    ):
+    def _resolve_market(self, market_id: int, market_name: str):
         """
         Look up the market_id and market_name for a market. If only one is provided,
         the other is resolved. If both are provided, they are checked for consistency.
@@ -125,10 +118,31 @@ class Perps:
             ]
 
         # fetch the data from pyth
-        feed_ids = [
-            self.snx.pyth.price_feed_ids[market_name] for market_name in market_names
+        filtered_market_names = [
+            m for m in market_names if m in self.snx.pyth.price_feed_ids
         ]
-        price_update_data = self.snx.pyth.get_feeds_data(feed_ids)
+        # if no markets, return an empty list
+        if len(filtered_market_names) == 0:
+            return []
+
+        feed_ids = [
+            self.snx.pyth.price_feed_ids[market_name]
+            for market_name in filtered_market_names
+        ]
+        if not self.snx.is_fork:
+            pyth_data = self.snx.pyth.get_price_from_ids(feed_ids)
+            price_update_data = pyth_data["price_update_data"]
+        else:
+            # if it's a fork, get the price for the latest block
+            # this avoids providing "future" prices to the contract on a fork
+            block = self.snx.web3.eth.get_block("latest")
+
+            # set a manual 60 second staleness
+            publish_time = block.timestamp - 60
+            pyth_data = self.snx.pyth.get_price_from_ids(
+                feed_ids, publish_time=publish_time
+            )
+            price_update_data = pyth_data["price_update_data"]
 
         # prepare the oracle call
         raw_feed_ids = [decode_hex(feed_id) for feed_id in feed_ids]
@@ -143,7 +157,9 @@ class Perps:
         value = len(market_names)
 
         # return this formatted for the multicall
-        return (to, True, value, data)
+        # set `require_success` to False in this case, since sometimes
+        # the wrapper will return an error if the price has already been updated
+        return [(to, False, value, data)]
 
     # read
     # TODO: get_market_settings
@@ -180,18 +196,37 @@ class Perps:
             self.snx, self.market_proxy, "metadata", market_ids
         )
 
+        # fetch settlement strategies to get feed_ids
+        settlement_strategy_inputs = [(market_id, 0) for market_id in market_ids]
+        settlement_strategies = multicall_erc7412(
+            self.snx,
+            self.market_proxy,
+            "getSettlementStrategy",
+            settlement_strategy_inputs,
+        )
+
         self.market_meta = {
             market_id: {
                 "name": market_metadata[ind][0],
                 "symbol": market_metadata[ind][1],
+                "feed_id": encode_hex(settlement_strategies[ind][4]),
             }
             for ind, market_id in enumerate(market_ids)
         }
 
+        # update pyth price feed ids
+        self.snx.pyth.update_price_feed_ids(
+            {
+                self.market_meta[market]["symbol"]: self.market_meta[market]["feed_id"]
+                for market in self.market_meta
+            }
+        )
+
         # fetch the market summaries
         market_summaries = self.get_market_summaries(market_ids)
-
         markets_by_id = {summary["market_id"]: summary for summary in market_summaries}
+
+        # make markets by market name
         markets_by_name = {
             summary["market_name"]: summary for summary in market_summaries
         }
@@ -253,8 +288,7 @@ class Perps:
         # TODO: Fetch for market names
         # get fresh prices to provide to the oracle
         if self.erc7412_enabled:
-            oracle_call = self._prepare_oracle_call()
-            calls = [oracle_call]
+            calls = self._prepare_oracle_call()
         else:
             calls = []
 
@@ -287,6 +321,7 @@ class Perps:
                 {
                     "market_id": market_id,
                     "market_name": self.market_meta[market_id]["symbol"],
+                    "feed_id": self.market_meta[market_id]["feed_id"],
                     "skew": wei_to_ether(skew),
                     "size": wei_to_ether(size),
                     "max_open_interest": wei_to_ether(max_open_interest),
@@ -313,8 +348,7 @@ class Perps:
 
         # get a fresh price to provide to the oracle
         if self.erc7412_enabled:
-            oracle_call = self._prepare_oracle_call([market_name])
-            calls = [oracle_call]
+            calls = self._prepare_oracle_call()
         else:
             calls = []
 
@@ -433,8 +467,7 @@ class Perps:
 
         # get fresh prices to provide to the oracle
         if self.erc7412_enabled:
-            oracle_call = self._prepare_oracle_call()
-            calls = [oracle_call]
+            calls = self._prepare_oracle_call()
         else:
             calls = []
 
@@ -523,8 +556,7 @@ class Perps:
 
         # get fresh prices to provide to the oracle
         if self.erc7412_enabled:
-            oracle_call = self._prepare_oracle_call()
-            calls = [oracle_call]
+            calls = self._prepare_oracle_call()
         else:
             calls = []
 
@@ -546,8 +578,7 @@ class Perps:
 
         # get fresh prices to provide to the oracle
         if self.erc7412_enabled:
-            oracle_call = self._prepare_oracle_call()
-            calls = [oracle_call]
+            calls = self._prepare_oracle_call()
         else:
             calls = []
 
@@ -588,8 +619,7 @@ class Perps:
 
         # get a fresh price to provide to the oracle
         if self.erc7412_enabled:
-            oracle_call = self._prepare_oracle_call([market_name])
-            calls = [oracle_call]
+            calls = self._prepare_oracle_call([market_name])
         else:
             calls = []
 
@@ -654,8 +684,7 @@ class Perps:
 
         # get a fresh price to provide to the oracle
         if self.erc7412_enabled:
-            oracle_call = self._prepare_oracle_call(market_names)
-            calls = [oracle_call]
+            calls = self._prepare_oracle_call(market_names)
         else:
             calls = []
 
@@ -953,12 +982,6 @@ class Perps:
 
         # get fresh prices to provide to the oracle
         market_name = self._resolve_market(order["market_id"], None)[1]
-        if self.erc7412_enabled:
-            oracle_call = self._prepare_oracle_call([market_name])
-            calls = [oracle_call]
-        else:
-            calls = []
-
         # prepare the transaction
         tx_tries = 0
         while tx_tries < max_tx_tries:
@@ -968,7 +991,6 @@ class Perps:
                     self.market_proxy,
                     "settleOrder",
                     [account_id],
-                    calls=calls,
                 )
             except Exception as e:
                 self.logger.error(f"settleOrder error: {e}")

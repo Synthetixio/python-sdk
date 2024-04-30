@@ -137,6 +137,7 @@ class Synthetix:
         gql_endpoint_rates: str = None,
         satsuma_api_key: str = None,
         price_service_endpoint: str = None,
+        pyth_cache_ttl: int = 60,
         gas_multiplier: float = DEFAULT_GAS_MULTIPLIER,
         is_fork: bool = False,
     ):
@@ -241,10 +242,10 @@ class Synthetix:
         ):
             price_service_endpoint = DEFAULT_PRICE_SERVICE_ENDPOINTS[self.network_id]
 
-        self.pyth = Pyth(self, price_service_endpoint=price_service_endpoint)
+        self.pyth = Pyth(self, cache_ttl=pyth_cache_ttl, price_service_endpoint=price_service_endpoint)
         self.core = Core(self, core_account_id)
-        self.perps = Perps(self, self.pyth, perps_account_id)
-        self.spot = Spot(self, self.pyth)
+        self.spot = Spot(self)
+        self.perps = Perps(self, perps_account_id)
 
     def _load_contracts(self):
         """

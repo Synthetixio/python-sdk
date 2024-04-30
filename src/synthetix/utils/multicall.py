@@ -89,15 +89,19 @@ def handle_erc7412_error(snx, error, calls):
         if update_type == 1:
             # fetch the data from pyth for those feed ids
             if not snx.is_fork:
-                price_update_data = snx.pyth.get_feeds_data(feed_ids)
+                pyth_data = snx.pyth.get_price_from_ids(feed_ids)
+                price_update_data = pyth_data["price_update_data"]
             else:
                 # if it's a fork, get the price for the latest block
                 # this avoids providing "future" prices to the contract on a fork
                 block = snx.web3.eth.get_block("latest")
-                price_update_data = [
-                    snx.pyth.get_benchmark_data(feed_id, block.timestamp)[0]
-                    for feed_id in feed_ids
-                ]
+
+                # set a manual 60 second staleness
+                publish_time = block.timestamp - 60
+                pyth_data = snx.pyth.get_price_from_ids(
+                    feed_ids, publish_time=publish_time
+                )
+                price_update_data = pyth_data["price_update_data"]
 
             # create a new request
             to, data, value = make_fulfillment_request(
@@ -105,11 +109,12 @@ def handle_erc7412_error(snx, error, calls):
             )
         elif update_type == 2:
             # fetch the data from pyth for those feed ids
-            price_update_data, _, _ = snx.pyth.get_benchmark_data(feed_ids[0], args[1])
+            pyth_data = snx.pyth.get_price_from_ids(feed_ids, publish_time=args[1])
+            price_update_data = pyth_data["price_update_data"]
 
             # create a new request
             to, data, value = make_fulfillment_request(
-                snx, address, [price_update_data], args
+                snx, address, price_update_data, args
             )
         else:
             snx.logger.error(f"Unknown update type: {update_type}")
@@ -142,7 +147,7 @@ def write_erc7412(snx, contract, function_name, args, tx_params={}, calls=[]):
             contract.address,
             True,
             0 if "value" not in tx_params else tx_params["value"],
-            bytes.fromhex(contract.encodeABI(fn_name=function_name, args=args)[2:]),
+            contract.encodeABI(fn_name=function_name, args=args),
         )
     ]
     calls = calls + this_call
