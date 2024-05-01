@@ -1,4 +1,4 @@
-# Getting started
+# Quickstart
 
 This library offers a way to interact with the [Synthetix](https://synthetix.io/) protocol using Python. This guide will teach you the basics: how to set up the client and use some of its functions.
 
@@ -8,7 +8,7 @@ If your use case requires a more in-depth understanding of the protocol, please 
 
 This library requires Python 3.8 or higher. It makes heavy use of the [web3.py](https://github.com/ethereum/web3.py) library for interacting with smart contracts.
 
-We recommend using a virtual environment to install the library and its dependencies. Use [venv](https://docs.python.org/3/library/venv.html) to create and manage this virtual environment:
+It is recommended to use a virtual environment to install the library and its dependencies. Use [venv](https://docs.python.org/3/library/venv.html) to create and manage this virtual environment:
 
 ```bash
 python3 -m venv env
@@ -28,42 +28,22 @@ pip install synthetix
 
 ## Initializing the client
 
-To use the library, initialize the `Synthetix` object that can be used to interact with the protocol. At minimum, you must provide an RPC endpoint and specify the intended network id.
+To use the library, initialize the `Synthetix` object that can be used to interact with the protocol. At minimum, you must provide an RPC endpoint. 
 
 ```python
 from synthetix import Synthetix
 
 # Base Mainnet
 snx = Synthetix(
-    provider_url="https://base-mainnet.infura.io/v3/<your-infura-project-id>",
-    network=8453,
-)
-
-# Base Sepolia
-snx = Synthetix(
-    provider_url="https://base-sepolia.infura.io/v3/<your-infura-project-id>",
-    network=84532,
-)
-
-# Optimism Mainnet
-snx = Synthetix(
-    provider_url="https://optimism-mainnet.infura.io/v3/<your-infura-project-id>",
-    network=10,
-)
-
-# Optimism Goerli
-snx = Synthetix(
-    provider_url="https://optimism-goerli.infura.io/v3/<your-infura-project-id>",
-    network=420,
+    provider_url="https://base.llamarpc.com",
 )
 ```
 
-This creates an snx object that helps you interact with the protocol smart contracts. If there are any warnings or errors, they are logged to the console.
+This creates an `snx` object that helps you interact with the protocol smart contracts. At minimum you need to provide the `provider_url` parameter, which is the RPC endpoint of the node you want to connect to. If there are any warnings or errors during initialization, they are logged to the console.
 
 ## Basic usage
 
 Once set up, you can use the `snx` object to interact with the different modules in the protocol. Here are some common functions you may want to use:
-
 
 ```python
 # basic functions
