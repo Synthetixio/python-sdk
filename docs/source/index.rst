@@ -8,7 +8,9 @@ The ``synthetix`` library provides an interface for interacting with the Synthet
    :caption: User Guides
    
    guides/quickstart
+   guides/advanced_usage
    guides/trade_perps
+   guides/advanced_perps
    guides/oracle_data
 
 .. toctree::
