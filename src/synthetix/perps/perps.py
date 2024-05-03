@@ -181,7 +181,8 @@ class Perps:
                     'max_open_interest': 10000,
                     'current_funding_rate': 0.000182,
                     'current_funding_velocity': 0.00002765,
-                    'index_price': 1852.59
+                    'index_price': 1852.59,
+                    ...
                 }
                 'BTC': {
                     ...
@@ -227,6 +228,33 @@ class Perps:
         # fetch the market summaries
         market_summaries = self.get_market_summaries(market_ids)
         markets_by_id = {summary["market_id"]: summary for summary in market_summaries}
+
+        # fetch funding parameters
+        funding_parameters = multicall_erc7412(
+            self.snx, self.market_proxy, "getFundingParameters", market_ids
+        )
+
+        # fetch fees
+        fees = multicall_erc7412(
+            self.snx, self.market_proxy, "getOrderFees", market_ids
+        )
+
+        # fetch max market
+        max_market_values = multicall_erc7412(
+            self.snx, self.market_proxy, "getMaxMarketValue", market_ids
+        )
+
+        # add them to markets by id
+        for ind, market_id in enumerate(market_ids):
+            markets_by_id[market_id].update(
+                {
+                    "skew_scale": wei_to_ether(funding_parameters[ind][0]),
+                    "max_funding_velocity": wei_to_ether(funding_parameters[ind][1]),
+                    "maker_fee": wei_to_ether(fees[ind][0]),
+                    "taker_fee": wei_to_ether(fees[ind][1]),
+                    "max_market_value": wei_to_ether(max_market_values[ind]),
+                }
+            )
 
         # make markets by market name
         markets_by_name = {
