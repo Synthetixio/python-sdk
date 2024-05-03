@@ -1,6 +1,6 @@
-project = 'Synthetix'
-copyright = '2023, Synthetix DAO'
-author = 'Synthetix DAO'
+project = "Synthetix"
+copyright = "2023, Synthetix DAO"
+author = "Synthetix DAO"
 
 extensions = [
     "myst_parser",
@@ -10,15 +10,14 @@ extensions = [
 ]
 autosummary_generate = True
 
-templates_path = ['_templates']
+templates_path = ["_templates"]
 
 exclude_patterns = [
-    '*/constants.py', # TODO: Figure out why this doesn't work
-    '.DS_Store',
-    'deployments/*'
+    ".DS_Store",
+    "deployments/*",
 ]
 
 source_suffix = [".rst", ".md"]
 
-html_theme = 'sphinx_rtd_theme'
-html_static_path = ['_static']
+html_theme = "sphinx_rtd_theme"
+html_static_path = ["_static"]

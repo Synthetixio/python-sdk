@@ -114,6 +114,11 @@ class Synthetix:
         Satsuma, the API key will be automatically added to the request.
     :param str price_service_endpoint: Endpoint for a Pyth price service. If
         not specified, a default endpoint is used.
+    :param int pyth_cache_ttl: Time to live for Pyth cache in seconds.
+    :param float gas_multiplier: Multiplier for gas estimates. This is used
+        to increase the gas limit for transactions.
+    :param bool is_fork: Set to true if the chain is a fork. This will improve
+        the way price data is handled by requesting at the block timestamp.
     :return: Synthetix class instance
     :rtype: Synthetix
     """
@@ -242,7 +247,11 @@ class Synthetix:
         ):
             price_service_endpoint = DEFAULT_PRICE_SERVICE_ENDPOINTS[self.network_id]
 
-        self.pyth = Pyth(self, cache_ttl=pyth_cache_ttl, price_service_endpoint=price_service_endpoint)
+        self.pyth = Pyth(
+            self,
+            cache_ttl=pyth_cache_ttl,
+            price_service_endpoint=price_service_endpoint,
+        )
         self.core = Core(self, core_account_id)
         self.spot = Spot(self)
         self.perps = Perps(self, perps_account_id)
