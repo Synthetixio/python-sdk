@@ -6,7 +6,7 @@ This guide will help you understand more advanced concepts related to trading Sy
 
 ## Managing Multiple Accounts
 
-Synthetix V3 allows you to hold multiple accounts which each maintain their own balances and positions. Since all positions inside an account use the same collateral, it can be useful to manage multiple accounts to separate different trading strategies or risk profiles. A trader can even replicate "isolated margin" by using separate accounts for each position.
+Synthetix V3 allows you to hold multiple accounts which each maintain their own balances and positions. Since all positions inside an account use the same collateral, it can be useful to manage multiple accounts to separate different trading strategies or risk profiles. A trader can even simulate "isolated margin" by using separate accounts for each position.
 
 Your accounts are stored in the `account_ids` attribute, and can be refreshed using `get_accounts()`.
 ```python
@@ -43,7 +43,7 @@ snx.perps.commit_order(0.1, market_name="BTC", account_id=2, submit=True)
 
 ## Fetching Order Quotes
 
-Synthetix perps using a vAMM model, where orders are subject to price impact based on the size of the order. A premium or discount is applied to the index price based on the current skew of the market. For example, if a market is skewed long there will be a premium applied to the index price, and vice versa.
+Synthetix perps using a vAMM model, where orders are subject to price impact based on the size of the order. A premium or discount is applied to the index price based on the current skew of the market. For example, if a market is skewed long, there will be a premium applied to the index price, and vice versa.
 
 When placing an order, you can fetch a quote to see the estimated fill price of the order. This fill price is an estimate based on the current index price, current skew, and the size of the order. The quote will also show the estimated margin required for a position of that size.
 ```python
@@ -58,7 +58,7 @@ When placing an order, you can fetch a quote to see the estimated fill price of 
 
 ## Liquidations
 
-Liquidations occur when an account fails to meet the margin requirements given the size of their positions. When an account is liquidated, their positions are all closed and their collateral is lost. Liquidations will usually be triggered by keepers who are incentivized to liquidate accounts that are below the maintenance margin requirement. You can check your margin balance and requirements using `get_margin_info()`.
+Liquidations occur when an account fails to meet the margin requirements given the size of their positions. When an account is liquidated, their positions are all closed and their collateral is lost. Liquidations will usually be triggered by keepers who are incentivized to liquidate accounts that fall below the maintenance margin requirement. You can check your margin balance and requirements using `get_margin_info()`.
 ```python
 >>> snx.perps.get_margin_info()
 {
@@ -71,7 +71,7 @@ Liquidations occur when an account fails to meet the margin requirements given t
 }
 ```
 
-If your `available_margin` drops below the `maintenance_margin_requirement`, your account is at risk of being liquidated. You can also check the status of an account using `can_liquidate` and `can_liquidates`.
+If your `available_margin` falls below the `maintenance_margin_requirement`, your account is at risk of liquidation. You can also check the status of an account using `can_liquidate` and `can_liquidates`.
 ```python
 >>> snx.perps.can_liquidate(1)
 False

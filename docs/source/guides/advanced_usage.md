@@ -8,7 +8,7 @@ This guide will help you understand more advanced concepts for interacting with 
 
 The `synthetix` library provides functions with more simple inputs for interacting with Synthetix V3 contracts. However, you can also interact with the contracts directly using the `web3.py` library. This can be useful for more advanced use cases, debugging, or to access functions that haven't been implemented in a module yet.
 
-Contracts are stored in the `contracts` module, along with their addresses and ABIs. :
+The `contracts` module stores contract addresses and ABIs:
 ```python
 # look up the PerpsMarketProxy contract
 >>> snx.contracts['PerpsMarketProxy']
@@ -26,7 +26,7 @@ Contracts are stored in the `contracts` module, along with their addresses and A
 
 ## Fetching Cannon Deployments
 
-Synthetix manages smart contract deployments using [Cannon](https://usecannon.com/). During the deployment process, new contract ABIs and addresses will be published to Cannon, however the "hard-coded" versions in the `synthetix` library will not be updated. Also, the `synthetix` library only hard-codes the most commonly used contracts, so you may need to fetch the addresses and ABIs for other contracts from Cannon. This can be done during initialization by providing a `cannon_config`:
+Synthetix manages smart contract deployments using [Cannon](https://usecannon.com/). During the deployment process, new contract ABIs and addresses will be published to Cannon, however the "hard-coded" versions in the `synthetix` library will not be updated. Note that the `synthetix` library only includes the most commonly used contracts. For other contracts, fetch the addresses and ABIs from Cannon. This can be done during initialization by providing a `cannon_config`:
 ```python
 >>> snx = Synthetix(
     provider_url=provider_url,
