@@ -59,6 +59,7 @@ class Perps:
                 self.get_account_ids(default_account_id=default_account_id)
             except Exception as e:
                 self.account_ids = []
+                self.default_account_id = None
                 self.logger.warning(f"Failed to fetch perps accounts: {e}")
 
             try:
@@ -745,6 +746,7 @@ class Perps:
         market_id: int = None,
         market_name: str = None,
         account_id: int = None,
+        settlement_strategy_id: int = 0,
         include_required_margin: bool = True,
     ):
         """
@@ -757,6 +759,9 @@ class Perps:
         :param float | None price: The price to quote the order at. If not provided, the current market price is used.
         :param int | None market_id: The id of the market to quote the order for.
         :param str | None market_name: The name of the market to quote the order for.
+        :param int | None account_id: The id of the account to quote the order for. If not provided, the default account is used.
+        :param int settlement_strategy_id: The id of the settlement strategy to use for the settlement reward calculation.
+        :param bool include_required_margin: If ``True``, include the required margin for the account in the quote.
         :return: A dictionary with the quote information.
         :rtype: dict
         """
@@ -773,17 +778,27 @@ class Perps:
             calls = []
             price = price
 
-        fill_price = call_erc7412(
+        order_fees, fill_price = call_erc7412(
             self.snx,
             self.market_proxy,
-            "fillPrice",
+            "computeOrderFeesWithPrice",
             (market_id, ether_to_wei(size), ether_to_wei(price)),
+            calls=calls,
+        )
+
+        settlement_reward_cost = call_erc7412(
+            self.snx,
+            self.market_proxy,
+            "getSettlementRewardCost",
+            (market_id, settlement_strategy_id),
             calls=calls,
         )
 
         result = {
             "order_size": size,
             "index_price": price,
+            "order_fees": wei_to_ether(order_fees),
+            "settlement_reward_cost": wei_to_ether(settlement_reward_cost),
             "fill_price": wei_to_ether(fill_price),
         }
 
