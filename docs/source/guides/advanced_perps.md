@@ -45,14 +45,16 @@ snx.perps.commit_order(0.1, market_name="BTC", account_id=2, submit=True)
 
 Synthetix perps using a vAMM model, where orders are subject to price impact based on the size of the order. A premium or discount is applied to the index price based on the current skew of the market. For example, if a market is skewed long, there will be a premium applied to the index price, and vice versa.
 
-When placing an order, you can fetch a quote to see the estimated fill price of the order. This fill price is an estimate based on the current index price, current skew, and the size of the order. The quote will also show the estimated margin required for a position of that size.
+When placing an order, you can fetch a quote to see the estimated fill price of the order. This fill price is an estimate based on the current index price, current skew, and the size of the order. The quote will also show exchange and settlement fees, and the estimated margin required for a position of that size.
 ```python
 >>> snx.perps.get_quote(1, market_name="ETH")
 {
     'order_size': 1,
     'index_price': 2995.72,
     'fill_price': 2995.75,
-    'required_margin': 116.49
+    'required_margin': 116.49,
+    'order_fees': 0.11649,
+    'settlement_reward_cost': 1.00137346
 }
 ```
 

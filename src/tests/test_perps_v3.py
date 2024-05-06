@@ -171,20 +171,24 @@ def test_perps_settlement_strategy(snx, logger):
 
 def test_perps_quote(snx):
     """The instance can fetch a quote"""
-    long_quote = snx.perps.get_quote(1, market_id=100)
-    short_quote = snx.perps.get_quote(-1, market_id=100)
+    long_quote = snx.perps.get_quote(1, market_id=TEST_MARKET_ID)
+    short_quote = snx.perps.get_quote(-1, market_id=TEST_MARKET_ID)
 
     assert long_quote is not None
     assert long_quote["order_size"] is not None
     assert long_quote["index_price"] is not None
     assert long_quote["fill_price"] is not None
     assert long_quote["required_margin"] is not None
+    assert long_quote["order_fees"] is not None
+    assert long_quote["settlement_reward_cost"] is not None
 
     assert short_quote is not None
     assert short_quote["order_size"] is not None
     assert short_quote["index_price"] is not None
     assert short_quote["fill_price"] is not None
     assert short_quote["required_margin"] is not None
+    assert short_quote["order_fees"] is not None
+    assert short_quote["settlement_reward_cost"] is not None
 
     # the short fill price should be less than the long fill price
     assert short_quote["fill_price"] < long_quote["fill_price"]
@@ -192,20 +196,24 @@ def test_perps_quote(snx):
 
 def test_perps_quote_with_price(snx):
     """The instance can fetch a quote with a fill price"""
-    long_quote = snx.perps.get_quote(1, price=2500, market_id=100)
-    short_quote = snx.perps.get_quote(-1, price=2500, market_id=100)
+    long_quote = snx.perps.get_quote(1, price=2500, market_id=TEST_MARKET_ID)
+    short_quote = snx.perps.get_quote(-1, price=2500, market_id=TEST_MARKET_ID)
 
     assert long_quote is not None
     assert long_quote["order_size"] is not None
     assert long_quote["index_price"] is not None
     assert long_quote["fill_price"] is not None
     assert long_quote["required_margin"] is not None
+    assert long_quote["order_fees"] is not None
+    assert long_quote["settlement_reward_cost"] is not None
 
     assert short_quote is not None
     assert short_quote["order_size"] is not None
     assert short_quote["index_price"] is not None
     assert short_quote["fill_price"] is not None
     assert short_quote["required_margin"] is not None
+    assert short_quote["order_fees"] is not None
+    assert short_quote["settlement_reward_cost"] is not None
 
     # the short fill price should be less than the long fill price
     assert short_quote["fill_price"] < long_quote["fill_price"]
