@@ -81,3 +81,29 @@ False
 >>> snx.perps.can_liquidates([1, 2])
 [(1, False), (2, False)]
 ```
+
+## Order Settlement
+
+Orders are usually settled onchain by a keeper, but you can also ensure your orders are settled by calling `settle_order`. This will check your order and settle it if it is ready to be settled. This function checks the order status before submission, so if an order has been settled by someone else, it will log this and not attempt to settle the order.
+
+```python
+>>> snx.perps.settle_order() # settle order for the default account
+INFO     synthetix.synthetix:perps.py:1038 Waiting 0.3958 seconds to settle order
+INFO     synthetix.synthetix:pyth.py:99 Fetching Pyth data for 1 markets
+INFO     synthetix.synthetix:perps.py:1064 Settling order for account 1701411834604692328273631687329873105994
+INFO     synthetix.synthetix:perps.py:1065 settle tx: 0xB9153dbd4160f48f3259d0567fd75508afe8fcaa53ff328313a9654f10182742
+INFO     synthetix.synthetix:perps.py:1073 Order settlement successful for account 1701411834604692328273631687329873105994
+
+>>> snx.perps.settle_order() # keeper settles order
+INFO     synthetix.synthetix:perps.py:1038 Order is ready to be settled
+INFO     synthetix.synthetix:pyth.py:99 Fetching Pyth data for 1 markets
+INFO     synthetix.synthetix:perps.py:1064 Settling order for account 1701411834604692328273631687329873105994
+INFO     synthetix.synthetix:perps.py:1073 Keeper settled ETH order committed by 1701411834604692328273631687329873105994
+
+>>> snx.perps.settle_order(max_tx_tries=10, tx_delay=5) # increase retries and delay
+```
+
+Keep in mind the following:
+- In some cases a decentralized keeper will submit their transaction in the same block as you. If this happens, your transaction will fail but your order will be settled.
+- You may see some `ERROR` logs during order settlement. Since the order requires data from an offchain provider, sometimes this data is not available in time for the transaction to be submitted. This is normal and the order will be retried. You can use the `max_tx_tries` and `tx_delay` parameters to increase the number of retries and delay between retries.
+- Orders expire after a specified duration. The function will throw an error if an order is part the expiration, or if the order has already been settled.
