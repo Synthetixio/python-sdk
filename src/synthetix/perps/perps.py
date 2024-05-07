@@ -1031,14 +1031,20 @@ class Perps:
         settlement_time = (
             order["commitment_time"] + settlement_strategy["settlement_delay"]
         )
+        expiration_time = (
+            order["commitment_time"] + settlement_strategy["settlement_window_duration"]
+        )
 
         # check if order is ready to be settled
-        if settlement_time > time.time():
+        if order["size_delta"] == 0:
+            raise ValueError(f"Order is already settled for account {account_id}")
+        elif settlement_time > time.time():
             duration = settlement_time - time.time()
             self.logger.info(f"Waiting {round(duration, 4)} seconds to settle order")
             time.sleep(duration)
+        elif expiration_time < time.time():
+            raise ValueError(f"Order has expired for account {account_id}")
         else:
-            # TODO: check if expired
             self.logger.info(f"Order is ready to be settled")
 
         # get fresh prices to provide to the oracle
