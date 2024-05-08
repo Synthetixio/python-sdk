@@ -61,7 +61,7 @@ def test_spot_wrap_usdc(snx, contracts, steal_usdc):
     assert new_synth_balance == synth_balance + TEST_AMOUNT
 
 
-def test_spot_unwrap_usdc(snx, contracts, logger):
+def test_spot_unwrap_usdc(snx, contracts, steal_usdc, logger):
     """The instance can unwrap sUSDC for USDC"""
     usdc = contracts["USDC"]
     susdc = snx.spot.markets_by_name["sUSDC"]["contract"]
@@ -135,7 +135,7 @@ def test_spot_wrap_dai(snx, contracts, mint_dai):
     assert new_synth_balance == synth_balance + TEST_AMOUNT
 
 
-def test_spot_unwrap_dai(snx, contracts, logger):
+def test_spot_unwrap_dai(snx, contracts, mint_dai, logger):
     """The instance can unwrap sDAI for DAI"""
     dai = contracts["DAI"]
     sdai = snx.spot.markets_by_name["sDAI"]["contract"]
@@ -173,7 +173,7 @@ def test_spot_unwrap_dai(snx, contracts, logger):
     assert new_synth_balance == synth_balance - TEST_AMOUNT
 
 
-def test_spot_atomic_sell_usdc(snx, contracts, logger):
+def test_spot_atomic_sell_usdc(snx, contracts, steal_usdc, logger):
     """The instance can wrap USDC for sUSDC and sell for sUSD"""
     # using USDC
     usdc = contracts["USDC"]
@@ -226,7 +226,7 @@ def test_spot_atomic_sell_usdc(snx, contracts, logger):
     assert new_susdc_balance == susdc_balance
 
 
-def test_spot_atomic_buy_usdc(snx, contracts, logger):
+def test_spot_atomic_buy_usdc(snx, contracts, steal_usdc, logger):
     """The instance can buy sUSDC for sUSD and unwarp for USDC"""
     usdc = contracts["USDC"]
     susd = snx.spot.markets_by_name["sUSD"]["contract"]
@@ -267,7 +267,7 @@ def test_spot_atomic_buy_usdc(snx, contracts, logger):
     assert new_usdc_balance == usdc_balance + TEST_AMOUNT
 
 
-def test_spot_atomic_sell_dai(snx, contracts, logger):
+def test_spot_atomic_sell_dai(snx, contracts, mint_dai, logger):
     """The instance can wrap DAI for sDAI and sell for sUSD"""
     # using DAI
     dai = contracts["DAI"]
@@ -320,7 +320,7 @@ def test_spot_atomic_sell_dai(snx, contracts, logger):
     assert new_sdai_balance == sdai_balance
 
 
-def test_spot_atomic_buy_dai(snx, contracts, logger):
+def test_spot_atomic_buy_dai(snx, contracts, mint_dai, logger):
     """The instance can buy sDAI for sUSD and unwarp for DAI"""
     dai = contracts["DAI"]
     susd = snx.spot.markets_by_name["sUSD"]["contract"]
