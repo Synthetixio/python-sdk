@@ -1,5 +1,6 @@
 """Module for interacting with Synthetix V3 spot markets."""
 
+from eth_utils import encode_hex
 from ..utils import ether_to_wei, wei_to_ether, format_ether
 from ..utils.multicall import multicall_erc7412, write_erc7412
 from web3.constants import ADDRESS_ZERO
@@ -113,10 +114,7 @@ class Spot:
         market_id, market_name = self._resolve_market(market_id, None)
 
         # hard-coding a catch for USDC with 6 decimals
-        # also arbitrum sepolia DAI has 6 decimals
-        if (
-            self.snx.network_id in [8453, 84532, 421614] and market_name in "sUSDC"
-        ) or (self.snx.network_id == 421614 and market_name in "sDAI"):
+        if self.snx.network_id in [8453, 84532, 421614] and market_name in "sUSDC":
             size_wei = format_ether(size, decimals=6)
         else:
             size_wei = format_ether(size)
@@ -177,26 +175,52 @@ class Spot:
         # build dictionaries by id and name
         markets_by_id = {
             0: {
+                "market_id": 0,
                 "market_name": "sUSD",
                 "contract": self.snx.contracts["USDProxy"]["contract"],
             }
         }
+
+        try:
+            settlement_strategies = self.get_settlement_strategies(
+                strategy_id=0, market_ids=[s[0] for s in synths]
+            )
+        except Exception as e:
+            self.snx.logger.error(f"Error fetching settlement strategies: {e}")
+            settlement_strategies = {}
+
         for market_id, address in synths:
             synth_contract = self.snx.web3.eth.contract(
                 address=self.snx.web3.to_checksum_address(address),
                 abi=self.snx.contracts["USDProxy"]["abi"],
             )
+            market_name = synth_contract.functions.symbol().call()
+            symbol = market_name[1:]
+
             markets_by_id[market_id] = {
-                "market_name": synth_contract.functions.symbol().call(),
+                "market_id": market_id,
+                "market_name": market_name,
+                "symbol": symbol,
                 "contract": synth_contract,
+                "settlement_strategy": (
+                    settlement_strategies[market_id]
+                    if market_id in settlement_strategies
+                    else {}
+                ),
             }
 
-        markets_by_name = {
-            v["market_name"]: {
-                "market_id": k,
-                "contract": v["contract"],
+        # update pyth price feed ids
+        self.snx.pyth.update_price_feed_ids(
+            {
+                markets_by_id[market]["symbol"]: markets_by_id[market]["feed_id"]
+                for market in markets_by_id
+                if "feed_id" in markets_by_id[market]
             }
-            for k, v in markets_by_id.items()
+        )
+
+        markets_by_name = {
+            market["market_name"]: {key: market[key] for key in market.keys()}
+            for _, market in markets_by_id.items()
         }
         return markets_by_id, markets_by_name
 
@@ -288,13 +312,68 @@ class Spot:
             "settlement_delay": settlement_delay,
             "settlement_window_duration": settlement_window_duration,
             "price_verification_contract": price_verification_contract,
-            "feed_id": feed_id,
+            "feed_id": encode_hex(feed_id),
             "url": url,
             "settlement_reward": settlement_reward,
             "minimum_usd_exchange_amount": minimum_usd_exchange_amount,
             "max_rounding_loss": max_rounding_loss,
             "disabled": disabled,
         }
+
+    def get_settlement_strategies(
+        self,
+        strategy_id: int,
+        market_ids: list[int] = None,
+    ):
+        """
+        Fetch the settlement strategy id for all spot markets.
+
+        :param int settlement_strategy_id: The id of the settlement strategy to retrieve.
+        :param int market_id: The ids of the markets.
+
+        :return: The settlement strategy parameters.
+        :rtype: dict
+        """
+        if market_ids is None:
+            market_ids = self.markets_by_id.keys()
+
+        # create the inputs
+        inputs = [(market_id, strategy_id) for market_id in market_ids]
+
+        settlement_strategies = multicall_erc7412(
+            self.snx, self.market_proxy, "getSettlementStrategy", inputs
+        )
+        market_settlement_strategies = {
+            market_ids[ind]: {
+                "strategy_type": strategy_type,
+                "settlement_delay": settlement_delay,
+                "settlement_window_duration": settlement_window_duration,
+                "price_verification_contract": price_verification_contract,
+                "feed_id": encode_hex(feed_id),
+                "url": url,
+                "settlement_reward": wei_to_ether(settlement_reward),
+                "price_deviation_tolerance": wei_to_ether(price_deviation_tolerance),
+                "minimum_usd_exchange_amount": wei_to_ether(
+                    minimum_usd_exchange_amount
+                ),
+                "max_rounding_loss": wei_to_ether(max_rounding_loss),
+                "disabled": disabled,
+            }
+            for ind, (
+                strategy_type,
+                settlement_delay,
+                settlement_window_duration,
+                price_verification_contract,
+                feed_id,
+                url,
+                settlement_reward,
+                price_deviation_tolerance,
+                minimum_usd_exchange_amount,
+                max_rounding_loss,
+                disabled,
+            ) in enumerate(settlement_strategies)
+        }
+        return market_settlement_strategies
 
     def get_order(
         self,

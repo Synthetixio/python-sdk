@@ -255,6 +255,7 @@ class Core:
         token_address: str,
         amount: float,
         pool_id: int,
+        decimals: int = 18,
         leverage: float = 1,
         account_id: int = None,
         submit: bool = False,
@@ -280,7 +281,7 @@ class Core:
         if not account_id:
             account_id = self.default_account_id
 
-        amount_wei = ether_to_wei(amount)
+        amount_wei = format_ether(amount, decimals)
         leverage_wei = ether_to_wei(leverage)
 
         self.logger.info(

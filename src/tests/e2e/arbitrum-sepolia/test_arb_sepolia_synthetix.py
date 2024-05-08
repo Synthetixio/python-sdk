@@ -1,38 +1,17 @@
-from synthetix.utils import ether_to_wei, wei_to_ether
-from dotenv import load_dotenv
-
-load_dotenv()
-
 # tests
 
 
-def test_snx(snx, logger):
+def test_snx(snx):
     """The instance has a Synthetix instance"""
     assert snx is not None
 
 
-def test_contracts(contracts, logger):
+def test_contracts(contracts):
     """The instance has necessary contracts"""
-    assert contracts["dai"] is not None
-    assert contracts["usdc"] is not None
-    assert contracts["snx"] is not None
-
-
-def test_minting_snx(snx, contracts, logger):
-    """The instance can mint tokens"""
-
-    contract = contracts["snx"]
-    mint_tx_params = snx._get_tx_params()
-    mint_tx_params = contract.functions.mint(
-        ether_to_wei(1), snx.address
-    ).build_transaction(mint_tx_params)
-
-    tx_hash = snx.execute_transaction(mint_tx_params)
-    tx_receipt = snx.wait(tx_hash)
-
-    assert tx_hash is not None
-    assert tx_receipt is not None
-    assert tx_receipt.status == 1
+    assert contracts["WETH"] is not None
+    assert contracts["DAI"] is not None
+    assert contracts["USDC"] is not None
+    assert contracts["ARB"] is not None
 
 
 def test_wrap_eth(snx):
