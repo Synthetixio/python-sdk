@@ -44,6 +44,11 @@ class Spot:
         self.snx = snx
         self.logger = snx.logger
 
+        # settings
+        self.async_orders_enabled = False
+        if snx.network_id in [421614, 42161]:
+            self.async_orders_enabled = True
+
         # check if spot is deployed on this network
         if "SpotMarketProxy" in snx.contracts:
             self.market_proxy = snx.contracts["SpotMarketProxy"]["contract"]
@@ -181,12 +186,12 @@ class Spot:
             }
         }
 
-        try:
+        if self.async_orders_enabled:
             settlement_strategies = self.get_settlement_strategies(
                 strategy_id=0, market_ids=[s[0] for s in synths]
             )
-        except Exception as e:
-            self.snx.logger.error(f"Error fetching settlement strategies: {e}")
+        else:
+            self.snx.logger.debug(f"Async orders not enabled on network {self.snx.network_id}")
             settlement_strategies = {}
 
         for market_id, address in synths:

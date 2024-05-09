@@ -1,3 +1,4 @@
+import pytest
 from synthetix.utils import ether_to_wei, wei_to_ether, format_wei
 from dotenv import load_dotenv
 
@@ -25,152 +26,76 @@ def test_spot_markets(snx, logger):
     assert "sDAI" in snx.spot.markets_by_name
 
 
-def test_spot_wrap_usdc(snx, contracts, steal_usdc):
-    """The instance can wrap USDC for sUSDC"""
-    usdc = contracts["USDC"]
+@pytest.mark.parametrize(
+    "token_name, test_amount, decimals",
+    [
+        ("USDC", TEST_AMOUNT, 6),
+        ("DAI", TEST_AMOUNT, 18),
+    ],
+)
+def test_spot_wrapper(
+    snx, contracts, steal_usdc, mint_dai, token_name, test_amount, decimals
+):
+    """The instance can wrap and unwrap an asset"""
+    token = contracts[token_name]
+    market_id = snx.spot.markets_by_name[f"s{token_name}"]["market_id"]
+    wrapped_token = snx.spot.markets_by_id[market_id]["contract"]
 
     # make sure we have some USDC
-    balance_wei = usdc.functions.balanceOf(snx.address).call()
-    balance = format_wei(balance_wei, 6)
+    starting_balance_wei = token.functions.balanceOf(snx.address).call()
+    starting_balance = format_wei(starting_balance_wei, decimals)
 
-    synth_balance = snx.spot.get_balance(market_name="sUSDC")
+    starting_synth_balance = snx.spot.get_balance(market_id=market_id)
 
-    assert balance > 0
+    assert starting_balance > test_amount
 
+    ## wrap
     # check the allowance
-    allowance = snx.allowance(usdc.address, snx.spot.market_proxy.address)
+    allowance = snx.allowance(token.address, snx.spot.market_proxy.address)
 
-    if allowance < TEST_AMOUNT:
+    if allowance < test_amount:
         # approve
         approve_tx = snx.approve(
-            usdc.address, snx.spot.market_proxy.address, submit=True
+            token.address, snx.spot.market_proxy.address, submit=True
         )
         snx.wait(approve_tx)
 
-    # wrap
-    wrap_tx = snx.spot.wrap(TEST_AMOUNT, market_name="sUSDC", submit=True)
+    wrap_tx = snx.spot.wrap(test_amount, market_id=market_id, submit=True)
     snx.wait(wrap_tx)
 
     # get new balances
-    new_balance_wei = usdc.functions.balanceOf(snx.address).call()
-    new_balance = format_wei(new_balance_wei, 6)
+    wrapped_balance_wei = token.functions.balanceOf(snx.address).call()
+    wrapped_balance = format_wei(wrapped_balance_wei, decimals)
 
-    new_synth_balance = snx.spot.get_balance(market_name="sUSDC")
+    wrapped_synth_balance = snx.spot.get_balance(market_id=market_id)
 
-    assert new_balance == balance - TEST_AMOUNT
-    assert new_synth_balance == synth_balance + TEST_AMOUNT
+    assert wrapped_balance == starting_balance - test_amount
+    assert wrapped_synth_balance == starting_synth_balance + test_amount
 
-
-def test_spot_unwrap_usdc(snx, contracts, steal_usdc, logger):
-    """The instance can unwrap sUSDC for USDC"""
-    usdc = contracts["USDC"]
-    susdc = snx.spot.markets_by_name["sUSDC"]["contract"]
-
-    # check balances
-    balance_wei = usdc.functions.balanceOf(snx.address).call()
-    balance = format_wei(balance_wei, 6)
-
-    synth_balance = snx.spot.get_balance(market_name="sUSDC")
-
-    assert synth_balance >= TEST_AMOUNT
-
+    ## unwrap
     # check the allowance
-    allowance = snx.allowance(susdc.address, snx.spot.market_proxy.address)
+    wrapped_allowance = snx.allowance(
+        wrapped_token.address, snx.spot.market_proxy.address
+    )
 
-    if allowance < TEST_AMOUNT:
+    if wrapped_allowance < test_amount:
         # approve
         approve_tx = snx.approve(
-            susdc.address, snx.spot.market_proxy.address, submit=True
+            wrapped_token.address, snx.spot.market_proxy.address, submit=True
         )
-        snx.logger.info(approve_tx)
         snx.wait(approve_tx)
 
-    # unwrap
-    unwrap_tx = snx.spot.wrap(-TEST_AMOUNT, market_name="sUSDC", submit=True)
+    unwrap_tx = snx.spot.wrap(-test_amount, market_id=market_id, submit=True)
     snx.wait(unwrap_tx)
 
     # get new balances
-    new_balance_wei = usdc.functions.balanceOf(snx.address).call()
-    new_balance = format_wei(new_balance_wei, 6)
+    unwrapped_balance_wei = token.functions.balanceOf(snx.address).call()
+    unwrapped_balance = format_wei(unwrapped_balance_wei, decimals)
 
-    new_synth_balance = snx.spot.get_balance(market_name="sUSDC")
+    unwrapped_synth_balance = snx.spot.get_balance(market_id=market_id)
 
-    assert new_balance == balance + TEST_AMOUNT
-    assert new_synth_balance == synth_balance - TEST_AMOUNT
-
-
-def test_spot_wrap_dai(snx, contracts, mint_dai):
-    """The instance can wrap DAI for sDAI"""
-    dai = contracts["DAI"]
-
-    # make sure we have some USDC
-    balance_wei = dai.functions.balanceOf(snx.address).call()
-    balance = format_wei(balance_wei, 6)
-
-    synth_balance = snx.spot.get_balance(market_name="sDAI")
-
-    assert balance > 0
-
-    # check the allowance
-    allowance = snx.allowance(dai.address, snx.spot.market_proxy.address)
-
-    if allowance < TEST_AMOUNT:
-        # approve
-        approve_tx = snx.approve(
-            dai.address, snx.spot.market_proxy.address, submit=True
-        )
-        snx.wait(approve_tx)
-
-    # wrap
-    wrap_tx = snx.spot.wrap(TEST_AMOUNT, market_name="sDAI", submit=True)
-    snx.wait(wrap_tx)
-
-    # get new balances
-    new_balance_wei = dai.functions.balanceOf(snx.address).call()
-    new_balance = format_wei(new_balance_wei, 6)
-
-    new_synth_balance = snx.spot.get_balance(market_name="sDAI")
-
-    assert new_balance == balance - TEST_AMOUNT
-    assert new_synth_balance == synth_balance + TEST_AMOUNT
-
-
-def test_spot_unwrap_dai(snx, contracts, mint_dai, logger):
-    """The instance can unwrap sDAI for DAI"""
-    dai = contracts["DAI"]
-    sdai = snx.spot.markets_by_name["sDAI"]["contract"]
-
-    # check balances
-    balance_wei = dai.functions.balanceOf(snx.address).call()
-    balance = format_wei(balance_wei, 6)
-
-    synth_balance = snx.spot.get_balance(market_name="sDAI")
-
-    assert synth_balance >= TEST_AMOUNT
-
-    # check the allowance
-    allowance = snx.allowance(sdai.address, snx.spot.market_proxy.address)
-
-    if allowance < TEST_AMOUNT:
-        # approve
-        approve_tx = snx.approve(
-            sdai.address, snx.spot.market_proxy.address, submit=True
-        )
-        snx.logger.info(approve_tx)
-        snx.wait(approve_tx)
-
-    # wrap
-    wrap_tx = snx.spot.wrap(-TEST_AMOUNT, market_name="sDAI", submit=True)
-    snx.wait(wrap_tx)
-
-    # get new balances
-    new_balance_wei = dai.functions.balanceOf(snx.address).call()
-    new_balance = format_wei(new_balance_wei, 6)
-
-    new_synth_balance = snx.spot.get_balance(market_name="sDAI")
-
-    assert new_balance == balance + TEST_AMOUNT
-    assert new_synth_balance == synth_balance - TEST_AMOUNT
+    assert unwrapped_balance == wrapped_balance + test_amount
+    assert unwrapped_synth_balance == wrapped_synth_balance - test_amount
 
 
 def test_spot_atomic_sell_usdc(snx, contracts, steal_usdc, logger):
