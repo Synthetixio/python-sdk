@@ -1,5 +1,4 @@
 import pytest
-from synthetix.utils import ether_to_wei, wei_to_ether
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -26,8 +25,8 @@ def test_core_module(snx, logger):
     [
         ("USDC", USD_TEST_AMOUNT, 6),
         ("DAI", USD_TEST_AMOUNT, 18),
-        # ("WETH", WETH_TEST_AMOUNT, 18),
-        # ("ARB", ARB_TEST_AMOUNT, 18),
+        ("WETH", WETH_TEST_AMOUNT, 18),
+        ("ARB", ARB_TEST_AMOUNT, 18),
     ],
 )
 def test_deposit_flow(
@@ -133,7 +132,6 @@ def test_delegate_flow(
         token.address,
         test_amount,
         1,
-        decimals=decimals,
         account_id=core_account_id,
         submit=True,
     )
@@ -196,7 +194,6 @@ def test_account_delegate_mint(
         token.address,
         test_amount,
         1,
-        decimals=decimals,
         account_id=core_account_id,
         submit=True,
     )
