@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # constants
-TEST_AMOUNT = 1
+TEST_AMOUNT = 100
 
 # tests
 
@@ -29,11 +29,13 @@ def test_spot_markets(snx, logger):
 @pytest.mark.parametrize(
     "token_name, test_amount, decimals",
     [
-        # ("USDC", TEST_AMOUNT, 6),
+        ("USDC", TEST_AMOUNT, 6),
         ("DAI", TEST_AMOUNT, 18),
     ],
 )
-def test_spot_wrapper(snx, contracts, token_name, test_amount, decimals):
+def test_spot_wrapper(
+    snx, contracts, steal_usdc, mint_dai, token_name, test_amount, decimals
+):
     """The instance can wrap and unwrap an asset"""
     token = contracts[token_name]
     market_id = snx.spot.markets_by_name[f"s{token_name}"]["market_id"]
@@ -99,12 +101,14 @@ def test_spot_wrapper(snx, contracts, token_name, test_amount, decimals):
 @pytest.mark.parametrize(
     "token_name, test_amount, decimals",
     [
-        # ("USDC", TEST_AMOUNT, 6),
+        ("USDC", TEST_AMOUNT, 6),
         ("DAI", TEST_AMOUNT, 18),
     ],
 )
 @pytest.mark.skip("Async orders are not working")
-def test_spot_async_order(snx, contracts, logger, token_name, test_amount, decimals):
+def test_spot_async_order(
+    snx, contracts, steal_usdc, mint_dai, logger, token_name, test_amount, decimals
+):
     """The instance can wrap USDC for sUSDC and commit an async order to sell for sUSD"""
     token = contracts[token_name]
     market_id = snx.spot.markets_by_name[f"s{token_name}"]["market_id"]
@@ -181,11 +185,13 @@ def test_spot_async_order(snx, contracts, logger, token_name, test_amount, decim
 @pytest.mark.parametrize(
     "token_name, test_amount, decimals",
     [
-        # ("USDC", TEST_AMOUNT, 6),
+        ("USDC", TEST_AMOUNT, 6),
         ("DAI", TEST_AMOUNT, 18),
     ],
 )
-def test_spot_atomic_order(snx, contracts, logger, token_name, test_amount, decimals):
+def test_spot_atomic_order(
+    snx, contracts, steal_usdc, mint_dai, logger, token_name, test_amount, decimals
+):
     """The instance can wrap USDC for sUSDC and commit an atomic order to sell for sUSD"""
     token = contracts[token_name]
     market_id = snx.spot.markets_by_name[f"s{token_name}"]["market_id"]

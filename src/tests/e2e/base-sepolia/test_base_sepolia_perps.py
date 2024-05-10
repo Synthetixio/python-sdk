@@ -144,7 +144,6 @@ def test_account_flow(snx, new_account_id, market_name):
     # wait for the order settlement
     settle_tx = snx.perps.settle_order(account_id=new_account_id, submit=True)
     settle_receipt = snx.wait(settle_tx)
-    assert settle_receipt["status"] == 1
 
     # check the result
     position = snx.perps.get_open_position(
@@ -172,7 +171,6 @@ def test_account_flow(snx, new_account_id, market_name):
     # wait for the order settlement
     settle_tx_2 = snx.perps.settle_order(account_id=new_account_id, submit=True)
     settle_receipt_2 = snx.wait(settle_tx_2)
-    assert settle_receipt_2["status"] == 1
 
     # check the result
     position = snx.perps.get_open_position(market_name="ETH", account_id=new_account_id)

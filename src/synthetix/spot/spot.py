@@ -1,5 +1,6 @@
 """Module for interacting with Synthetix V3 spot markets."""
 
+from eth_utils import encode_hex
 from ..utils import ether_to_wei, wei_to_ether, format_ether
 from ..utils.multicall import multicall_erc7412, write_erc7412
 from web3.constants import ADDRESS_ZERO
@@ -42,6 +43,11 @@ class Spot:
     def __init__(self, snx):
         self.snx = snx
         self.logger = snx.logger
+
+        # settings
+        self.async_orders_enabled = False
+        if snx.network_id in [421614, 42161]:
+            self.async_orders_enabled = True
 
         # check if spot is deployed on this network
         if "SpotMarketProxy" in snx.contracts:
@@ -113,10 +119,7 @@ class Spot:
         market_id, market_name = self._resolve_market(market_id, None)
 
         # hard-coding a catch for USDC with 6 decimals
-        # also arbitrum sepolia DAI has 6 decimals
-        if (
-            self.snx.network_id in [8453, 84532, 421614] and market_name in "sUSDC"
-        ) or (self.snx.network_id == 421614 and market_name in "sDAI"):
+        if self.snx.network_id in [8453, 84532, 421614] and market_name in "sUSDC":
             size_wei = format_ether(size, decimals=6)
         else:
             size_wei = format_ether(size)
@@ -177,26 +180,54 @@ class Spot:
         # build dictionaries by id and name
         markets_by_id = {
             0: {
+                "market_id": 0,
                 "market_name": "sUSD",
                 "contract": self.snx.contracts["USDProxy"]["contract"],
             }
         }
+
+        if self.async_orders_enabled:
+            settlement_strategies = self.get_settlement_strategies(
+                strategy_id=0, market_ids=[s[0] for s in synths]
+            )
+        else:
+            self.snx.logger.debug(
+                f"Async orders not enabled on network {self.snx.network_id}"
+            )
+            settlement_strategies = {}
+
         for market_id, address in synths:
             synth_contract = self.snx.web3.eth.contract(
                 address=self.snx.web3.to_checksum_address(address),
                 abi=self.snx.contracts["USDProxy"]["abi"],
             )
+            market_name = synth_contract.functions.symbol().call()
+            symbol = market_name[1:]
+
             markets_by_id[market_id] = {
-                "market_name": synth_contract.functions.symbol().call(),
+                "market_id": market_id,
+                "market_name": market_name,
+                "symbol": symbol,
                 "contract": synth_contract,
             }
+            if market_id in settlement_strategies:
+                markets_by_id[market_id][
+                    "settlement_strategy"
+                ] = settlement_strategies[market_id]
+
+        # update pyth price feed ids
+        update_feeds = {
+            markets_by_id[market]["symbol"]: markets_by_id[market][
+                "settlement_strategy"
+            ]["feed_id"]
+            for market in markets_by_id
+            if "settlement_strategy" in markets_by_id[market]
+        }
+        self.snx.pyth.update_price_feed_ids(update_feeds)
 
         markets_by_name = {
-            v["market_name"]: {
-                "market_id": k,
-                "contract": v["contract"],
-            }
-            for k, v in markets_by_id.items()
+            market["market_name"]: {key: market[key] for key in market.keys()}
+            for _, market in markets_by_id.items()
         }
         return markets_by_id, markets_by_name
 
@@ -277,6 +308,7 @@ class Spot:
             feed_id,
             url,
             settlement_reward,
+            price_deviation_tolerance,
             minimum_usd_exchange_amount,
             max_rounding_loss,
             disabled,
@@ -288,13 +320,69 @@ class Spot:
             "settlement_delay": settlement_delay,
             "settlement_window_duration": settlement_window_duration,
             "price_verification_contract": price_verification_contract,
-            "feed_id": feed_id,
+            "feed_id": encode_hex(feed_id),
             "url": url,
-            "settlement_reward": settlement_reward,
-            "minimum_usd_exchange_amount": minimum_usd_exchange_amount,
-            "max_rounding_loss": max_rounding_loss,
+            "settlement_reward": wei_to_ether(settlement_reward),
+            "price_deviation_tolerance": wei_to_ether(price_deviation_tolerance),
+            "minimum_usd_exchange_amount": wei_to_ether(minimum_usd_exchange_amount),
+            "max_rounding_loss": wei_to_ether(max_rounding_loss),
             "disabled": disabled,
         }
+
+    def get_settlement_strategies(
+        self,
+        strategy_id: int,
+        market_ids: list[int] = None,
+    ):
+        """
+        Fetch the settlement strategy id for all spot markets.
+
+        :param int settlement_strategy_id: The id of the settlement strategy to retrieve.
+        :param int market_id: The ids of the markets.
+
+        :return: The settlement strategy parameters.
+        :rtype: dict
+        """
+        if market_ids is None:
+            market_ids = self.markets_by_id.keys()
+
+        # create the inputs
+        inputs = [(market_id, strategy_id) for market_id in market_ids]
+
+        settlement_strategies = multicall_erc7412(
+            self.snx, self.market_proxy, "getSettlementStrategy", inputs
+        )
+        market_settlement_strategies = {
+            market_ids[ind]: {
+                "strategy_type": strategy_type,
+                "settlement_delay": settlement_delay,
+                "settlement_window_duration": settlement_window_duration,
+                "price_verification_contract": price_verification_contract,
+                "feed_id": encode_hex(feed_id),
+                "url": url,
+                "settlement_reward": wei_to_ether(settlement_reward),
+                "price_deviation_tolerance": wei_to_ether(price_deviation_tolerance),
+                "minimum_usd_exchange_amount": wei_to_ether(
+                    minimum_usd_exchange_amount
+                ),
+                "max_rounding_loss": wei_to_ether(max_rounding_loss),
+                "disabled": disabled,
+            }
+            for ind, (
+                strategy_type,
+                settlement_delay,
+                settlement_window_duration,
+                price_verification_contract,
+                feed_id,
+                url,
+                settlement_reward,
+                price_deviation_tolerance,
+                minimum_usd_exchange_amount,
+                max_rounding_loss,
+                disabled,
+            ) in enumerate(settlement_strategies)
+        }
+        return market_settlement_strategies
 
     def get_order(
         self,
@@ -333,7 +421,7 @@ class Spot:
             order_type,
             amount_escrowed,
             settlement_strategy_id,
-            settlement_time,
+            commitment_time,
             minimum_settlement_amount,
             settled_at,
             referrer,
@@ -345,7 +433,7 @@ class Spot:
             "order_type": order_type,
             "amount_escrowed": amount_escrowed,
             "settlement_strategy_id": settlement_strategy_id,
-            "settlement_time": settlement_time,
+            "commitment_time": commitment_time,
             "minimum_settlement_amount": minimum_settlement_amount,
             "settled_at": settled_at,
             "referrer": referrer,
@@ -409,6 +497,7 @@ class Spot:
         self,
         side: Literal["buy", "sell"],
         size: int,
+        slippage_tolerance: float = 0,
         market_id: int = None,
         market_name: str = None,
         submit: bool = False,
@@ -428,6 +517,7 @@ class Spot:
 
         :param Literal["buy", "sell"] side: The side of the order (buy/sell).
         :param int size: The order size in ether.
+        :param float slippage_tolerance: The slippage tolerance for the order as a percentage (0.01 = 1%). Default is 0.
         :param int market_id: The ID of the market.
         :param str market_name: The name of the market.
         :param bool submit: Whether to broadcast the transaction.
@@ -436,13 +526,16 @@ class Spot:
         """
         market_id, market_name = self._resolve_market(market_id, market_name)
 
+        min_amount_received = size * (1 - slippage_tolerance)
+        min_amount_received_wei = ether_to_wei(min_amount_received)
+
         size_wei = ether_to_wei(size)
 
         # prepare the transaction
         tx_args = [
             market_id,  # marketId
             size_wei,  # amount provided
-            size_wei,  # amount received
+            min_amount_received_wei,  # amount received
             self.snx.referrer,  # referrer
         ]
         tx_params = write_erc7412(self.snx, self.market_proxy, side, tx_args)
@@ -516,7 +609,7 @@ class Spot:
         self,
         side: Literal["buy", "sell"],
         size: int,
-        settlement_strategy_id: int = 2,
+        settlement_strategy_id: int = 0,
         market_id: int = None,
         market_name: str = None,
         submit: bool = False,
@@ -567,104 +660,107 @@ class Spot:
         else:
             return tx_params
 
-    def settle_pyth_order(
+    def settle_order(
         self,
         async_order_id: int,
         market_id: int = None,
         market_name: str = None,
-        max_retry: int = 10,
-        retry_delay: int = 2,
+        max_tx_tries: int = 5,
+        tx_delay: int = 2,
         submit: bool = False,
     ):
         """
         Settle an async Pyth order after price data is available.
 
         Fetches the price for the order from Pyth and settles the order.
-        Retries up to max_retry times on failure with a delay of retry_delay seconds.
+        Retries up to ``max_tx_tries`` times on failure with a delay of ``tx_delay`` seconds.
 
         Requires either a ``market_id`` or ``market_name`` to be provided to resolve the market.
 
         :param int async_order_id: The ID of the async order to settle.
         :param int market_id: The ID of the market. (e.g. "ETH")
         :param str market_name: The name of the market.
-        :param int max_retry: Max retry attempts if price fetch fails.
-        :param int retry_delay: Seconds to wait between retries.
+        :param int max_tx_tries: Max retry attempts if price fetch fails.
+        :param int tx_delay: Seconds to wait between retries.
         :param bool submit: Whether to broadcast the transaction.
 
         :return: The transaction dict if submit=False, otherwise the tx hash.
         """
-        # TODO: Update this for spot market
         market_id, market_name = self._resolve_market(market_id, market_name)
 
         order = self.get_order(async_order_id, market_id=market_id)
         settlement_strategy = order["settlement_strategy"]
+        settlement_time = (
+            order["commitment_time"] + settlement_strategy["settlement_delay"]
+        )
+        expiration_time = (
+            order["commitment_time"] + settlement_strategy["settlement_window_duration"]
+        )
 
         # check if order is ready to be settled
-        self.logger.info(f"settlement time: {order['settlement_time']}")
-        self.logger.info(f"current time: {time.time()}")
-        if order["settlement_time"] > time.time():
-            duration = order["settlement_time"] - time.time()
-            self.logger.info(f"Waiting {duration} seconds until order can be settled")
+        if order["settled_at"] > 0:
+            raise ValueError(
+                f"Order {async_order_id} on market {market_id} is already settled for account"
+            )
+        elif settlement_time > time.time():
+            duration = settlement_time - time.time()
+            self.logger.info(f"Waiting {round(duration, 4)} seconds")
             time.sleep(duration)
+            self.logger.info(
+                f"Order {async_order_id} on market {market_id} is ready to be settled"
+            )
+
+        elif expiration_time < time.time():
+            raise ValueError(
+                f"Order {async_order_id} on market {market_id} has expired"
+            )
         else:
-            # TODO: check if expired
-            self.logger.info("Order is ready to be settled")
-
-        # create hex inputs
-        feed_id_hex = settlement_strategy["feed_id"].hex()
-        settlement_time_hex = self.snx.web3.to_hex(
-            (order["settlement_time"]).to_bytes(8, byteorder="big")
-        )
-
-        # Concatenate the hex strings with '0x' prefix
-        data_param = f"0x{feed_id_hex}{settlement_time_hex[2:]}"
-
-        # query pyth for the price update data
-        url = settlement_strategy["url"].format(data=data_param)
-
-        retry_count = 0
-        price_update_data = None
-        while not price_update_data and retry_count < max_retry:
-            response = requests.get(url)
-
-            if response.status_code == 200:
-                response_json = response.json()
-                price_update_data = response_json["data"]
-            else:
-                retry_count += 1
-                if retry_count > max_retry:
-                    raise ValueError("Price update data not available")
-
-                self.logger.info(
-                    "Price update data not available, waiting 2 seconds and retrying"
-                )
-                time.sleep(retry_delay)
-
-        # encode the extra data
-        market_bytes = market_id.to_bytes(32, byteorder="big")
-        order_id_bytes = order["id"].to_bytes(32, byteorder="big")
-
-        # Concatenate the bytes and convert to hex
-        extra_data = self.snx.web3.to_hex(market_bytes + order_id_bytes)
-
-        # log the data
-        self.logger.info(f"price_update_data: {price_update_data}")
-        self.logger.info(f"extra_data: {extra_data}")
+            self.logger.info(
+                f"Order {async_order_id} on market {market_id} is ready to be settled"
+            )
 
         # prepare the transaction
-        market_proxy = self.market_proxy
-        tx_params = write_erc7412(
-            self.snx,
-            self.market_proxy,
-            "settlePythOrder",
-            [price_update_data, extra_data],
-            {"value": 1},
-        )
+        tx_tries = 0
+        while tx_tries < max_tx_tries:
+            try:
+                tx_params = write_erc7412(
+                    self.snx,
+                    self.market_proxy,
+                    "settleOrder",
+                    [market_id, async_order_id],
+                    calls=calls,
+                )
+            except Exception as e:
+                self.logger.error(f"settleOrder error: {e}")
+                tx_tries += 1
+                time.sleep(tx_delay)
+                continue
 
-        if submit:
-            tx_hash = self.snx.execute_transaction(tx_params)
-            self.logger.info(f"Settling order {order['id']}")
-            self.logger.info(f"settle tx: {tx_hash}")
-            return tx_hash
-        else:
-            return tx_params
+            if submit:
+                tx_hash = self.snx.execute_transaction(tx_params)
+                self.logger.info(
+                    f"Settling order {async_order_id} for market {market_id}"
+                )
+                self.logger.info(f"settle tx: {tx_hash}")
+
+                receipt = self.snx.wait(tx_hash)
+                self.logger.debug(f"settle receipt: {receipt}")
+
+                # check the order
+                order = self.get_order(async_order_id, market_id=market_id)
+                if order["settled_at"] > 0:
+                    self.logger.info(
+                        f"Settlement successful for order {async_order_id} on market {market_id}"
+                    )
+                    return tx_hash
+
+                tx_tries += 1
+                if tx_tries > max_tx_tries:
+                    raise ValueError("Failed to settle order")
+                else:
+                    self.logger.info(
+                        "Failed to settle order, waiting 2 seconds and retrying"
+                    )
+                    time.sleep(tx_delay)
+            else:
+                return tx_params
