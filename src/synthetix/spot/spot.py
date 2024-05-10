@@ -211,9 +211,9 @@ class Spot:
                 "contract": synth_contract,
             }
             if market_id in settlement_strategies:
-                markets_by_id[market_id][
-                    "settlement_strategy"
-                ] = settlement_strategies[market_id]
+                markets_by_id[market_id]["settlement_strategy"] = settlement_strategies[
+                    market_id
+                ]
 
         # update pyth price feed ids
         update_feeds = {
@@ -609,6 +609,7 @@ class Spot:
         self,
         side: Literal["buy", "sell"],
         size: int,
+        slippage_tolerance: float = 0,
         settlement_strategy_id: int = 0,
         market_id: int = None,
         market_name: str = None,
@@ -625,6 +626,7 @@ class Spot:
         :param Literal["buy", "sell"] side: The side of the order (buy/sell).
         :param int size: The order size in ether. If ``side`` is "buy", this is the amount
             of the synth to buy. If ``side`` is "sell", this is the amount of the synth to sell.
+        :param float slippage_tolerance: The slippage tolerance for the order as a percentage (0.01 = 1%). Default is 0.
         :param int settlement_strategy_id: The settlement strategy ID. Default 2.
         :param int market_id: The ID of the market.
         :param str market_name: The name of the market.
@@ -633,11 +635,23 @@ class Spot:
         :return: The transaction dict if submit=False, otherwise the tx hash.
         """
         market_id, market_name = self._resolve_market(market_id, market_name)
-        # TODO: Add a slippage parameter
-        # TODO: Allow user to specify USD or ETH values (?)
+
+        # get a price
+        feed_id = self.markets_by_id[market_id]["settlement_strategy"]["feed_id"]
+        settlement_reward = self.markets_by_id[market_id]["settlement_strategy"][
+            "settlement_reward"
+        ]
+        pyth_data = self.snx.pyth.get_price_from_ids([feed_id])
+        price = pyth_data["meta"][feed_id]["price"]
+
+        min_amount_received = size * price * (1 - slippage_tolerance) - settlement_reward
+        min_amount_received_wei = ether_to_wei(min_amount_received)
 
         size_wei = ether_to_wei(size)
         order_type = 3 if side == "buy" else 4
+        self.snx.logger.info(
+            f"Price: {price}, Min amount received: {min_amount_received}, Size: {size}"
+        )
 
         # prepare the transaction
         tx_args = [
@@ -645,7 +659,7 @@ class Spot:
             order_type,  # orderType
             size_wei,  # amountProvided
             settlement_strategy_id,  # settlementStrategyId
-            0,  # minimumSettlementAmount
+            min_amount_received_wei,  # minimumSettlementAmount
             self.snx.referrer,  # referrer
         ]
         tx_params = write_erc7412(self.snx, self.market_proxy, "commitOrder", tx_args)
@@ -728,7 +742,6 @@ class Spot:
                     self.market_proxy,
                     "settleOrder",
                     [market_id, async_order_id],
-                    calls=calls,
                 )
             except Exception as e:
                 self.logger.error(f"settleOrder error: {e}")
