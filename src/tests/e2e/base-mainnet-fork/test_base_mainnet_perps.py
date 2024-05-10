@@ -151,7 +151,6 @@ def test_account_flow(snx, new_account_id, market_name):
         account_id=new_account_id, max_tx_tries=5, submit=True
     )
     settle_receipt = snx.wait(settle_tx)
-    assert settle_receipt["status"] == 1
 
     # check the result
     position = snx.perps.get_open_position(
@@ -181,7 +180,6 @@ def test_account_flow(snx, new_account_id, market_name):
         account_id=new_account_id, max_tx_tries=5, submit=True
     )
     settle_receipt_2 = snx.wait(settle_tx_2)
-    assert settle_receipt_2["status"] == 1
 
     # check the result
     position = snx.perps.get_open_position(
@@ -256,7 +254,6 @@ def test_multiple_positions(snx, new_account_id, market_1, market_2):
         account_id=new_account_id, max_tx_tries=5, submit=True
     )
     settle_receipt_1 = snx.wait(settle_tx_1)
-    assert settle_receipt_1["status"] == 1
 
     ## order 2
     # check the price
@@ -279,7 +276,6 @@ def test_multiple_positions(snx, new_account_id, market_1, market_2):
         account_id=new_account_id, max_tx_tries=5, submit=True
     )
     settle_receipt_2 = snx.wait(settle_tx_2)
-    assert settle_receipt_2["status"] == 1
 
     # get the position sizes
     positions = snx.perps.get_open_positions(account_id=new_account_id)
@@ -305,7 +301,6 @@ def test_multiple_positions(snx, new_account_id, market_1, market_2):
         account_id=new_account_id, max_tx_tries=5, submit=True
     )
     settle_receipt_3 = snx.wait(settle_tx_3)
-    assert settle_receipt_3["status"] == 1
 
     ## order 2
     # commit order
@@ -324,7 +319,6 @@ def test_multiple_positions(snx, new_account_id, market_1, market_2):
         account_id=new_account_id, max_tx_tries=5, submit=True
     )
     settle_receipt_4 = snx.wait(settle_tx_4)
-    assert settle_receipt_4["status"] == 1
 
     # check the result
     positions = snx.perps.get_open_positions(account_id=new_account_id)

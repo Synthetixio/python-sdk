@@ -8,7 +8,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # constants
-RPC = os.environ.get("LOCAL_RPC")
+RPC = os.environ.get("NETWORK_421614_RPC")
+PRIVATE_KEY = os.environ.get("PRIVATE_KEY")
 MAINNET_RPC = os.environ.get("NETWORK_1_RPC")
 
 SNX_DEPLOYER_ADDRESS = "0x48914229deDd5A9922f44441ffCCfC2Cb7856Ee9"
@@ -21,6 +22,7 @@ def snx(pytestconfig):
     # set up the snx instance
     snx = Synthetix(
         provider_rpc=RPC,
+        private_key=PRIVATE_KEY,
         mainnet_rpc=MAINNET_RPC,
         cannon_config={
             "package": "synthetix-omnibus",
@@ -59,94 +61,6 @@ def contracts(snx):
         "USDC": usdc,
         "ARB": arb,
     }
-
-
-@pytest.fixture(scope="module")
-def mint_dai(snx, contracts):
-    """The instance can mint DAI tokens"""
-    snx.web3.provider.make_request("anvil_impersonateAccount", [SNX_DEPLOYER_ADDRESS])
-
-    contract = contracts["DAI"]
-    tx_params = contract.functions.mint(
-        ether_to_wei(100000), snx.address
-    ).build_transaction(
-        {
-            "from": SNX_DEPLOYER_ADDRESS,
-            "nonce": snx.web3.eth.get_transaction_count(SNX_DEPLOYER_ADDRESS),
-        }
-    )
-
-    # Send the transaction directly without signing
-    tx_hash = snx.web3.eth.send_transaction(tx_params)
-    receipt = snx.wait(tx_hash)
-    if receipt["status"] != 1:
-        raise Exception("DAI mint failed")
-
-    assert tx_hash is not None
-    assert receipt is not None
-    assert receipt.status == 1
-    snx.logger.info(f"Minted DAI")
-
-
-@pytest.fixture(scope="module")
-def mint_arb(snx, contracts):
-    """The instance can mint ARB tokens"""
-    snx.web3.provider.make_request("anvil_impersonateAccount", [SNX_DEPLOYER_ADDRESS])
-
-    contract = contracts["ARB"]
-    tx_params = contract.functions.mint(
-        ether_to_wei(100000), snx.address
-    ).build_transaction(
-        {
-            "from": SNX_DEPLOYER_ADDRESS,
-            "nonce": snx.web3.eth.get_transaction_count(SNX_DEPLOYER_ADDRESS),
-        }
-    )
-
-    # Send the transaction directly without signing
-    tx_hash = snx.web3.eth.send_transaction(tx_params)
-    receipt = snx.wait(tx_hash)
-    if receipt["status"] != 1:
-        raise Exception("ARB mint failed")
-
-    assert tx_hash is not None
-    assert receipt is not None
-    assert receipt.status == 1
-    snx.logger.info(f"Minted ARB")
-
-
-@pytest.fixture(scope="module")
-def steal_usdc(snx, contracts):
-    """The instance can steal USDC tokens"""
-    # check usdc balance
-    usdc_contract = contracts["USDC"]
-    usdc_balance = usdc_contract.functions.balanceOf(snx.address).call()
-    usdc_balance = usdc_balance / 10**6
-
-    # get some usdc
-    if usdc_balance < 100000:
-        transfer_amount = int((100000 - usdc_balance) * 10**6)
-        snx.web3.provider.make_request("anvil_impersonateAccount", [USDC_WHALE])
-
-        tx_params = usdc_contract.functions.transfer(
-            snx.address, transfer_amount
-        ).build_transaction(
-            {
-                "from": USDC_WHALE,
-                "nonce": snx.web3.eth.get_transaction_count(USDC_WHALE),
-            }
-        )
-
-        # Send the transaction directly without signing
-        tx_hash = snx.web3.eth.send_transaction(tx_params)
-        receipt = snx.wait(tx_hash)
-        if receipt["status"] != 1:
-            raise Exception("USDC Transfer failed")
-
-        assert tx_hash is not None
-        assert receipt is not None
-        assert receipt.status == 1
-        snx.logger.info(f"Stole USDC from {USDC_WHALE}")
 
 
 @pytest.fixture(scope="module")
