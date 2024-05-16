@@ -145,6 +145,7 @@ class Synthetix:
         pyth_cache_ttl: int = 60,
         gas_multiplier: float = DEFAULT_GAS_MULTIPLIER,
         is_fork: bool = False,
+        request_kwargs: dict = {},
     ):
         args = parse_args()
         self.logger = setup_logging(args.debug, args.verbose)
@@ -164,7 +165,7 @@ class Synthetix:
 
         # init chain provider
         if provider_rpc.startswith("http"):
-            web3 = Web3(Web3.HTTPProvider(self.provider_rpc))
+            web3 = Web3(Web3.HTTPProvider(self.provider_rpc, request_kwargs=request_kwargs))
         elif provider_rpc.startswith("wss"):
             web3 = Web3(Web3.WebsocketProvider(self.provider_rpc))
         elif provider_rpc.endswith("ipc"):
