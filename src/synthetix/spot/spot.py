@@ -649,9 +649,6 @@ class Spot:
 
         size_wei = ether_to_wei(size)
         order_type = 3 if side == "buy" else 4
-        self.snx.logger.info(
-            f"Price: {price}, Min amount received: {min_amount_received}, Size: {size}"
-        )
 
         # prepare the transaction
         tx_args = [
