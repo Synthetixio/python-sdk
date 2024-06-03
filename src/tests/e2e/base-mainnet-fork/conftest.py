@@ -23,6 +23,7 @@ def snx():
         provider_rpc=RPC,
         referrer=KWENTA_REFERRER,
         is_fork=True,
+        request_kwargs={"timeout": 120},
     )
 
     # check usdc balance
