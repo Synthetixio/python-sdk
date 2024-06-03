@@ -66,7 +66,7 @@ def load_json_files_from_directory(snx, directory):
 
 
 def get_deployment_hash(snx):
-    provider_rpc = snx.mainnet_rpc
+    provider_rpc = snx.op_mainnet_rpc
     w3 = (
         Web3(Web3.HTTPProvider(provider_rpc))
         if provider_rpc.startswith("http")
@@ -74,7 +74,7 @@ def get_deployment_hash(snx):
     )
 
     deployment_dir = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "deployments", "1"
+        os.path.dirname(os.path.abspath(__file__)), "deployments", "10"
     )
     cannon_file = os.path.join(deployment_dir, "CannonRegistry.json")
     with open(cannon_file, "r") as file:

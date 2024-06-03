@@ -87,7 +87,7 @@ class Synthetix:
 
     :param str provider_rpc: An RPC endpoint to use for the provider that interacts
         with the smart contracts. This must match the ``network_id``.
-    :param str mainnet_rpc: A mainnet RPC endpoint to use for the provider that
+    :param str op_mainnet_rpc: An Optimism mainnet RPC endpoint to use for the provider that
         fetches deployments from the Cannon registry.
     :param str ipfs_gateway: An IPFS gateway to use for fetching deployments from Cannon.
     :param str address: Wallet address to use as a default. If a private key is
@@ -126,7 +126,7 @@ class Synthetix:
     def __init__(
         self,
         provider_rpc: str,
-        mainnet_rpc: str = "https://eth.llamarpc.com",
+        op_mainnet_rpc: str = "https://optimism.llamarpc.com",
         ipfs_gateway: str = "https://ipfs.synthetix.io/ipfs/",
         address: str = ADDRESS_ZERO,
         private_key: str = None,
@@ -155,7 +155,7 @@ class Synthetix:
         self.use_estimate_gas = use_estimate_gas
         self.cannon_config = cannon_config
         self.provider_rpc = provider_rpc
-        self.mainnet_rpc = mainnet_rpc
+        self.op_mainnet_rpc = op_mainnet_rpc
         self.ipfs_gateway = ipfs_gateway
         self.gas_multiplier = gas_multiplier
         self.max_price_impact = max_price_impact
@@ -165,7 +165,9 @@ class Synthetix:
 
         # init chain provider
         if provider_rpc.startswith("http"):
-            web3 = Web3(Web3.HTTPProvider(self.provider_rpc, request_kwargs=request_kwargs))
+            web3 = Web3(
+                Web3.HTTPProvider(self.provider_rpc, request_kwargs=request_kwargs)
+            )
         elif provider_rpc.startswith("wss"):
             web3 = Web3(Web3.WebsocketProvider(self.provider_rpc))
         elif provider_rpc.endswith("ipc"):

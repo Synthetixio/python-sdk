@@ -10,7 +10,7 @@ load_dotenv()
 # constants
 RPC = os.environ.get("NETWORK_421614_RPC")
 PRIVATE_KEY = os.environ.get("PRIVATE_KEY")
-MAINNET_RPC = os.environ.get("NETWORK_1_RPC")
+OP_MAINNET_RPC = os.environ.get("NETWORK_10_RPC")
 
 SNX_DEPLOYER_ADDRESS = "0x48914229deDd5A9922f44441ffCCfC2Cb7856Ee9"
 USDC_WHALE = "0x09eF1E9AA278C4A234a897c736fa933E9B2617a7"
@@ -23,7 +23,7 @@ def snx(pytestconfig):
     snx = Synthetix(
         provider_rpc=RPC,
         private_key=PRIVATE_KEY,
-        mainnet_rpc=MAINNET_RPC,
+        op_mainnet_rpc=OP_MAINNET_RPC,
         cannon_config={
             "package": "synthetix-omnibus",
             "version": "latest",
