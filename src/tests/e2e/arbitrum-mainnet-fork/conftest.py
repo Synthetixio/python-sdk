@@ -12,7 +12,8 @@ RPC = os.environ.get("LOCAL_RPC")
 OP_MAINNET_RPC = os.environ.get("NETWORK_10_RPC")
 
 SNX_DEPLOYER_ADDRESS = "0x48914229deDd5A9922f44441ffCCfC2Cb7856Ee9"
-USDC_WHALE = "0x09eF1E9AA278C4A234a897c736fa933E9B2617a7"
+USDC_WHALE = "0xB38e8c17e38363aF6EbdCb3dAE12e0243582891D"
+ARB_WHALE = "0xB38e8c17e38363aF6EbdCb3dAE12e0243582891D"
 
 
 # fixtures
@@ -22,13 +23,6 @@ def snx(pytestconfig):
     snx = Synthetix(
         provider_rpc=RPC,
         op_mainnet_rpc=OP_MAINNET_RPC,
-        is_fork=True,
-        request_kwargs={"timeout": 120},
-        cannon_config={
-            "package": "synthetix-omnibus",
-            "version": "latest",
-            "preset": "main",
-        },
     )
 
     return snx
@@ -38,16 +32,8 @@ def snx(pytestconfig):
 def contracts(snx):
     # create some needed contracts
     weth = snx.contracts["WETH"]["contract"]
-
     usdc = snx.contracts["USDC"]["contract"]
-
-    arb = snx.web3.eth.contract(
-        address=snx.contracts["packages"]["arb_mock_collateral"]["MintableToken"][
-            "address"
-        ],
-        abi=snx.contracts["packages"]["arb_mock_collateral"]["MintableToken"]["abi"],
-    )
-
+    arb = snx.contracts["ARB"]["contract"]
     return {
         "WETH": weth,
         "USDC": usdc,
@@ -56,30 +42,37 @@ def contracts(snx):
 
 
 @pytest.fixture(scope="module")
-def mint_arb(snx, contracts):
-    """The instance can mint ARB tokens"""
-    snx.web3.provider.make_request("anvil_impersonateAccount", [SNX_DEPLOYER_ADDRESS])
+def steal_arb(snx, contracts):
+    """The instance can steal ARB tokens"""
+    # check arb balance
+    arb_contract = contracts["ARB"]
+    arb_balance = arb_contract.functions.balanceOf(snx.address).call()
+    arb_balance = arb_balance / 10**18
 
-    contract = contracts["ARB"]
-    tx_params = contract.functions.mint(
-        ether_to_wei(100000), snx.address
-    ).build_transaction(
-        {
-            "from": SNX_DEPLOYER_ADDRESS,
-            "nonce": snx.web3.eth.get_transaction_count(SNX_DEPLOYER_ADDRESS),
-        }
-    )
+    # get some arb
+    if arb_balance < 100000:
+        transfer_amount = int((100000 - arb_balance) * 10**18)
+        snx.web3.provider.make_request("anvil_impersonateAccount", [ARB_WHALE])
 
-    # Send the transaction directly without signing
-    tx_hash = snx.web3.eth.send_transaction(tx_params)
-    receipt = snx.wait(tx_hash)
-    if receipt["status"] != 1:
-        raise Exception("ARB mint failed")
+        tx_params = arb_contract.functions.transfer(
+            snx.address, transfer_amount
+        ).build_transaction(
+            {
+                "from": ARB_WHALE,
+                "nonce": snx.web3.eth.get_transaction_count(ARB_WHALE),
+            }
+        )
 
-    assert tx_hash is not None
-    assert receipt is not None
-    assert receipt.status == 1
-    snx.logger.info(f"Minted ARB")
+        # Send the transaction directly without signing
+        tx_hash = snx.web3.eth.send_transaction(tx_params)
+        receipt = snx.wait(tx_hash)
+        if receipt["status"] != 1:
+            raise Exception("ARB Transfer failed")
+
+        assert tx_hash is not None
+        assert receipt is not None
+        assert receipt.status == 1
+        snx.logger.info(f"Stole ARB from {ARB_WHALE}")
 
 
 @pytest.fixture(scope="module")
