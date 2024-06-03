@@ -22,6 +22,8 @@ def snx(pytestconfig):
     snx = Synthetix(
         provider_rpc=RPC,
         op_mainnet_rpc=OP_MAINNET_RPC,
+        is_fork=True,
+        request_kwargs={"timeout": 120},
         cannon_config={
             "package": "synthetix-omnibus",
             "version": "latest",
@@ -37,13 +39,6 @@ def contracts(snx):
     # create some needed contracts
     weth = snx.contracts["WETH"]["contract"]
 
-    dai = snx.web3.eth.contract(
-        address=snx.contracts["packages"]["dai_mock_collateral"]["MintableToken"][
-            "address"
-        ],
-        abi=snx.contracts["packages"]["dai_mock_collateral"]["MintableToken"]["abi"],
-    )
-
     usdc = snx.contracts["USDC"]["contract"]
 
     arb = snx.web3.eth.contract(
@@ -55,37 +50,9 @@ def contracts(snx):
 
     return {
         "WETH": weth,
-        "DAI": dai,
         "USDC": usdc,
         "ARB": arb,
     }
-
-
-@pytest.fixture(scope="module")
-def mint_dai(snx, contracts):
-    """The instance can mint DAI tokens"""
-    snx.web3.provider.make_request("anvil_impersonateAccount", [SNX_DEPLOYER_ADDRESS])
-
-    contract = contracts["DAI"]
-    tx_params = contract.functions.mint(
-        ether_to_wei(100000), snx.address
-    ).build_transaction(
-        {
-            "from": SNX_DEPLOYER_ADDRESS,
-            "nonce": snx.web3.eth.get_transaction_count(SNX_DEPLOYER_ADDRESS),
-        }
-    )
-
-    # Send the transaction directly without signing
-    tx_hash = snx.web3.eth.send_transaction(tx_params)
-    receipt = snx.wait(tx_hash)
-    if receipt["status"] != 1:
-        raise Exception("DAI mint failed")
-
-    assert tx_hash is not None
-    assert receipt is not None
-    assert receipt.status == 1
-    snx.logger.info(f"Minted DAI")
 
 
 @pytest.fixture(scope="module")

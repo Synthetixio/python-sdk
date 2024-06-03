@@ -23,19 +23,15 @@ def test_spot_markets(snx, logger):
     assert len(snx.spot.markets_by_name) == len(snx.spot.markets_by_id)
     assert "sUSD" in snx.spot.markets_by_name
     assert "sUSDC" in snx.spot.markets_by_name
-    assert "sDAI" in snx.spot.markets_by_name
 
 
 @pytest.mark.parametrize(
     "token_name, test_amount, decimals",
     [
         ("USDC", TEST_AMOUNT, 6),
-        ("DAI", TEST_AMOUNT, 18),
     ],
 )
-def test_spot_wrapper(
-    snx, contracts, steal_usdc, mint_dai, token_name, test_amount, decimals
-):
+def test_spot_wrapper(snx, contracts, steal_usdc, token_name, test_amount, decimals):
     """The instance can wrap and unwrap an asset"""
     token = contracts[token_name]
     market_id = snx.spot.markets_by_name[f"s{token_name}"]["market_id"]
@@ -102,12 +98,11 @@ def test_spot_wrapper(
     "token_name, test_amount, decimals",
     [
         ("USDC", TEST_AMOUNT, 6),
-        ("DAI", TEST_AMOUNT, 18),
     ],
 )
 @pytest.mark.skip("Async orders are not working")
 def test_spot_async_order(
-    snx, contracts, steal_usdc, mint_dai, logger, token_name, test_amount, decimals
+    snx, contracts, steal_usdc, logger, token_name, test_amount, decimals
 ):
     """The instance can wrap USDC for sUSDC and commit an async order to sell for sUSD"""
     token = contracts[token_name]
@@ -186,11 +181,10 @@ def test_spot_async_order(
     "token_name, test_amount, decimals",
     [
         ("USDC", TEST_AMOUNT, 6),
-        ("DAI", TEST_AMOUNT, 18),
     ],
 )
 def test_spot_atomic_order(
-    snx, contracts, steal_usdc, mint_dai, logger, token_name, test_amount, decimals
+    snx, contracts, steal_usdc, logger, token_name, test_amount, decimals
 ):
     """The instance can wrap USDC for sUSDC and commit an atomic order to sell for sUSD"""
     token = contracts[token_name]

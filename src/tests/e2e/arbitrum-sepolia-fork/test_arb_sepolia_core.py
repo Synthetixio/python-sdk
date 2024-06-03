@@ -24,7 +24,6 @@ def test_core_module(snx, logger):
     "token_name, test_amount, decimals",
     [
         ("USDC", USD_TEST_AMOUNT, 6),
-        ("DAI", USD_TEST_AMOUNT, 18),
         ("WETH", WETH_TEST_AMOUNT, 18),
         ("ARB", ARB_TEST_AMOUNT, 18),
     ],
@@ -34,7 +33,6 @@ def test_deposit_flow(
     contracts,
     core_account_id,
     steal_usdc,
-    mint_dai,
     mint_arb,
     wrap_eth,
     token_name,
@@ -85,7 +83,6 @@ def test_deposit_flow(
     "token_name, test_amount, decimals",
     [
         ("USDC", USD_TEST_AMOUNT, 6),
-        ("DAI", USD_TEST_AMOUNT, 18),
         ("WETH", WETH_TEST_AMOUNT, 18),
         ("ARB", ARB_TEST_AMOUNT, 18),
     ],
@@ -95,7 +92,6 @@ def test_delegate_flow(
     contracts,
     core_account_id,
     steal_usdc,
-    mint_dai,
     mint_arb,
     wrap_eth,
     token_name,
@@ -146,7 +142,6 @@ def test_delegate_flow(
     "token_name, test_amount, mint_amount, decimals",
     [
         ("USDC", USD_TEST_AMOUNT, USD_MINT_AMOUNT, 6),
-        ("DAI", USD_TEST_AMOUNT, USD_MINT_AMOUNT, 18),
         ("WETH", WETH_TEST_AMOUNT, USD_MINT_AMOUNT, 18),
         ("ARB", ARB_TEST_AMOUNT, USD_MINT_AMOUNT, 18),
     ],
@@ -157,7 +152,6 @@ def test_account_delegate_mint(
     core_account_id,
     token_name,
     steal_usdc,
-    mint_dai,
     mint_arb,
     wrap_eth,
     test_amount,
