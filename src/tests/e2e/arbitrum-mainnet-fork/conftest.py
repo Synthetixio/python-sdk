@@ -23,6 +23,13 @@ def snx(pytestconfig):
     snx = Synthetix(
         provider_rpc=RPC,
         op_mainnet_rpc=OP_MAINNET_RPC,
+        is_fork=True,
+        request_kwargs={"timeout": 120},
+        cannon_config={
+            "package": "synthetix-omnibus",
+            "version": "latest",
+            "preset": "main",
+        },
     )
 
     return snx
