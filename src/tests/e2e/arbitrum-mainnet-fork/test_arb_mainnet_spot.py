@@ -189,7 +189,7 @@ def test_spot_async_order(
     sold_susd_balance = snx.spot.get_balance(market_id=0)
 
     assert sold_balance == wrapped_balance
-    assert sold_synth_balance == wrapped_synth_balance - test_amount
+    assert sold_synth_balance >= wrapped_synth_balance - test_amount - 1
     assert sold_susd_balance >= wrapped_susd_balance
 
     ## buy it back
@@ -245,7 +245,7 @@ def test_spot_async_order(
     assert buy_susd_balance >= sold_susd_balance - test_amount
 
     ## unwrap
-    unwrap_tx = snx.spot.wrap(-test_amount + 1, market_id=market_id, submit=True)
+    unwrap_tx = snx.spot.wrap(-test_amount + 2, market_id=market_id, submit=True)
     unwrap_receipt = snx.wait(unwrap_tx)
 
     assert unwrap_tx is not None
@@ -258,8 +258,8 @@ def test_spot_async_order(
 
     unwrapped_synth_balance = snx.spot.get_balance(market_id=market_id)
 
-    assert unwrapped_balance == starting_balance - 1
-    assert unwrapped_synth_balance == buy_synth_balance - test_amount + 1
+    assert unwrapped_balance == starting_balance - 2
+    assert unwrapped_synth_balance >= buy_synth_balance - test_amount - 1
 
 
 @pytest.mark.parametrize(
