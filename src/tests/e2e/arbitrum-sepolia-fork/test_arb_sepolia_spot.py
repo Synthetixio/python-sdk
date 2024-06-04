@@ -181,11 +181,6 @@ def test_spot_async_order(
     assert settle_tx is not None
     assert settle_receipt is not None
 
-    # check the events
-    settle_event_data = snx.spot.market_proxy.events.OrderSettled().process_receipt(
-        settle_receipt
-    )
-
     # check balances
     sold_balance_wei = token.functions.balanceOf(snx.address).call()
     sold_balance = format_wei(sold_balance_wei, decimals)
@@ -196,6 +191,75 @@ def test_spot_async_order(
     assert sold_balance == wrapped_balance
     assert sold_synth_balance == wrapped_synth_balance - test_amount
     assert sold_susd_balance >= wrapped_susd_balance
+
+    ## buy it back
+    # check the allowance
+    sold_allowance = snx.allowance(susd_token.address, snx.spot.market_proxy.address)
+
+    if sold_allowance < test_amount:
+        # approve
+        approve_tx = snx.approve(
+            susd_token.address, snx.spot.market_proxy.address, submit=True
+        )
+        snx.wait(approve_tx)
+
+    # commit order
+    commit_buy_tx = snx.spot.commit_order(
+        "buy",
+        test_amount - 1,
+        slippage_tolerance=0.001,
+        market_id=market_id,
+        submit=True,
+    )
+    commit_buy_receipt = snx.wait(commit_buy_tx)
+
+    # get the event to check the order id
+    event_data_buy = snx.spot.market_proxy.events.OrderCommitted().process_receipt(
+        commit_buy_receipt
+    )
+    assert len(event_data_buy) == 1
+
+    # unpack the event
+    event_buy = event_data_buy[0]["args"]
+    market_id_buy = event_buy["marketId"]
+    async_order_id_buy = event_buy["asyncOrderId"]
+
+    # settle the order
+    settle_buy_tx = snx.spot.settle_order(
+        async_order_id_buy, market_id=market_id_buy, submit=True
+    )
+    settle_buy_receipt = snx.wait(settle_buy_tx)
+
+    assert settle_buy_tx is not None
+    assert settle_buy_receipt is not None
+
+    # check balances
+    buy_balance_wei = token.functions.balanceOf(snx.address).call()
+    buy_balance = format_wei(buy_balance_wei, decimals)
+
+    buy_synth_balance = snx.spot.get_balance(market_id=market_id)
+    buy_susd_balance = snx.spot.get_balance(market_id=0)
+
+    assert buy_balance == sold_balance
+    assert buy_synth_balance >= sold_synth_balance + test_amount - 2
+    assert buy_susd_balance >= sold_susd_balance - test_amount
+
+    ## unwrap
+    unwrap_tx = snx.spot.wrap(-test_amount + 1, market_id=market_id, submit=True)
+    unwrap_receipt = snx.wait(unwrap_tx)
+
+    assert unwrap_tx is not None
+    assert unwrap_receipt is not None
+    assert unwrap_receipt.status == 1
+
+    # get new balances
+    unwrapped_balance_wei = token.functions.balanceOf(snx.address).call()
+    unwrapped_balance = format_wei(unwrapped_balance_wei, decimals)
+
+    unwrapped_synth_balance = snx.spot.get_balance(market_id=market_id)
+
+    assert unwrapped_balance == starting_balance - 1
+    assert unwrapped_synth_balance == buy_synth_balance - test_amount + 1
 
 
 @pytest.mark.parametrize(
