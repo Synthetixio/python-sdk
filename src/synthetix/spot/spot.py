@@ -710,21 +710,22 @@ class Spot:
         expiration_time = (
             order["commitment_time"] + settlement_strategy["settlement_window_duration"]
         )
-
+        now_time = time.time() if not self.snx.is_fork else self.snx.web3.eth.get_block("latest")['timestamp']
+        
         # check if order is ready to be settled
         if order["settled_at"] > 0:
             raise ValueError(
                 f"Order {async_order_id} on market {market_id} is already settled for account"
             )
-        elif settlement_time > time.time():
-            duration = settlement_time - time.time()
+        elif settlement_time > now_time:
+            duration = settlement_time - now_time
             self.logger.info(f"Waiting {round(duration, 4)} seconds")
             time.sleep(duration)
             self.logger.info(
                 f"Order {async_order_id} on market {market_id} is ready to be settled"
             )
 
-        elif expiration_time < time.time():
+        elif expiration_time < now_time:
             raise ValueError(
                 f"Order {async_order_id} on market {market_id} has expired"
             )
