@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="synthetix",
-    version="0.1.11",
+    version="0.1.12",
     description="Synthetix protocol SDK",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
