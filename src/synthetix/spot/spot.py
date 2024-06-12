@@ -3,6 +3,7 @@
 from eth_utils import encode_hex
 from ..utils import ether_to_wei, wei_to_ether, format_ether
 from ..utils.multicall import multicall_erc7412, write_erc7412
+from .constants import DISABLED_MARKETS
 from web3.constants import ADDRESS_ZERO
 from typing import Literal
 import time
@@ -48,6 +49,12 @@ class Spot:
         self.async_orders_enabled = False
         if snx.network_id in [421614, 42161]:
             self.async_orders_enabled = True
+
+        self.disabled_markets = (
+            DISABLED_MARKETS[snx.network_id]
+            if snx.network_id in DISABLED_MARKETS
+            else []
+        )
 
         # check if spot is deployed on this network
         if "SpotMarketProxy" in snx.contracts:
@@ -158,6 +165,7 @@ class Spot:
         MAX_ITER = 20
         ITEMS_PER_ITER = 5
 
+        global_market_id = 0
         num_iter = 0
         synths = []
         while num_iter < MAX_ITER:
@@ -169,13 +177,15 @@ class Spot:
             )
 
             new_synths = [
-                (i, address)
+                (i + num_iter * ITEMS_PER_ITER, address)
                 for i, address in enumerate(addresses)
                 if address != ADDRESS_ZERO
+                and (i + num_iter * ITEMS_PER_ITER) not in self.disabled_markets
             ]
             synths.extend(new_synths)
 
-            if len(new_synths) != len(addresses):
+            global_market_id += len(addresses)
+            if addresses[-1] == ADDRESS_ZERO:
                 break
             else:
                 num_iter += 1
@@ -206,6 +216,9 @@ class Spot:
             )
             market_name = synth_contract.functions.symbol().call()
             symbol = market_name[1:]
+
+            if market_id in self.disabled_markets:
+                continue
 
             markets_by_id[market_id] = {
                 "market_id": market_id,
@@ -647,7 +660,9 @@ class Spot:
         pyth_data = self.snx.pyth.get_price_from_ids([feed_id])
         price = pyth_data["meta"][feed_id]["price"]
 
-        min_amount_received = size * price * (1 - slippage_tolerance) - settlement_reward
+        min_amount_received = (
+            size * price * (1 - slippage_tolerance) - settlement_reward
+        )
         min_amount_received_wei = ether_to_wei(min_amount_received)
 
         size_wei = ether_to_wei(size)
@@ -710,8 +725,12 @@ class Spot:
         expiration_time = (
             order["commitment_time"] + settlement_strategy["settlement_window_duration"]
         )
-        now_time = time.time() if not self.snx.is_fork else self.snx.web3.eth.get_block("latest")['timestamp']
-        
+        now_time = (
+            time.time()
+            if not self.snx.is_fork
+            else self.snx.web3.eth.get_block("latest")["timestamp"]
+        )
+
         # check if order is ready to be settled
         if order["settled_at"] > 0:
             raise ValueError(
