@@ -36,32 +36,51 @@ def load_contracts(snx):
     return contracts
 
 
+def load_common_contracts(snx):
+    """loads the common contracts for a synthetix instance"""
+    common_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "common")
+    common_contracts = load_json_files_from_directory(snx, common_dir)
+    return common_contracts
+
+
 def load_local_contracts(snx):
     """loads the contracts for a synthetix instance"""
     deployment_dir = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "deployments", f"{snx.network_id}"
     )
     contracts = load_json_files_from_directory(snx, deployment_dir)
+    contracts["common"] = load_common_contracts(snx)
     return contracts
 
 
 def load_json_files_from_directory(snx, directory):
-    """load json files from a given directory"""
-    json_files = glob.glob(os.path.join(directory, "*.json"))
-    contracts = {
-        os.path.splitext(os.path.basename(file))[0]: json.load(open(file))
-        for file in json_files
-    }
+    """load json files from a given directory, including nested folders"""
+    contracts = {}
 
-    # add a web3 contract object
-    contracts = {
-        k: {
-            "address": v["address"],
-            "abi": v["abi"],
-            "contract": snx.web3.eth.contract(address=v["address"], abi=v["abi"]),
-        }
-        for k, v in contracts.items()
-    }
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            if file.endswith(".json"):
+                file_path = os.path.join(root, file)
+                relative_path = os.path.relpath(root, directory)
+                contract_name = os.path.splitext(file)[0]
+
+                with open(file_path, "r") as json_file:
+                    contract_data = json.load(json_file)
+
+                # Create nested dictionary structure
+                current_level = contracts
+                if relative_path != ".":
+                    for folder in relative_path.split(os.sep):
+                        current_level = current_level.setdefault(folder, {})
+
+                current_level[contract_name] = {
+                    "address": contract_data["address"],
+                    "abi": contract_data["abi"],
+                    "contract": snx.web3.eth.contract(
+                        address=contract_data["address"], abi=contract_data["abi"]
+                    ),
+                }
+
     return contracts
 
 
@@ -110,35 +129,51 @@ def fetch_deploy_from_ipfs(snx, ipfs_hash):
 
 
 def parse_contracts(snx, deploy_data):
-    contracts = {"packages": {}}
-    recursive_search(deploy_data, contracts)
-    parsed_contracts = {
-        k: {
-            "address": snx.web3.to_checksum_address(v["address"]),
-            "abi": v["abi"],
-            "contract": snx.web3.eth.contract(
-                address=snx.web3.to_checksum_address(v["address"]), abi=v["abi"]
-            ),
-        }
-        for k, v in contracts.items()
-        if k != "packages"
-    }
-    parsed_contracts["packages"] = contracts["packages"]
-    return parsed_contracts
+    contracts = {}
+    recursive_search(snx, deploy_data, contracts)
+    return contracts
 
 
-def recursive_search(deploy_data, contracts, last_key=None):
-    """recursively search through deployment data to extract contracts"""
+def recursive_search(snx, deploy_data, contracts, current_package=None):
     if isinstance(deploy_data, dict):
         for key, value in deploy_data.items():
-            if key == "contracts" and value:
-                for contract_name, artifacts in value.items():
-                    contracts[contract_name] = artifacts
-                    if last_key not in contracts["packages"]:
-                        contracts["packages"][last_key] = {}
-                    contracts["packages"][last_key][contract_name] = artifacts
-            if isinstance(value, (dict, list)):
-                recursive_search(value, contracts, last_key=key)
+            if key == "artifacts":
+                recursive_search(snx, value, contracts, current_package)
+            elif key == "imports":
+                for package_name, package_data in value.items():
+                    if package_name not in contracts:
+                        contracts[package_name] = {}
+                    recursive_search(
+                        snx, package_data, contracts[package_name], package_name
+                    )
+            elif key == "contracts" and isinstance(value, dict):
+                for contract_name, contract_data in value.items():
+                    if (
+                        isinstance(contract_data, dict)
+                        and "address" in contract_data
+                        and "abi" in contract_data
+                    ):
+                        if current_package:
+                            contracts[contract_name] = {
+                                "address": snx.web3.to_checksum_address(
+                                    contract_data["address"]
+                                ),
+                                "abi": contract_data["abi"],
+                                "contract": snx.web3.eth.contract(
+                                    address=snx.web3.to_checksum_address(
+                                        contract_data["address"]
+                                    ),
+                                    abi=contract_data["abi"],
+                                ),
+                            }
+                        else:
+                            snx.logger.warning(
+                                f"Contract {contract_name} found outside of a package"
+                            )
+                    else:
+                        snx.logger.warning(f"Invalid contract data for {contract_name}")
+            elif isinstance(value, (dict, list)):
+                recursive_search(snx, value, contracts, current_package)
     elif isinstance(deploy_data, list):
         for item in deploy_data:
-            recursive_search(item, contracts)
+            recursive_search(snx, item, contracts, current_package)

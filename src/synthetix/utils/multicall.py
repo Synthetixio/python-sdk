@@ -60,7 +60,8 @@ def decode_erc7412_error(snx, error):
 
 def make_fulfillment_request(snx, address, price_update_data, args):
     erc_contract = snx.web3.eth.contract(
-        address=address, abi=snx.contracts["PythERC7412Wrapper"]["abi"]
+        address=address,
+        abi=snx.contracts["pyth_erc7412_wrapper"]["PythERC7412Wrapper"]["abi"],
     )
 
     update_type, publish_time_or_staleness, feed_ids = args

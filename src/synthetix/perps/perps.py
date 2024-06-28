@@ -51,9 +51,13 @@ class Perps:
         self.erc7412_enabled = True
 
         # check if perps is deployed on this network
-        if "PerpsMarketProxy" in snx.contracts:
-            self.market_proxy = snx.contracts["PerpsMarketProxy"]["contract"]
-            self.account_proxy = snx.contracts["PerpsAccountProxy"]["contract"]
+        if "perpsFactory" in snx.contracts:
+            self.market_proxy = snx.contracts["perpsFactory"]["PerpsMarketProxy"][
+                "contract"
+            ]
+            self.account_proxy = snx.contracts["perpsFactory"]["PerpsAccountProxy"][
+                "contract"
+            ]
 
             try:
                 self.get_account_ids(default_account_id=default_account_id)
@@ -153,7 +157,7 @@ class Perps:
 
         to, data, _ = make_fulfillment_request(
             self.snx,
-            self.snx.contracts["PythERC7412Wrapper"]["address"],
+            self.snx.contracts["pyth_erc7412_wrapper"]["PythERC7412Wrapper"]["address"],
             price_update_data,
             args,
         )
@@ -1034,7 +1038,11 @@ class Perps:
         expiration_time = (
             order["commitment_time"] + settlement_strategy["settlement_window_duration"]
         )
-        now_time = time.time() if not self.snx.is_fork else self.snx.web3.eth.get_block("latest")['timestamp']
+        now_time = (
+            time.time()
+            if not self.snx.is_fork
+            else self.snx.web3.eth.get_block("latest")["timestamp"]
+        )
 
         # check if order is ready to be settled
         if order["size_delta"] == 0:

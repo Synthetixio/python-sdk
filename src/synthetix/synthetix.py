@@ -332,8 +332,8 @@ class Synthetix:
             susd_legacy_token = None
 
         # load sUSD contract
-        if "USDProxy" in self.contracts:
-            susd_definition = self.contracts["USDProxy"]
+        if "system" in self.contracts:
+            susd_definition = self.contracts["system"]["USDProxy"]
             susd_address = w3.to_checksum_address(susd_definition["address"])
 
             susd_token = w3.eth.contract(susd_address, abi=susd_definition["abi"])
@@ -341,8 +341,13 @@ class Synthetix:
             susd_token = None
 
         # load multicall contract
-        if "TrustedMulticallForwarder" in self.contracts:
-            mc_definition = self.contracts["TrustedMulticallForwarder"]
+        if (
+            "system" in self.contracts
+            and "trusted_multicall_forwarder" in self.contracts["system"]
+        ):
+            mc_definition = self.contracts["system"]["trusted_multicall_forwarder"][
+                "TrustedMulticallForwarder"
+            ]
             mc_address = w3.to_checksum_address(mc_definition["address"])
 
             multicall = w3.eth.contract(mc_address, abi=mc_definition["abi"])
@@ -520,7 +525,7 @@ class Synthetix:
         # fix the amount
         amount = 2**256 - 1 if amount is None else ether_to_wei(amount)
         token_contract = self.web3.eth.contract(
-            address=token_address, abi=self.contracts["USDProxy"]["abi"]
+            address=token_address, abi=self.contracts['common']["ERC20"]["abi"]
         )
 
         tx_params = self._get_tx_params()
@@ -562,7 +567,7 @@ class Synthetix:
             owner_address = self.address
 
         token_contract = self.web3.eth.contract(
-            address=token_address, abi=self.contracts["USDProxy"]["abi"]
+            address=token_address, abi=self.contracts['common']["ERC20"]["abi"]
         )
 
         allowance = token_contract.functions.allowance(
