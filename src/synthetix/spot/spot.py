@@ -57,8 +57,10 @@ class Spot:
         )
 
         # check if spot is deployed on this network
-        if "SpotMarketProxy" in snx.contracts:
-            self.market_proxy = snx.contracts["SpotMarketProxy"]["contract"]
+        if "spotFactory" in snx.contracts:
+            self.market_proxy = snx.contracts["spotFactory"]["SpotMarketProxy"][
+                "contract"
+            ]
             self.markets_by_id, self.markets_by_name = self.get_markets()
 
     # internals
@@ -195,7 +197,7 @@ class Spot:
             0: {
                 "market_id": 0,
                 "market_name": "sUSD",
-                "contract": self.snx.contracts["USDProxy"]["contract"],
+                "contract": self.snx.contracts["system"]["USDProxy"]["contract"],
             }
         }
 
@@ -212,7 +214,7 @@ class Spot:
         for market_id, address in synths:
             synth_contract = self.snx.web3.eth.contract(
                 address=self.snx.web3.to_checksum_address(address),
-                abi=self.snx.contracts["USDProxy"]["abi"],
+                abi=self.snx.contracts["common"]["ERC20"]["abi"],
             )
             market_name = synth_contract.functions.symbol().call()
             symbol = market_name[1:]

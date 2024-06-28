@@ -46,9 +46,9 @@ class Core:
         self.logger = snx.logger
 
         # check if perps is deployed on this network
-        if "CoreProxy" in snx.contracts:
-            self.core_proxy = snx.contracts["CoreProxy"]["contract"]
-            self.account_proxy = snx.contracts["AccountProxy"]["contract"]
+        if "system" in snx.contracts:
+            self.core_proxy = snx.contracts["system"]["CoreProxy"]["contract"]
+            self.account_proxy = snx.contracts["system"]["AccountProxy"]["contract"]
 
             try:
                 self.get_account_ids(default_account_id=default_account_id)
