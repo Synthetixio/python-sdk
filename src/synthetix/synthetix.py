@@ -404,7 +404,7 @@ class Synthetix:
         :rtype: str
         """
 
-        is_rpc_signer = tx_data["from"] in self.web3.eth.accounts
+        is_rpc_signer = tx_data["from"] in self.rpc_signers
         if not is_rpc_signer and self.private_key is None:
             raise Exception("No private key specified.")
 
