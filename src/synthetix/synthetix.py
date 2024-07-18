@@ -534,7 +534,7 @@ class Synthetix:
         ).build_transaction(tx_params)
 
         if submit:
-            tx_hash = self.execute_transaction(tx_params)
+            tx_hash = self.execute_transaction(tx_params, reset_nonce=True)
             self.logger.info(
                 f"Approving {target_address} to spend {amount / 1e18} {token_address} for {self.address}"
             )
@@ -591,9 +591,7 @@ class Synthetix:
         :rtype: str | dict
         """
         value_wei = ether_to_wei(max(amount, 0))
-        weth_contract = self.web3.eth.contract(
-            address=self.contracts["WETH"]["address"], abi=self.contracts["WETH"]["abi"]
-        )
+        weth_contract = self.contracts["WETH"]['contract']
 
         if amount < 0:
             fn_name = "withdraw"
@@ -608,7 +606,7 @@ class Synthetix:
         )
 
         if submit:
-            tx_hash = self.execute_transaction(tx_params)
+            tx_hash = self.execute_transaction(tx_params, reset_nonce=True)
             self.logger.info(f"Wrapping {amount} ETH for {self.address}")
             self.logger.info(f"wrap_eth tx: {tx_hash}")
             return tx_hash
