@@ -71,6 +71,15 @@ class Perps:
             except Exception as e:
                 self.logger.warning(f"Failed to fetch markets: {e}")
 
+            # check if multicollateral
+            debt_check = self.market_proxy.find_functions_by_name("debt")
+            pay_check = self.market_proxy.find_functions_by_name("payDebt")
+            if len(debt_check) == 1 and len(pay_check) == 1:
+                self.is_multicollateral = True
+                snx.logger.info("Multicollateral perps is enabled")
+            else:
+                self.is_multicollateral = False
+
     # internals
     def _resolve_market(self, market_id: int, market_name: str):
         """
@@ -540,8 +549,47 @@ class Perps:
             calls=calls,
         )
 
+        if self.is_multicollateral:
+            collateral_ids = call_erc7412(
+                self.snx,
+                self.market_proxy,
+                "getAccountCollateralIds",
+                (account_id,),
+                calls=calls,
+            )
+            debt = call_erc7412(
+                self.snx,
+                self.market_proxy,
+                "debt",
+                (account_id,),
+                calls=calls,
+            )
+
+            if len(collateral_ids) == 0:
+                collateral_amount_dict = {}
+            else:
+                collateral_amounts = multicall_erc7412(
+                    self.snx,
+                    self.market_proxy,
+                    "getCollateralAmount",
+                    [(account_id, collateral_id) for collateral_id in collateral_ids],
+                    calls=calls,
+                )
+                collateral_amount_dict = {
+                    collateral_id: wei_to_ether(amount)
+                    for collateral_id, amount in zip(collateral_ids, collateral_amounts)
+                }
+
+        else:
+            collateral_amount_dict = {
+                0: wei_to_ether(total_collateral_value)
+            }
+            debt = 0
+
         return {
             "total_collateral_value": wei_to_ether(total_collateral_value),
+            "collateral_balances": collateral_amount_dict,
+            "debt": wei_to_ether(debt),
             "available_margin": wei_to_ether(available_margin),
             "withdrawable_margin": wei_to_ether(withdrawable_margin),
             "initial_margin_requirement": wei_to_ether(initial_margin_requirement),
@@ -890,6 +938,53 @@ class Perps:
                 f"Transferring {amount} {market_name} for account {account_id}"
             )
             self.logger.info(f"modify_collateral tx: {tx_hash}")
+            return tx_hash
+        else:
+            return tx_params
+
+    def pay_debt(
+        self,
+        amount: int = None,
+        account_id: int = None,
+        submit: bool = False,
+    ):
+        """
+        Pay the debt of a perps account. If no amount is provided, the full debt
+        of the account is repaid. Make sure to approve the proxy to transfer sUSD before
+        calling this function.
+        
+        :param int | None amount: The amount of debt to repay. If not provided, the full debt is repaid.
+        :param int | None account_id: The id of the account to repay the debt for. If not provided, the default account is used.
+        :param bool submit: If ``True``, submit the transaction to the blockchain.
+        :return: If ``submit``, returns the trasaction hash. Otherwise, returns the transaction.
+        :rtype: str | dict
+        """
+        if account_id is None:
+            account_id = self.default_account_id
+
+        if amount is None:
+            amount = call_erc7412(
+                self.snx,
+                self.market_proxy,
+                "debt",
+                (account_id,),
+            )
+        else:
+            amount = ether_to_wei(amount)
+            
+
+        tx_params = write_erc7412(
+            self.snx,
+            self.market_proxy,
+            "payDebt",
+            [account_id, amount],
+        )
+        if submit:
+            tx_hash = self.snx.execute_transaction(tx_params)
+            self.logger.info(
+                f"Repaying debt of {amount} for account {account_id}"
+            )
+            self.logger.info(f"payDebt tx: {tx_hash}")
             return tx_hash
         else:
             return tx_params
