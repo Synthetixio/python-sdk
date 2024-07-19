@@ -557,19 +557,6 @@ class Perps:
                 (account_id,),
                 calls=calls,
             )
-
-            collateral_amounts = multicall_erc7412(
-                self.snx,
-                self.market_proxy,
-                "getCollateralAmount",
-                [(account_id, collateral_id) for collateral_id in collateral_ids],
-                calls=calls,
-            )
-            collateral_amount_dict = {
-                collateral_id: wei_to_ether(amount)
-                for collateral_id, amount in zip(collateral_ids, collateral_amounts)
-            }
-
             debt = call_erc7412(
                 self.snx,
                 self.market_proxy,
@@ -577,6 +564,21 @@ class Perps:
                 (account_id,),
                 calls=calls,
             )
+
+            if len(collateral_ids) == 0:
+                collateral_amount_dict = {}
+            else:
+                collateral_amounts = multicall_erc7412(
+                    self.snx,
+                    self.market_proxy,
+                    "getCollateralAmount",
+                    [(account_id, collateral_id) for collateral_id in collateral_ids],
+                    calls=calls,
+                )
+                collateral_amount_dict = {
+                    collateral_id: wei_to_ether(amount)
+                    for collateral_id, amount in zip(collateral_ids, collateral_amounts)
+                }
 
         else:
             collateral_amount_dict = {
