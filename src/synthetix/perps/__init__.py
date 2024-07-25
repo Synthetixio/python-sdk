@@ -1,3 +1,3 @@
-from .perps import Perps
+from .perps import Perps, BfPerps
 
-__all__ = ["Perps"]
+__all__ = ["Perps", "BfPerps"]

@@ -11,7 +11,7 @@ from .constants import (
     DEFAULT_GAS_MULTIPLIER,
     DEFAULT_GQL_ENDPOINT_PERPS,
     DEFAULT_GQL_ENDPOINT_RATES,
-    DEFAULT_PRICE_SERVICE_ENDPOINTS,
+    DEFAULT_PRICE_SERVICE_ENDPOINT,
     DEFAULT_REFERRER,
     DEFAULT_TRACKING_CODE,
 )
@@ -19,7 +19,7 @@ from .utils import wei_to_ether, ether_to_wei
 from .contracts import load_contracts
 from .pyth import Pyth
 from .core import Core
-from .perps import Perps
+from .perps import Perps, BfPerps
 from .spot import Spot
 
 from .queries import Queries
@@ -244,11 +244,8 @@ class Synthetix:
         )
 
         # init pyth
-        if (
-            not price_service_endpoint
-            and self.network_id in DEFAULT_PRICE_SERVICE_ENDPOINTS
-        ):
-            price_service_endpoint = DEFAULT_PRICE_SERVICE_ENDPOINTS[self.network_id]
+        if not price_service_endpoint:
+            price_service_endpoint = DEFAULT_PRICE_SERVICE_ENDPOINT
 
         self.pyth = Pyth(
             self,
@@ -257,7 +254,11 @@ class Synthetix:
         )
         self.core = Core(self, core_account_id)
         self.spot = Spot(self)
-        self.perps = Perps(self, perps_account_id)
+        
+        if "bfp_market_factory" in self.contracts:
+            self.perps = BfPerps(self, perps_account_id)
+        else:
+            self.perps = Perps(self, perps_account_id)
 
     def _load_contracts(self):
         """

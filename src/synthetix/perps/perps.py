@@ -1,4 +1,4 @@
-"""Module for interacting with Synthetix Perps V3."""
+"""Modules for interacting with Synthetix Perps."""
 
 import time
 from eth_utils import encode_hex, decode_hex
@@ -9,6 +9,90 @@ from ..utils.multicall import (
     write_erc7412,
     make_fulfillment_request,
 )
+
+
+def unpack_market_configuration(config_data):
+    """
+    Unpacks the market configuration data returned by getMarketConfiguration.
+
+    :param config_data: Tuple containing the raw configuration data
+    :return: Dictionary with decoded configuration values
+    """
+    return {
+        "pyth": config_data[0],
+        "eth_oracle_node_id": config_data[1].hex(),
+        "reward_distributor_implementation": config_data[2],
+        "pyth_publish_time_min": config_data[3],
+        "pyth_publish_time_max": config_data[4],
+        "min_order_age": config_data[5],
+        "max_order_age": config_data[6],
+        "min_keeper_fee_usd": config_data[7],
+        "max_keeper_fee_usd": config_data[8],
+        "keeper_profit_margin_usd": config_data[9],
+        "keeper_profit_margin_percent": config_data[10],
+        "keeper_settlement_gas_units": config_data[11],
+        "keeper_cancellation_gas_units": config_data[12],
+        "keeper_liquidation_gas_units": config_data[13],
+        "keeper_flag_gas_units": config_data[14],
+        "keeper_liquidate_margin_gas_units": config_data[15],
+        "keeper_liquidation_endorsed": config_data[16],
+        "collateral_discount_scalar": config_data[17],
+        "min_collateral_discount": config_data[18],
+        "max_collateral_discount": config_data[19],
+        "utilization_breakpoint_percent": config_data[20],
+        "low_utilization_slope_percent": config_data[21],
+        "high_utilization_slope_percent": config_data[22],
+    }
+
+
+def unpack_market_configuration_by_id(config_data):
+    """
+    Unpacks the market configuration data returned by getMarketConfigurationById.
+
+    :param config_data: Tuple containing the raw configuration data
+    :return: Dictionary with decoded configuration values
+    """
+    (
+        oracle_node_id,
+        pyth_price_feed_id,
+        maker_fee,
+        taker_fee,
+        max_market_size,
+        max_funding_velocity,
+        skew_scale,
+        funding_velocity_clamp,
+        min_credit_percent,
+        min_margin_usd,
+        min_margin_ratio,
+        incremental_margin_scalar,
+        maintenance_margin_scalar,
+        max_initial_margin_ratio,
+        liquidation_reward_percent,
+        liquidation_limit_scalar,
+        liquidation_window_duration,
+        liquidation_max_pd,
+    ) = config_data
+
+    return {
+        "oracle_node_id": encode_hex(oracle_node_id),
+        "pyth_price_feed_id": encode_hex(pyth_price_feed_id),
+        "maker_fee": maker_fee,
+        "taker_fee": taker_fee,
+        "max_market_size": max_market_size,
+        "max_funding_velocity": max_funding_velocity,
+        "skew_scale": skew_scale,
+        "funding_velocity_clamp": funding_velocity_clamp,
+        "min_credit_percent": min_credit_percent,
+        "min_margin_usd": min_margin_usd,
+        "min_margin_ratio": min_margin_ratio,
+        "incremental_margin_scalar": incremental_margin_scalar,
+        "maintenance_margin_scalar": maintenance_margin_scalar,
+        "max_initial_margin_ratio": max_initial_margin_ratio,
+        "liquidation_reward_percent": liquidation_reward_percent,
+        "liquidation_limit_scalar": liquidation_limit_scalar,
+        "liquidation_window_duration": liquidation_window_duration,
+        "liquidation_max_pd": liquidation_max_pd,
+    }
 
 
 class Perps:
@@ -581,9 +665,7 @@ class Perps:
                 }
 
         else:
-            collateral_amount_dict = {
-                0: wei_to_ether(total_collateral_value)
-            }
+            collateral_amount_dict = {0: wei_to_ether(total_collateral_value)}
             debt = 0
 
         return {
@@ -952,7 +1034,7 @@ class Perps:
         Pay the debt of a perps account. If no amount is provided, the full debt
         of the account is repaid. Make sure to approve the proxy to transfer sUSD before
         calling this function.
-        
+
         :param int | None amount: The amount of debt to repay. If not provided, the full debt is repaid.
         :param int | None account_id: The id of the account to repay the debt for. If not provided, the default account is used.
         :param bool submit: If ``True``, submit the transaction to the blockchain.
@@ -971,7 +1053,6 @@ class Perps:
             )
         else:
             amount = ether_to_wei(amount)
-            
 
         tx_params = write_erc7412(
             self.snx,
@@ -981,9 +1062,7 @@ class Perps:
         )
         if submit:
             tx_hash = self.snx.execute_transaction(tx_params)
-            self.logger.info(
-                f"Repaying debt of {amount} for account {account_id}"
-            )
+            self.logger.info(f"Repaying debt of {amount} for account {account_id}")
             self.logger.info(f"payDebt tx: {tx_hash}")
             return tx_hash
         else:
@@ -1195,3 +1274,570 @@ class Perps:
                     time.sleep(tx_delay)
             else:
                 return tx_params
+
+
+class BfPerps(Perps):
+    """
+    Class for interacting with Synthetix Perps contracts on L1. Provides methods for
+    creating and managing accounts, depositing and withdrawing collateral,
+    committing and settling orders, and liquidating accounts.
+
+    Use ``get_`` methods to fetch information about accounts, markets, and orders::
+
+        markets = snx.perps.get_markets()
+        open_positions = snx.perps.get_open_positions()
+
+    Other methods prepare transactions, and submit them to your RPC::
+
+        create_tx_hash = snx.perps.create_account(submit=True)
+        collateral_tx_hash = snx.perps.modify_collateral(amount=1000, market_name='sUSD', submit=True)
+        order_tx_hash = snx.perps.commit_order(size=10, market_name='ETH', desired_fill_price=2000, submit=True)
+
+    An instance of this module is available as ``snx.perps``. If you are using a network without
+    perps deployed, the contracts will be unavailable and the methods will raise an error.
+
+    The following contracts are required:
+
+        - PerpsMarketProxy
+        - PerpsAccountProxy
+        - PythERC7412Wrapper
+
+    :param Synthetix snx: An instance of the Synthetix class.
+    :param Pyth pyth: An instance of the Pyth class.
+    :param int | None default_account_id: The default ``account_id`` to use for transactions.
+
+    :return: An instance of the Perps class.
+    :rtype: Perps
+    """
+
+    def __init__(self, snx, default_account_id: int = None):
+        self.snx = snx
+        self.logger = snx.logger
+
+        # check if perps is deployed on this network
+
+        if "bfp_market_factory" in snx.contracts:
+            self.market_proxy = snx.contracts["bfp_market_factory"]["BfpMarketProxy"][
+                "contract"
+            ]
+            self.account_proxy = snx.contracts["bfp_market_factory"][
+                "PerpAccountProxy"
+            ]["contract"]
+
+            try:
+                self.get_account_ids(default_account_id=default_account_id)
+            except Exception as e:
+                self.account_ids = []
+                self.default_account_id = None
+                self.logger.warning(f"Failed to fetch perps accounts: {e}")
+
+            try:
+                self.get_markets()
+                pass
+            except Exception as e:
+                self.logger.warning(f"Failed to fetch markets: {e}")
+
+    def get_markets(self):
+        """
+        Fetch the ids and summaries for all perps markets. Market summaries include
+        information about the market's price, open interest, funding rate,
+        and skew::
+
+            markets_by_name = {
+                'ETH': {
+                    'market_id': 100,
+                    'market_name': 'ETH',
+                    'skew': -15,
+                    'size': 100,
+                    'max_open_interest': 10000,
+                    'current_funding_rate': 0.000182,
+                    'current_funding_velocity': 0.00002765,
+                    'index_price': 1852.59,
+                    ...
+                }
+                'BTC': {
+                    ...
+                }
+            }
+
+        :return: Market summaries keyed by `market_id` and `market_name`.
+        :rtype: (dict, dict)
+        """
+        market_ids = self.market_proxy.functions.getActiveMarketIds().call()
+
+        # get market configurations
+        market_digests = multicall_erc7412(
+            self.snx, self.market_proxy, "getMarketDigest", market_ids
+        )
+        market_config = call_erc7412(
+            self.snx,
+            self.market_proxy,
+            "getMarketConfiguration",
+            (),
+        )
+        market_configs = multicall_erc7412(
+            self.snx, self.market_proxy, "getMarketConfigurationById", market_ids
+        )
+
+        self.market_meta = {
+            market_id: {
+                "market_id": market_id,
+                "market_name": market_digests[ind][1].decode("utf-8").strip("\x00"),
+                "symbol": market_digests[ind][1].decode("utf-8").strip("\x00")[:-4],
+                "feed_id": encode_hex(market_configs[ind][1]),
+                "config": unpack_market_configuration(market_config),
+            }
+            for ind, market_id in enumerate(market_ids)
+        }
+
+        # update pyth price feed ids
+        self.snx.pyth.update_price_feed_ids(
+            {
+                self.market_meta[market]["symbol"]: self.market_meta[market]["feed_id"]
+                for market in self.market_meta
+            }
+        )
+
+        # fetch the market summaries
+        self.markets_by_id = {
+            market_id: {
+                "market_id": market_id,
+                "market_name": self.market_meta[market_id]["market_name"],
+                "feed_id": self.market_meta[market_id]["feed_id"],
+                "skew": wei_to_ether(market_digests[ind][2]),
+                "size": wei_to_ether(market_digests[ind][3]),
+                "oracle_price": wei_to_ether(market_digests[ind][4]),
+                "funding_velocity": wei_to_ether(market_digests[ind][5]),
+                "funding_rate": wei_to_ether(market_digests[ind][6]),
+                "utilization_rate": wei_to_ether(market_digests[ind][7]),
+                "remaining_liquidatable_size_capacity": wei_to_ether(
+                    market_digests[ind][8]
+                ),
+                "last_liquidation_time": market_digests[ind][9],
+                "total_trader_debt_usd": wei_to_ether(market_digests[ind][10]),
+                "total_collateral_value_usd": wei_to_ether(market_digests[ind][11]),
+                "debt_correction": wei_to_ether(market_digests[ind][12]),
+                # "market_configuration": unpack_market_configuration_by_id(market_configs[ind]),
+            }
+            for ind, market_id in enumerate(market_ids)
+        }
+
+        # make markets by market name
+        self.markets_by_name = {
+            summary["market_name"]: summary for summary in self.markets_by_id.values()
+        }
+        return self.markets_by_id, self.markets_by_name
+
+    def get_order(
+        self, account_id: int = None, market_id: int = None, market_name: str = None
+    ):
+        """
+        Fetches the open order for an account.
+
+        :param int | None account_id: The id of the account. If not provided, the default account is used.
+        :return: A dictionary with order information.
+        :rtype: dict
+        """
+        market_id, market_name = self._resolve_market(market_id, market_name)
+        if not account_id:
+            account_id = self.default_account_id
+
+        order = call_erc7412(
+            self.snx, self.market_proxy, "getOrderDigest", (account_id, market_id)
+        )
+
+        return {
+            "market_id": market_id,
+            "market_name": market_name,
+            "size_delta": wei_to_ether(order[0]),
+            "commitment_time": order[1],
+            "limit_price": wei_to_ether(order[2]),
+            "keeper_fee_buffer_usd": wei_to_ether(order[3]),
+            "hooks": order[4],
+            "is_stale": order[5],
+            "is_ready": order[6],
+        }
+
+    def get_margin_info(self, account_id: int = None, market_id: int = None):
+        """
+        Fetch comprehensive information about an account's margin requirements, balances, and position.
+
+        :param int | None account_id: The id of the account to fetch the margin info for. If not provided, the default account is used.
+        :param int | None market_id: The id of the market to fetch the margin info for. Required parameter.
+        :return: A dictionary with detailed margin and position information.
+        :rtype: dict
+        """
+        if not account_id:
+            account_id = self.default_account_id
+
+        if market_id is None:
+            raise ValueError("market_id must be provided")
+
+        account_digest = call_erc7412(
+            self.snx, self.market_proxy, "getAccountDigest", (account_id, market_id)
+        )
+
+        deposited_collaterals = {
+            self.snx.web3.to_checksum_address(collateral[0]): {
+                "collateral_address": self.snx.web3.to_checksum_address(collateral[0]),
+                "available": wei_to_ether(collateral[1]),
+                "oracle_price": wei_to_ether(collateral[2]),
+            }
+            for collateral in account_digest[0]
+        }
+
+        position_digest = account_digest[3]
+
+        return {
+            "collateral_balances": deposited_collaterals,
+            "collateral_usd": wei_to_ether(account_digest[1]),
+            "debt_usd": wei_to_ether(account_digest[2]),
+            "position": {
+                "account_id": position_digest[0],
+                "market_id": position_digest[1],
+                "remaining_margin_usd": wei_to_ether(position_digest[2]),
+                "health_factor": wei_to_ether(position_digest[3]),
+                "notional_value_usd": wei_to_ether(position_digest[4]),
+                "pnl": wei_to_ether(position_digest[5]),
+                "accrued_funding": wei_to_ether(position_digest[6]),
+                "accrued_utilization": wei_to_ether(position_digest[7]),
+                "entry_pyth_price": wei_to_ether(position_digest[8]),
+                "entry_price": wei_to_ether(position_digest[9]),
+                "oracle_price": wei_to_ether(position_digest[10]),
+                "size": wei_to_ether(position_digest[11]),
+                "initial_margin": wei_to_ether(position_digest[12]),
+                "maintenance_margin": wei_to_ether(position_digest[13]),
+            },
+        }
+
+    def get_open_position(
+        self, market_id: int = None, market_name: str = None, account_id: int = None
+    ):
+        """
+        Fetch the position for a specified account and market. The result includes detailed
+        information about the position, including unrealized PnL, funding, size, and various margins.
+
+        :param int | None market_id: The id of the market to fetch the position for.
+        :param str | None market_name: The name of the market to fetch the position for.
+        :param int | None account_id: The id of the account to fetch the position for. If not provided, the default account is used.
+        :return: A dictionary with comprehensive position information.
+        :rtype: dict
+        """
+        market_id, market_name = self._resolve_market(market_id, market_name)
+        if not account_id:
+            account_id = self.default_account_id
+
+        position = call_erc7412(
+            self.snx, self.market_proxy, "getPositionDigest", (account_id, market_id)
+        )
+
+        return {
+            "account_id": position[0],
+            "market_id": position[1],
+            "remaining_margin_usd": wei_to_ether(position[2]),
+            "health_factor": wei_to_ether(position[3]),
+            "notional_value_usd": wei_to_ether(position[4]),
+            "pnl": wei_to_ether(position[5]),
+            "accrued_funding": wei_to_ether(position[6]),
+            "accrued_utilization": wei_to_ether(position[7]),
+            "entry_pyth_price": wei_to_ether(position[8]),
+            "entry_price": wei_to_ether(position[9]),
+            "oracle_price": wei_to_ether(position[10]),
+            "position_size": wei_to_ether(position[11]),
+            "initial_margin": wei_to_ether(position[12]),
+            "maintenance_margin": wei_to_ether(position[13]),
+            "market_name": market_name,
+        }
+
+    def get_quote(
+        self,
+        size: float,
+        market_id: int = None,
+        market_name: str = None,
+        account_id: int = None,
+        keeper_fee_buffer_usd: float = 0,
+    ):
+        """
+        Get a quote for the size of an order in a specified market. The quote includes
+        the fill price of the order after price impact, estimated fees, and other relevant information.
+
+        :param float size: The size of the order to quote (positive for long, negative for short).
+        :param int | None market_id: The id of the market to quote the order for.
+        :param str | None market_name: The name of the market to quote the order for.
+        :param int | None account_id: The id of the account to quote the order for. If not provided, the default account is used.
+        :param float keeper_fee_buffer_usd: Additional keeper fee buffer in USD.
+        :return: A dictionary with the quote information.
+        :rtype: dict
+        """
+        market_id, market_name = self._resolve_market(market_id, market_name)
+        if not account_id:
+            account_id = self.default_account_id
+
+        # Convert size to wei
+        size_wei = ether_to_wei(size)
+
+        # Get the current oracle price
+        oracle_price = call_erc7412(
+            self.snx, self.market_proxy, "getOraclePrice", (market_id,)
+        )
+
+        # Get the fill price
+        fill_price = call_erc7412(
+            self.snx, self.market_proxy, "getFillPrice", (market_id, size_wei)
+        )
+
+        # Get the order fees
+        keeper_fee_buffer_usd_wei = ether_to_wei(keeper_fee_buffer_usd)
+        order_fee, keeper_fee = call_erc7412(
+            self.snx,
+            self.market_proxy,
+            "getOrderFees",
+            (market_id, size_wei, keeper_fee_buffer_usd_wei),
+        )
+
+        # Calculate the price impact
+        price_impact = (fill_price - oracle_price) / oracle_price
+
+        return {
+            "market_id": market_id,
+            "market_name": market_name,
+            "size": size,
+            "oracle_price": wei_to_ether(oracle_price),
+            "fill_price": wei_to_ether(fill_price),
+            "price_impact": float(price_impact),
+            "order_fee": wei_to_ether(order_fee),
+            "keeper_fee": wei_to_ether(keeper_fee),
+            "total_fee": wei_to_ether(order_fee + keeper_fee),
+            "notional_value": abs(size) * wei_to_ether(fill_price),
+            "side": "long" if size > 0 else "short",
+        }
+
+    def modify_collateral(
+        self,
+        amount: float,
+        collateral_address: str,
+        market_id: int = None,
+        market_name: str = None,
+        account_id: int = None,
+        submit: bool = False,
+    ):
+        """
+        Modify the collateral for a specified account and market. Positive amounts deposit
+        collateral, while negative amounts withdraw collateral.
+
+        :param float amount: The amount of collateral to modify. Positive values deposit, negative values withdraw.
+        :param str collateral_address: The address of the collateral token to modify.
+        :param int | None market_id: The id of the market to modify collateral for.
+        :param str | None market_name: The name of the market to modify collateral for.
+        :param int | None account_id: The id of the account to modify collateral for. If not provided, the default account is used.
+        :param bool submit: If True, submit the transaction to the blockchain. If False, return the transaction parameters.
+        :return: If submit is True, returns the transaction hash. Otherwise, returns the transaction parameters.
+        :rtype: str | dict
+        """
+        market_id, market_name = self._resolve_market(market_id, market_name)
+        if not account_id:
+            account_id = self.default_account_id
+
+        # Convert amount to wei
+        amount_wei = ether_to_wei(amount)
+
+        # Prepare the transaction
+        tx_params = write_erc7412(
+            self.snx,
+            self.market_proxy,
+            "modifyCollateral",
+            [account_id, market_id, collateral_address, amount_wei],
+        )
+
+        if submit:
+            try:
+                tx_hash = self.snx.execute_transaction(tx_params)
+                self.logger.info(
+                    f"Modifying collateral for account {account_id} in market {market_name}"
+                )
+                self.logger.info(f"Amount: {amount} {collateral_address}")
+                self.logger.info(f"Transaction hash: {tx_hash}")
+                return tx_hash
+            except Exception as e:
+                self.logger.error(f"Failed to modify collateral: {str(e)}")
+                raise
+        else:
+            return tx_params
+
+    def commit_order(
+        self,
+        size: float,
+        market_id: int = None,
+        market_name: str = None,
+        account_id: int = None,
+        limit_price: float = None,
+        keeper_fee_buffer_usd: float = 0,
+        hooks: list = None,
+        submit: bool = False,
+    ):
+        """
+        Commit an order to the specified market.
+
+        :param float size: The size of the order to submit. Positive for long, negative for short.
+        :param int | None market_id: The id of the market to submit the order to.
+        :param str | None market_name: The name of the market to submit the order to.
+        :param int | None account_id: The id of the account to submit the order for. Defaults to default_account_id.
+        :param float | None limit_price: The limit price for the order. If not provided, will use the current oracle price.
+        :param float keeper_fee_buffer_usd: Additional keeper fee buffer in USD.
+        :param list | None hooks: List of settlement hook addresses.
+        :param bool submit: If True, submit the transaction to the blockchain. If False, return the transaction parameters.
+
+        :return: If submit is True, returns the transaction hash. Otherwise, returns the transaction parameters.
+        :rtype: str | dict
+        """
+        market_id, market_name = self._resolve_market(market_id, market_name)
+        if not account_id:
+            account_id = self.default_account_id
+
+        # Convert size to wei
+        size_wei = ether_to_wei(size)
+
+        # If limit price is not provided, use the current oracle price
+        if limit_price is None:
+            oracle_price = call_erc7412(
+                self.snx, self.market_proxy, "getOraclePrice", (market_id,)
+            )
+            limit_price = wei_to_ether(oracle_price)
+
+        # Convert limit price to wei
+        limit_price_wei = ether_to_wei(limit_price)
+
+        # Convert keeper fee buffer to wei
+        keeper_fee_buffer_usd_wei = ether_to_wei(keeper_fee_buffer_usd)
+
+        # Prepare hooks
+        if hooks is None:
+            hooks = []
+
+        # Prepare the transaction
+        tx_params = self.snx._get_tx_params(to=self.market_proxy.address)
+        tx_params["data"] = self.market_proxy.encodeABI(
+            fn_name="commitOrder",
+            args=[
+                account_id,
+                market_id,
+                size_wei,
+                limit_price_wei,
+                keeper_fee_buffer_usd_wei,
+                hooks,
+            ],
+        )
+
+        if submit:
+            try:
+                tx_hash = self.snx.execute_transaction(tx_params)
+                self.logger.info(
+                    f"Committing order for account {account_id} in market {market_name}"
+                )
+                self.logger.info(f"Size: {size}, Limit Price: {limit_price}")
+                self.logger.info(f"Transaction hash: {tx_hash}")
+                return tx_hash
+            except Exception as e:
+                self.logger.error(f"Failed to commit order: {str(e)}")
+                raise
+        else:
+            return tx_params
+
+    def settle_order(
+        self,
+        account_id: int = None,
+        market_id: int = None,
+        market_name: str = None,
+        max_attempts: int = 3,
+        attempt_delay: int = 5,
+        submit: bool = False,
+    ):
+        """
+        Settle an open order for the specified account and market.
+
+        :param int | None account_id: The id of the account to settle the order for. If not provided, uses the default account.
+        :param int | None market_id: The id of the market to settle the order in.
+        :param str | None market_name: The name of the market to settle the order in.
+        :param int max_attempts: Maximum number of attempts to settle the order.
+        :param int attempt_delay: Delay in seconds between settlement attempts.
+        :param bool submit: If True, submit the transaction to the blockchain. If False, return the transaction parameters.
+        :return: If submit is True, returns the transaction hash. Otherwise, returns the transaction parameters.
+        :rtype: str | dict
+        """
+        market_id, market_name = self._resolve_market(market_id, market_name)
+        if not account_id:
+            account_id = self.default_account_id
+
+        # Fetch market configuration to get the Pyth price feed ID
+        pyth_price_feed_id = self.snx.perps.markets_by_id[market_id]["feed_id"]
+        order = self.get_order(account_id, market_id=market_id)
+        self.logger.info(f"Order: {order}")
+
+        min_publish_delay = self.market_meta[market_id]["config"][
+            "pyth_publish_time_min"
+        ]
+        max_publish_delay = self.market_meta[market_id]["config"][
+            "pyth_publish_time_max"
+        ]
+
+        commitment_time = order["commitment_time"]
+        publish_time = commitment_time + min_publish_delay
+
+        wait_amount = publish_time - time.time()
+        if wait_amount > 0:
+            self.logger.info(f"Waiting {wait_amount} seconds to settle order")
+            time.sleep(wait_amount)
+
+        for attempt in range(max_attempts):
+            try:
+                # log the block info
+                block = self.snx.web3.eth.get_block("latest")
+                self.logger.info(
+                    f"Block number: {block['number']} | timestamp {block['timestamp']}"
+                )
+
+                # Fetch the latest Pyth price update data
+                pyth_data = self.snx.pyth.get_price_from_ids(
+                    [pyth_price_feed_id], publish_time=publish_time
+                )
+                price_update_data = pyth_data["price_update_data"][0]
+
+                # Prepare the transaction
+                tx_params = write_erc7412(
+                    self.snx,
+                    self.market_proxy,
+                    "settleOrder",
+                    [account_id, market_id, price_update_data],
+                    tx_params={"value": 1},
+                )
+                self.logger.info(f"Settle order tx params: {tx_params}")
+
+                if submit:
+                    tx_hash = self.snx.execute_transaction(tx_params)
+                    self.logger.info(
+                        f"Settling order for account {account_id} in market {market_name}"
+                    )
+                    self.logger.info(f"Transaction hash: {tx_hash}")
+
+                    # Wait for transaction to be mined
+                    receipt = self.snx.wait(tx_hash)
+                    if receipt["status"] == 1:
+                        self.logger.info("Order settled successfully")
+                        return tx_hash
+                    else:
+                        raise Exception("Transaction failed")
+                else:
+                    return tx_params
+
+            except Exception as e:
+                self.logger.warning(
+                    f"Settlement attempt {attempt + 1} failed: {str(e)}"
+                )
+                if attempt < max_attempts - 1:
+                    self.logger.info(f"Retrying in {attempt_delay} seconds...")
+                    time.sleep(attempt_delay)
+                else:
+                    self.logger.error("Max attempts reached. Settlement failed.")
+                    raise
+
+        raise Exception("Failed to settle order after maximum attempts")
