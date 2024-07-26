@@ -254,7 +254,7 @@ class Synthetix:
         )
         self.core = Core(self, core_account_id)
         self.spot = Spot(self)
-        
+
         if "bfp_market_factory" in self.contracts:
             self.perps = BfPerps(self, perps_account_id)
         else:
@@ -526,16 +526,22 @@ class Synthetix:
         # fix the amount
         amount = 2**256 - 1 if amount is None else ether_to_wei(amount)
         token_contract = self.web3.eth.contract(
-            address=token_address, abi=self.contracts['common']["ERC20"]["abi"]
+            address=token_address, abi=self.contracts["common"]["ERC20"]["abi"]
         )
 
         tx_params = self._get_tx_params()
+
+        # reset nonce on internal transactions
+        self.nonce = self.web3.eth.get_transaction_count(self.address)
+        tx_params["nonce"] = self.nonce
+
+        # simulate the transaction
         tx_params = token_contract.functions.approve(
             target_address, amount
         ).build_transaction(tx_params)
 
         if submit:
-            tx_hash = self.execute_transaction(tx_params, reset_nonce=True)
+            tx_hash = self.execute_transaction(tx_params)
             self.logger.info(
                 f"Approving {target_address} to spend {amount / 1e18} {token_address} for {self.address}"
             )
@@ -568,7 +574,7 @@ class Synthetix:
             owner_address = self.address
 
         token_contract = self.web3.eth.contract(
-            address=token_address, abi=self.contracts['common']["ERC20"]["abi"]
+            address=token_address, abi=self.contracts["common"]["ERC20"]["abi"]
         )
 
         allowance = token_contract.functions.allowance(
@@ -592,7 +598,7 @@ class Synthetix:
         :rtype: str | dict
         """
         value_wei = ether_to_wei(max(amount, 0))
-        weth_contract = self.contracts["WETH"]['contract']
+        weth_contract = self.contracts["WETH"]["contract"]
 
         if amount < 0:
             fn_name = "withdraw"
@@ -602,12 +608,18 @@ class Synthetix:
             tx_args = []
 
         tx_params = self._get_tx_params(value=value_wei)
+
+        # reset nonce on internal transactions
+        self.nonce = self.web3.eth.get_transaction_count(self.address)
+        tx_params['nonce'] = self.nonce
+
+        # simulate the transaction
         tx_params = weth_contract.functions[fn_name](*tx_args).build_transaction(
             tx_params
         )
 
         if submit:
-            tx_hash = self.execute_transaction(tx_params, reset_nonce=True)
+            tx_hash = self.execute_transaction(tx_params)
             self.logger.info(f"Wrapping {amount} ETH for {self.address}")
             self.logger.info(f"wrap_eth tx: {tx_hash}")
             return tx_hash
