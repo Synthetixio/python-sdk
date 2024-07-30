@@ -1655,8 +1655,8 @@ class BfPerps(Perps):
                 self.logger.info(
                     f"Modifying collateral for account {account_id} in market {market_name}"
                 )
-                self.logger.info(f"Amount: {amount} {collateral_address}")
-                self.logger.info(f"Transaction hash: {tx_hash}")
+                self.logger.info(f"Moving {amount} of collateral {collateral_address}")
+                self.logger.info(f"modifyCollateral tx: {tx_hash}")
                 return tx_hash
             except Exception as e:
                 self.logger.error(f"Failed to modify collateral: {str(e)}")
@@ -1734,8 +1734,8 @@ class BfPerps(Perps):
                 self.logger.info(
                     f"Committing order for account {account_id} in market {market_name}"
                 )
-                self.logger.info(f"Size: {size}, Limit Price: {limit_price}")
-                self.logger.info(f"Transaction hash: {tx_hash}")
+                self.logger.info(f"Order size: {size}, Limit Price: {limit_price}")
+                self.logger.info(f"commitOrder tx: {tx_hash}")
                 return tx_hash
             except Exception as e:
                 self.logger.error(f"Failed to commit order: {str(e)}")
@@ -1810,14 +1810,13 @@ class BfPerps(Perps):
                     [account_id, market_id, price_update_data],
                     tx_params={"value": 1},
                 )
-                self.logger.info(f"Settle order tx params: {tx_params}")
 
                 if submit:
                     tx_hash = self.snx.execute_transaction(tx_params)
                     self.logger.info(
                         f"Settling order for account {account_id} in market {market_name}"
                     )
-                    self.logger.info(f"Transaction hash: {tx_hash}")
+                    self.logger.info(f"settleOrder tx: {tx_hash}")
 
                     # Wait for transaction to be mined
                     receipt = self.snx.wait(tx_hash)
