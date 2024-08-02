@@ -133,6 +133,7 @@ class Synthetix:
         network_id: int = None,
         core_account_id: int = None,
         perps_account_id: int = None,
+        perps_disabled_markets: list = None,
         tracking_code: str = DEFAULT_TRACKING_CODE,
         referrer: str = DEFAULT_REFERRER,
         max_price_impact: float = DEFAULT_SLIPPAGE,
@@ -257,7 +258,7 @@ class Synthetix:
         )
         self.core = Core(self, core_account_id)
         self.spot = Spot(self)
-        self.perps = Perps(self, perps_account_id)
+        self.perps = Perps(self, perps_account_id, perps_disabled_markets)
 
     def _load_contracts(self):
         """

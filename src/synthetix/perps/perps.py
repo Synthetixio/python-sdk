@@ -9,6 +9,7 @@ from ..utils.multicall import (
     write_erc7412,
     make_fulfillment_request,
 )
+from .constants import DISABLED_MARKETS
 
 
 class Perps:
@@ -45,10 +46,15 @@ class Perps:
     :rtype: Perps
     """
 
-    def __init__(self, snx, default_account_id: int = None):
+    def __init__(self, snx, default_account_id: int = None, disabled_markets = None):
         self.snx = snx
         self.logger = snx.logger
         self.erc7412_enabled = True
+
+        if disabled_markets is None and snx.network_id in DISABLED_MARKETS:
+            self.disabled_markets = DISABLED_MARKETS[snx.network_id]
+        else:
+            self.disabled_markets = []
 
         # check if perps is deployed on this network
         if "perpsFactory" in snx.contracts:
@@ -207,6 +213,9 @@ class Perps:
         :rtype: (dict, dict)
         """
         market_ids = self.market_proxy.functions.getMarkets().call()
+        
+        # filter disabled markets
+        market_ids = [market_id for market_id in market_ids if market_id not in self.disabled_markets]
 
         # fetch and store the metadata
         market_metadata = multicall_erc7412(
