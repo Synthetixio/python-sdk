@@ -9,6 +9,7 @@ from ..utils.multicall import (
     write_erc7412,
     make_fulfillment_request,
 )
+from .constants import DISABLED_MARKETS
 
 
 class Perps:
@@ -38,17 +39,22 @@ class Perps:
         - PythERC7412Wrapper
 
     :param Synthetix snx: An instance of the Synthetix class.
-    :param Pyth pyth: An instance of the Pyth class.
     :param int | None default_account_id: The default ``account_id`` to use for transactions.
+    :param list | None : A list of market ids to disable.
 
     :return: An instance of the Perps class.
     :rtype: Perps
     """
 
-    def __init__(self, snx, default_account_id: int = None):
+    def __init__(self, snx, default_account_id: int = None, disabled_markets=None):
         self.snx = snx
         self.logger = snx.logger
         self.erc7412_enabled = True
+
+        if disabled_markets is None and snx.network_id in DISABLED_MARKETS:
+            self.disabled_markets = DISABLED_MARKETS[snx.network_id]
+        else:
+            self.disabled_markets = []
 
         # check if perps is deployed on this network
         if "perpsFactory" in snx.contracts:
@@ -207,6 +213,13 @@ class Perps:
         :rtype: (dict, dict)
         """
         market_ids = self.market_proxy.functions.getMarkets().call()
+
+        # filter disabled markets
+        market_ids = [
+            market_id
+            for market_id in market_ids
+            if market_id not in self.disabled_markets
+        ]
 
         # fetch and store the metadata
         market_metadata = multicall_erc7412(
@@ -581,9 +594,7 @@ class Perps:
                 }
 
         else:
-            collateral_amount_dict = {
-                0: wei_to_ether(total_collateral_value)
-            }
+            collateral_amount_dict = {0: wei_to_ether(total_collateral_value)}
             debt = 0
 
         return {
@@ -952,7 +963,7 @@ class Perps:
         Pay the debt of a perps account. If no amount is provided, the full debt
         of the account is repaid. Make sure to approve the proxy to transfer sUSD before
         calling this function.
-        
+
         :param int | None amount: The amount of debt to repay. If not provided, the full debt is repaid.
         :param int | None account_id: The id of the account to repay the debt for. If not provided, the default account is used.
         :param bool submit: If ``True``, submit the transaction to the blockchain.
@@ -971,7 +982,6 @@ class Perps:
             )
         else:
             amount = ether_to_wei(amount)
-            
 
         tx_params = write_erc7412(
             self.snx,
@@ -981,9 +991,7 @@ class Perps:
         )
         if submit:
             tx_hash = self.snx.execute_transaction(tx_params)
-            self.logger.info(
-                f"Repaying debt of {amount} for account {account_id}"
-            )
+            self.logger.info(f"Repaying debt of {amount} for account {account_id}")
             self.logger.info(f"payDebt tx: {tx_hash}")
             return tx_hash
         else:

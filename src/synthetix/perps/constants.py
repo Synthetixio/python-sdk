@@ -1,0 +1,3 @@
+DISABLED_MARKETS = {
+    8453: [6300]
+}

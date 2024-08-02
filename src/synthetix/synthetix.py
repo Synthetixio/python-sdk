@@ -102,6 +102,9 @@ class Synthetix:
     :param int perps_account_id: A default ``account_id`` for perps transactions.
         Setting a default will avoid the need to specify on each transaction. If
         not specified, the first ``account_id`` will be used.
+    :param list perps_disabled_markets: A list of market ids to disable for perps
+        trading. This is useful for disabling markets that are deprecated, or to
+        limit the number of markets available for trading.
     :param str tracking_code: Set a tracking code for trades.
     :param str referrer: Set a referrer address for trades.
     :param float max_price_impact: Max price impact setting for trades,
@@ -119,6 +122,7 @@ class Synthetix:
         to increase the gas limit for transactions.
     :param bool is_fork: Set to true if the chain is a fork. This will improve
         the way price data is handled by requesting at the block timestamp.
+
     :return: Synthetix class instance
     :rtype: Synthetix
     """
@@ -133,6 +137,7 @@ class Synthetix:
         network_id: int = None,
         core_account_id: int = None,
         perps_account_id: int = None,
+        perps_disabled_markets: list = None,
         tracking_code: str = DEFAULT_TRACKING_CODE,
         referrer: str = DEFAULT_REFERRER,
         max_price_impact: float = DEFAULT_SLIPPAGE,
@@ -257,7 +262,7 @@ class Synthetix:
         )
         self.core = Core(self, core_account_id)
         self.spot = Spot(self)
-        self.perps = Perps(self, perps_account_id)
+        self.perps = Perps(self, perps_account_id, perps_disabled_markets)
 
     def _load_contracts(self):
         """
@@ -525,7 +530,7 @@ class Synthetix:
         # fix the amount
         amount = 2**256 - 1 if amount is None else ether_to_wei(amount)
         token_contract = self.web3.eth.contract(
-            address=token_address, abi=self.contracts['common']["ERC20"]["abi"]
+            address=token_address, abi=self.contracts["common"]["ERC20"]["abi"]
         )
 
         tx_params = self._get_tx_params()
@@ -567,7 +572,7 @@ class Synthetix:
             owner_address = self.address
 
         token_contract = self.web3.eth.contract(
-            address=token_address, abi=self.contracts['common']["ERC20"]["abi"]
+            address=token_address, abi=self.contracts["common"]["ERC20"]["abi"]
         )
 
         allowance = token_contract.functions.allowance(
@@ -591,7 +596,7 @@ class Synthetix:
         :rtype: str | dict
         """
         value_wei = ether_to_wei(max(amount, 0))
-        weth_contract = self.contracts["WETH"]['contract']
+        weth_contract = self.contracts["WETH"]["contract"]
 
         if amount < 0:
             fn_name = "withdraw"
