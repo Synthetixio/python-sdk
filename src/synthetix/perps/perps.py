@@ -54,7 +54,7 @@ class Perps:
         if disabled_markets is None and snx.network_id in DISABLED_MARKETS:
             self.disabled_markets = DISABLED_MARKETS[snx.network_id]
         else:
-            self.disabled_markets = []
+            self.disabled_markets = disabled_markets if disabled_markets else []
 
         # check if perps is deployed on this network
         if "perpsFactory" in snx.contracts:
