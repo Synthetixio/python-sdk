@@ -534,12 +534,18 @@ class Synthetix:
         )
 
         tx_params = self._get_tx_params()
+
+        # reset nonce on internal transactions
+        self.nonce = self.web3.eth.get_transaction_count(self.address)
+        tx_params["nonce"] = self.nonce
+
+        # simulate the transaction
         tx_params = token_contract.functions.approve(
             target_address, amount
         ).build_transaction(tx_params)
 
         if submit:
-            tx_hash = self.execute_transaction(tx_params, reset_nonce=True)
+            tx_hash = self.execute_transaction(tx_params)
             self.logger.info(
                 f"Approving {target_address} to spend {amount / 1e18} {token_address} for {self.address}"
             )
@@ -606,12 +612,18 @@ class Synthetix:
             tx_args = []
 
         tx_params = self._get_tx_params(value=value_wei)
+
+        # reset nonce on internal transactions
+        self.nonce = self.web3.eth.get_transaction_count(self.address)
+        tx_params["nonce"] = self.nonce
+
+        # simulate the transaction
         tx_params = weth_contract.functions[fn_name](*tx_args).build_transaction(
             tx_params
         )
 
         if submit:
-            tx_hash = self.execute_transaction(tx_params, reset_nonce=True)
+            tx_hash = self.execute_transaction(tx_params)
             self.logger.info(f"Wrapping {amount} ETH for {self.address}")
             self.logger.info(f"wrap_eth tx: {tx_hash}")
             return tx_hash
