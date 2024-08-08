@@ -110,6 +110,15 @@ class Pyth:
         try:
             response = requests.get(url, params, timeout=10)
             if response.status_code != 200:
+                if response.text and "Price ids not found" in response.text:
+                    self.logger.info(f"Removing missing price feeds: {response.text}")
+                    feed_ids = [
+                        feed_id
+                        for feed_id in feed_ids
+                        if feed_id not in response.text
+                    ]
+                    return self._fetch_prices(feed_ids, publish_time=publish_time)
+
                 self.logger.error(f"Error fetching latest price data: {response.text}")
                 return None
 

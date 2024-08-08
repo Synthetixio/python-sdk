@@ -102,6 +102,9 @@ class Synthetix:
     :param int perps_account_id: A default ``account_id`` for perps transactions.
         Setting a default will avoid the need to specify on each transaction. If
         not specified, the first ``account_id`` will be used.
+    :param list perps_disabled_markets: A list of market ids to disable for perps
+        trading. This is useful for disabling markets that are deprecated, or to
+        limit the number of markets available for trading.
     :param str tracking_code: Set a tracking code for trades.
     :param str referrer: Set a referrer address for trades.
     :param float max_price_impact: Max price impact setting for trades,
@@ -119,6 +122,7 @@ class Synthetix:
         to increase the gas limit for transactions.
     :param bool is_fork: Set to true if the chain is a fork. This will improve
         the way price data is handled by requesting at the block timestamp.
+
     :return: Synthetix class instance
     :rtype: Synthetix
     """
@@ -133,6 +137,7 @@ class Synthetix:
         network_id: int = None,
         core_account_id: int = None,
         perps_account_id: int = None,
+        perps_disabled_markets: list = None,
         tracking_code: str = DEFAULT_TRACKING_CODE,
         referrer: str = DEFAULT_REFERRER,
         max_price_impact: float = DEFAULT_SLIPPAGE,
@@ -611,7 +616,7 @@ class Synthetix:
 
         # reset nonce on internal transactions
         self.nonce = self.web3.eth.get_transaction_count(self.address)
-        tx_params['nonce'] = self.nonce
+        tx_params["nonce"] = self.nonce
 
         # simulate the transaction
         tx_params = weth_contract.functions[fn_name](*tx_args).build_transaction(
