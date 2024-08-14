@@ -10,93 +10,106 @@ from ..utils.multicall import (
     make_fulfillment_request,
 )
 from .constants import DISABLED_MARKETS
+from .perps_utils import unpack_bfp_configuration, unpack_bfp_configuration_by_id
 
 
-def unpack_market_configuration(config_data):
-    """
-    Unpacks the market configuration data returned by getMarketConfiguration.
+class BasePerps:
+    def _resolve_market(self, market_id: int, market_name: str):
+        """
+        Look up the market_id and market_name for a market. If only one is provided,
+        the other is resolved. If both are provided, they are checked for consistency.
 
-    :param config_data: Tuple containing the raw configuration data
-    :return: Dictionary with decoded configuration values
-    """
-    return {
-        "pyth": config_data[0],
-        "eth_oracle_node_id": config_data[1].hex(),
-        "reward_distributor_implementation": config_data[2],
-        "pyth_publish_time_min": config_data[3],
-        "pyth_publish_time_max": config_data[4],
-        "min_order_age": config_data[5],
-        "max_order_age": config_data[6],
-        "min_keeper_fee_usd": config_data[7],
-        "max_keeper_fee_usd": config_data[8],
-        "keeper_profit_margin_usd": config_data[9],
-        "keeper_profit_margin_percent": config_data[10],
-        "keeper_settlement_gas_units": config_data[11],
-        "keeper_cancellation_gas_units": config_data[12],
-        "keeper_liquidation_gas_units": config_data[13],
-        "keeper_flag_gas_units": config_data[14],
-        "keeper_liquidate_margin_gas_units": config_data[15],
-        "keeper_liquidation_endorsed": config_data[16],
-        "collateral_discount_scalar": config_data[17],
-        "min_collateral_discount": config_data[18],
-        "max_collateral_discount": config_data[19],
-        "utilization_breakpoint_percent": config_data[20],
-        "low_utilization_slope_percent": config_data[21],
-        "high_utilization_slope_percent": config_data[22],
-    }
+        :param int | None market_id: The id of the market. If not known, provide `None`.
+        :param str | None market_name: The name of the market. If not known, provide `None`.
+
+        :return: The ``market_id`` and ``market_name`` for the market.
+        :rtype: (int, str)
+        """
+        if market_id is None and market_name is None:
+            raise ValueError("Must provide a market_id or market_name")
+
+        has_market_id = market_id is not None
+        has_market_name = market_name is not None
+
+        if not has_market_id and has_market_name:
+            if market_name not in self.markets_by_name:
+                raise ValueError("Invalid market_name")
+            market_id = self.markets_by_name[market_name]["market_id"]
+        elif has_market_id and not has_market_name:
+            if market_id not in self.markets_by_id:
+                raise ValueError("Invalid market_id")
+            market_name = self.markets_by_id[market_id]["market_name"]
+        elif has_market_id and has_market_name:
+            market_name_lookup = self.markets_by_id[market_id]["market_id"]
+            if market_name != market_name_lookup:
+                raise ValueError(
+                    f"Market name {market_name} does not match market id {market_id}"
+                )
+        return market_id, market_name
+
+    def get_account_ids(self, address: str = None, default_account_id: int = None):
+        """
+        Fetch a list of perps ``account_id`` owned by an address. Perps accounts
+        are minted as an NFT to the owner's address. The ``account_id`` is the
+        token id of the NFTs held by the address.
+
+        :param str | None address: The address to fetch the account ids for. If not provided, the default address is used.
+        :return: A list of account ids.
+        :rtype: [int]
+        """
+        if not address:
+            address = self.snx.address
+
+        balance = self.account_proxy.functions.balanceOf(address).call()
+
+        # multicall the account ids
+        inputs = [(address, i) for i in range(balance)]
+
+        account_ids = multicall_erc7412(
+            self.snx, self.account_proxy, "tokenOfOwnerByIndex", inputs
+        )
+
+        self.account_ids = account_ids
+        if default_account_id:
+            self.default_account_id = default_account_id
+        elif len(self.account_ids) > 0:
+            self.default_account_id = self.account_ids[0]
+        else:
+            self.default_account_id = None
+        return account_ids
+
+    def create_account(self, account_id: int = None, submit: bool = False):
+        """
+        Create a perps account. An account NFT is minted to the sender, who
+        owns the account.
+
+        :param int | None account_id: Specify the id of the account. If the id already exists,
+        :param boolean submit: If ``True``, submit the transaction to the blockchain.
+
+        :return: If `submit`, returns the trasaction hash. Otherwise, returns the transaction.
+        :rtype: str | dict
+        """
+        if not account_id:
+            tx_args = []
+        else:
+            tx_args = [account_id]
+
+        tx_params = write_erc7412(self.snx, self.market_proxy, "createAccount", tx_args)
+
+        if submit:
+            tx_hash = self.snx.execute_transaction(tx_params)
+            self.logger.info(f"Creating account for {self.snx.address}")
+            self.logger.info(f"create_account tx: {tx_hash}")
+
+            # wait for the transaction, then refetch the ids
+            self.snx.wait(tx_hash)
+            self.get_account_ids()
+            return tx_hash
+        else:
+            return tx_params
 
 
-def unpack_market_configuration_by_id(config_data):
-    """
-    Unpacks the market configuration data returned by getMarketConfigurationById.
-
-    :param config_data: Tuple containing the raw configuration data
-    :return: Dictionary with decoded configuration values
-    """
-    (
-        oracle_node_id,
-        pyth_price_feed_id,
-        maker_fee,
-        taker_fee,
-        max_market_size,
-        max_funding_velocity,
-        skew_scale,
-        funding_velocity_clamp,
-        min_credit_percent,
-        min_margin_usd,
-        min_margin_ratio,
-        incremental_margin_scalar,
-        maintenance_margin_scalar,
-        max_initial_margin_ratio,
-        liquidation_reward_percent,
-        liquidation_limit_scalar,
-        liquidation_window_duration,
-        liquidation_max_pd,
-    ) = config_data
-
-    return {
-        "oracle_node_id": encode_hex(oracle_node_id),
-        "pyth_price_feed_id": encode_hex(pyth_price_feed_id),
-        "maker_fee": maker_fee,
-        "taker_fee": taker_fee,
-        "max_market_size": max_market_size,
-        "max_funding_velocity": max_funding_velocity,
-        "skew_scale": skew_scale,
-        "funding_velocity_clamp": funding_velocity_clamp,
-        "min_credit_percent": min_credit_percent,
-        "min_margin_usd": min_margin_usd,
-        "min_margin_ratio": min_margin_ratio,
-        "incremental_margin_scalar": incremental_margin_scalar,
-        "maintenance_margin_scalar": maintenance_margin_scalar,
-        "max_initial_margin_ratio": max_initial_margin_ratio,
-        "liquidation_reward_percent": liquidation_reward_percent,
-        "liquidation_limit_scalar": liquidation_limit_scalar,
-        "liquidation_window_duration": liquidation_window_duration,
-        "liquidation_max_pd": liquidation_max_pd,
-    }
-
-
-class Perps:
+class PerpsV3(BasePerps):
     """
     Class for interacting with Synthetix Perps V3 contracts. Provides methods for
     creating and managing accounts, depositing and withdrawing collateral,
@@ -170,40 +183,6 @@ class Perps:
             else:
                 self.is_multicollateral = False
 
-    # internals
-    def _resolve_market(self, market_id: int, market_name: str):
-        """
-        Look up the market_id and market_name for a market. If only one is provided,
-        the other is resolved. If both are provided, they are checked for consistency.
-
-        :param int | None market_id: The id of the market. If not known, provide `None`.
-        :param str | None market_name: The name of the market. If not known, provide `None`.
-
-        :return: The ``market_id`` and ``market_name`` for the market.
-        :rtype: (int, str)
-        """
-        if market_id is None and market_name is None:
-            raise ValueError("Must provide a market_id or market_name")
-
-        has_market_id = market_id is not None
-        has_market_name = market_name is not None
-
-        if not has_market_id and has_market_name:
-            if market_name not in self.markets_by_name:
-                raise ValueError("Invalid market_name")
-            market_id = self.markets_by_name[market_name]["market_id"]
-        elif has_market_id and not has_market_name:
-            if market_id not in self.markets_by_id:
-                raise ValueError("Invalid market_id")
-            market_name = self.markets_by_id[market_id]["market_name"]
-        elif has_market_id and has_market_name:
-            market_name_lookup = self.markets_by_id[market_id]["market_id"]
-            if market_name != market_name_lookup:
-                raise ValueError(
-                    f"Market name {market_name} does not match market id {market_id}"
-                )
-        return market_id, market_name
-
     def _prepare_oracle_call(self, market_names: [str] = []):
         """
         Prepare a call to the external node with oracle updates for the specified market names.
@@ -268,8 +247,6 @@ class Perps:
         return [(to, False, value, data)], price_metadata
 
     # read
-    # TODO: get_market_settings
-    # TODO: get_order_fees
     def get_markets(self):
         """
         Fetch the ids and summaries for all perps markets. Market summaries include
@@ -560,37 +537,6 @@ class Perps:
             "disabled": disabled,
             "commitment_price_delay": commitment_price_delay,
         }
-
-    def get_account_ids(self, address: str = None, default_account_id: int = None):
-        """
-        Fetch a list of perps ``account_id`` owned by an address. Perps accounts
-        are minted as an NFT to the owner's address. The ``account_id`` is the
-        token id of the NFTs held by the address.
-
-        :param str | None address: The address to fetch the account ids for. If not provided, the default address is used.
-        :return: A list of account ids.
-        :rtype: [int]
-        """
-        if not address:
-            address = self.snx.address
-
-        balance = self.account_proxy.functions.balanceOf(address).call()
-
-        # multicall the account ids
-        inputs = [(address, i) for i in range(balance)]
-
-        account_ids = multicall_erc7412(
-            self.snx, self.account_proxy, "tokenOfOwnerByIndex", inputs
-        )
-
-        self.account_ids = account_ids
-        if default_account_id:
-            self.default_account_id = default_account_id
-        elif len(self.account_ids) > 0:
-            self.default_account_id = self.account_ids[0]
-        else:
-            self.default_account_id = None
-        return account_ids
 
     def get_margin_info(self, account_id: int = None):
         """
@@ -961,36 +907,6 @@ class Perps:
         return result
 
     # transactions
-    def create_account(self, account_id: int = None, submit: bool = False):
-        """
-        Create a perps account. An account NFT is minted to the sender, who
-        owns the account.
-
-        :param int | None account_id: Specify the id of the account. If the id already exists,
-        :param boolean submit: If ``True``, submit the transaction to the blockchain.
-
-        :return: If `submit`, returns the trasaction hash. Otherwise, returns the transaction.
-        :rtype: str | dict
-        """
-        if not account_id:
-            tx_args = []
-        else:
-            tx_args = [account_id]
-
-        tx_params = write_erc7412(self.snx, self.market_proxy, "createAccount", tx_args)
-
-        if submit:
-            tx_hash = self.snx.execute_transaction(tx_params)
-            self.logger.info(f"Creating account for {self.snx.address}")
-            self.logger.info(f"create_account tx: {tx_hash}")
-
-            # wait for the transaction, then refetch the ids
-            self.snx.wait(tx_hash)
-            self.get_account_ids()
-            return tx_hash
-        else:
-            return tx_params
-
     def modify_collateral(
         self,
         amount: int,
@@ -1289,7 +1205,7 @@ class Perps:
                 return tx_params
 
 
-class BfPerps(Perps):
+class BfPerps(BasePerps):
     """
     Class for interacting with Synthetix Perps contracts on L1. Provides methods for
     creating and managing accounts, depositing and withdrawing collateral,
@@ -1398,7 +1314,7 @@ class BfPerps(Perps):
                 "market_name": market_digests[ind][1].decode("utf-8").strip("\x00"),
                 "symbol": market_digests[ind][1].decode("utf-8").strip("\x00")[:-4],
                 "feed_id": encode_hex(market_configs[ind][1]),
-                "config": unpack_market_configuration(market_config),
+                "config": unpack_bfp_configuration(market_config),
             }
             for ind, market_id in enumerate(market_ids)
         }
@@ -1430,7 +1346,7 @@ class BfPerps(Perps):
                 "total_trader_debt_usd": wei_to_ether(market_digests[ind][10]),
                 "total_collateral_value_usd": wei_to_ether(market_digests[ind][11]),
                 "debt_correction": wei_to_ether(market_digests[ind][12]),
-                # "market_configuration": unpack_market_configuration_by_id(market_configs[ind]),
+                # "market_configuration": unpack_bfp_configuration_by_id(market_configs[ind]),
             }
             for ind, market_id in enumerate(market_ids)
         }

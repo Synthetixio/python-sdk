@@ -19,7 +19,7 @@ from .utils import wei_to_ether, ether_to_wei
 from .contracts import load_contracts
 from .pyth import Pyth
 from .core import Core
-from .perps import Perps, BfPerps
+from .perps import PerpsV3, BfPerps
 from .spot import Spot
 
 from .queries import Queries
@@ -263,7 +263,7 @@ class Synthetix:
         if "bfp_market_factory" in self.contracts:
             self.perps = BfPerps(self, perps_account_id)
         else:
-            self.perps = Perps(self, perps_account_id)
+            self.perps = PerpsV3(self, perps_account_id)
 
     def _load_contracts(self):
         """
