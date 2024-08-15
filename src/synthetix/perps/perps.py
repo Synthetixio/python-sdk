@@ -1654,6 +1654,7 @@ class BfPerps(BasePerps):
                 limit_price_wei,
                 keeper_fee_buffer_usd_wei,
                 hooks,
+                self.snx.tracking_code,
             ],
         )
 
@@ -1769,3 +1770,51 @@ class BfPerps(BasePerps):
                     raise
 
         raise Exception("Failed to settle order after maximum attempts")
+
+    def pay_debt(
+        self,
+        amount: int = None,
+        account_id: int = None,
+        market_id: int = None,
+        market_name: str = None,
+        submit: bool = False,
+    ):
+        """
+        Pay the debt of a perps account. If no amount is provided, the full debt
+        of the account is repaid. Make sure to approve the proxy to transfer sUSD before
+        calling this function.
+
+        :param int | None amount: The amount of debt to repay. If not provided, the full debt is repaid.
+        :param int | None account_id: The id of the account to repay the debt for. If not provided, the default account is used.
+        :param bool submit: If ``True``, submit the transaction to the blockchain.
+        :return: If ``submit``, returns the trasaction hash. Otherwise, returns the transaction.
+        :rtype: str | dict
+        """
+        market_id, market_name = self._resolve_market(market_id, market_name)
+        if account_id is None:
+            account_id = self.default_account_id
+
+        if amount is None:
+            account_digest = call_erc7412(
+                self.snx,
+                self.market_proxy,
+                "getAccountDigest",
+                (account_id, market_id),
+            )
+            amount = account_digest[2]
+        else:
+            amount = ether_to_wei(amount)
+
+        tx_params = write_erc7412(
+            self.snx,
+            self.market_proxy,
+            "payDebt",
+            [account_id, market_id, amount],
+        )
+        if submit:
+            tx_hash = self.snx.execute_transaction(tx_params)
+            self.logger.info(f"Repaying debt of {amount} for account {account_id}")
+            self.logger.info(f"payDebt tx: {tx_hash}")
+            return tx_hash
+        else:
+            return tx_params
