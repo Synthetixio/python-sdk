@@ -1314,7 +1314,8 @@ class BfPerps(BasePerps):
                 "market_name": market_digests[ind][1].decode("utf-8").strip("\x00"),
                 "symbol": market_digests[ind][1].decode("utf-8").strip("\x00")[:-4],
                 "feed_id": encode_hex(market_configs[ind][1]),
-                "config": unpack_bfp_configuration(market_config),
+                "system_config": unpack_bfp_configuration(market_config),
+                "market_config": unpack_bfp_configuration_by_id(market_configs[ind]),
             }
             for ind, market_id in enumerate(market_ids)
         }
@@ -1346,7 +1347,7 @@ class BfPerps(BasePerps):
                 "total_trader_debt_usd": wei_to_ether(market_digests[ind][10]),
                 "total_collateral_value_usd": wei_to_ether(market_digests[ind][11]),
                 "debt_correction": wei_to_ether(market_digests[ind][12]),
-                # "market_configuration": unpack_bfp_configuration_by_id(market_configs[ind]),
+                "market_config": unpack_bfp_configuration_by_id(market_configs[ind]),
             }
             for ind, market_id in enumerate(market_ids)
         }
@@ -1541,6 +1542,39 @@ class BfPerps(BasePerps):
             "side": "long" if size > 0 else "short",
         }
 
+    def get_can_liquidate(
+        self, account_id: int = None, market_id: int = None, market_name: str = None
+    ):
+        """
+        Check if an ``account_id`` is eligible for liquidation on a specified market
+
+        :param int | None account_id: The id of the account to check. If not provided, the default account is used.
+        :return: A boolean indicating if the account is eligible for liquidation.
+        :rtype: bool
+        """
+        market_id, market_name = self._resolve_market(market_id, market_name)
+        if not account_id:
+            account_id = self.default_account_id
+
+        # call the liquidation functions
+        is_position_liquidatable = call_erc7412(
+            self.snx,
+            self.market_proxy,
+            "isPositionLiquidatable",
+            (account_id, market_id),
+        )
+        is_margin_liquidatable = call_erc7412(
+            self.snx,
+            self.market_proxy,
+            "isMarginLiquidatable",
+            (account_id, market_id),
+        )
+
+        return {
+            "is_position_liquidatable": is_position_liquidatable,
+            "is_margin_liquidatable": is_margin_liquidatable,
+        }
+
     def modify_collateral(
         self,
         amount: float,
@@ -1644,10 +1678,11 @@ class BfPerps(BasePerps):
             hooks = []
 
         # Prepare the transaction
-        tx_params = self.snx._get_tx_params(to=self.market_proxy.address)
-        tx_params["data"] = self.market_proxy.encodeABI(
-            fn_name="commitOrder",
-            args=[
+        tx_params = write_erc7412(
+            self.snx,
+            self.market_proxy,
+            "commitOrder",
+            [
                 account_id,
                 market_id,
                 size_wei,
@@ -1703,10 +1738,10 @@ class BfPerps(BasePerps):
         order = self.get_order(account_id, market_id=market_id)
         self.logger.info(f"Order: {order}")
 
-        min_publish_delay = self.market_meta[market_id]["config"][
+        min_publish_delay = self.market_meta[market_id]["system_config"][
             "pyth_publish_time_min"
         ]
-        max_publish_delay = self.market_meta[market_id]["config"][
+        max_publish_delay = self.market_meta[market_id]["system_config"][
             "pyth_publish_time_max"
         ]
 
@@ -1720,12 +1755,6 @@ class BfPerps(BasePerps):
 
         for attempt in range(max_attempts):
             try:
-                # log the block info
-                block = self.snx.web3.eth.get_block("latest")
-                self.logger.info(
-                    f"Block number: {block['number']} | timestamp {block['timestamp']}"
-                )
-
                 # Fetch the latest Pyth price update data
                 pyth_data = self.snx.pyth.get_price_from_ids(
                     [pyth_price_feed_id], publish_time=publish_time
@@ -1815,6 +1844,37 @@ class BfPerps(BasePerps):
             tx_hash = self.snx.execute_transaction(tx_params)
             self.logger.info(f"Repaying debt of {amount} for account {account_id}")
             self.logger.info(f"payDebt tx: {tx_hash}")
+            return tx_hash
+        else:
+            return tx_params
+
+    def liquidate(
+        self,
+        account_id: int = None,
+        market_id: int = None,
+        market_name: str = None,
+        margin_only: bool = False,
+        submit: bool = False,
+    ):
+        """ """
+        market_id, market_name = self._resolve_market(market_id, market_name)
+        if account_id is None:
+            account_id = self.default_account_id
+
+        fn_name = "liquidatePosition" if not margin_only else "liquidateMarginOnly"
+        tx_params = write_erc7412(
+            self.snx,
+            self.market_proxy,
+            fn_name,
+            [account_id, market_id],
+        )
+        if submit:
+            tx_hash = self.snx.execute_transaction(tx_params)
+            self.logger.info(
+                f"Liquidating account {account_id} in market {market_name}"
+            )
+
+            self.logger.info(f"{fn_name} tx: {tx_hash}")
             return tx_hash
         else:
             return tx_params
