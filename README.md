@@ -5,11 +5,12 @@
 This is a Python SDK designed to help you interact with Synthetix smart contracts and subgraphs. Visit the [documentation](https://synthetixio.github.io/python-sdk/) for more information.
 
 ## Features
-* Interfaces for all Synthetix V3 contracts
-* Simple tools for trading Synthetix perps
-* Interfaces for synth swapping and wrapping
-* Inferfaces for managing LP positions
-* Seamless integration with [Cannon](https://usecannon.com/) for fetching deployments from IPFS
+
+- Interfaces for all Synthetix V3 contracts
+- Simple tools for trading Synthetix perps
+- Interfaces for synth swapping and wrapping
+- Interfaces for managing LP positions
+- Seamless integration with [Cannon](https://usecannon.com/) for fetching deployments from IPFS
 
 ## Installation
 
@@ -22,8 +23,9 @@ pip install synthetix
 ## Documentation
 
 There are a few guides to help you get started:
-* [Getting Started](https://synthetixio.github.io/python-sdk/guides/quickstart.html)
-* [Trade Perps](https://synthetixio.github.io/python-sdk/guides/trade_perps.html)
+
+- [Getting Started](https://synthetixio.github.io/python-sdk/guides/quickstart.html)
+- [Trade Perps](https://synthetixio.github.io/python-sdk/guides/trade_perps.html)
 
 For complete documentation, visit our [documentation site](https://synthetixio.github.io/python-sdk/).
 
