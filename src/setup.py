@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="synthetix",
-    version="0.1.15",
+    version="0.1.16",
     description="Synthetix protocol SDK",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
@@ -13,7 +13,7 @@ setup(
         "pandas",
         "requests",
         "requests_toolbelt",
-        "web3>=6.4.0",
+        "web3>=6.4.0,<7.0.0",
         "gql",
     ],
     classifiers=[
