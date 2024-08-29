@@ -546,7 +546,16 @@ class Spot:
         """
         market_id, market_name = self._resolve_market(market_id, market_name)
 
-        if min_amount_received is None:
+        # first check if on Base where USDC and sUSD are 1:1
+        if (
+            self.snx.network_id in [8453, 84532]
+            and market_name == "sUSDC"
+            and min_amount_received is None
+        ):
+            # assume this is a 1:1 swap
+            min_amount_received = size
+            min_amount_received_wei = ether_to_wei(min_amount_received)
+        elif min_amount_received is None:
             # get the asset price
             token_symbol = self.markets_by_id[market_id]["symbol"]
             feed_id = self.snx.pyth.price_feed_ids[token_symbol]
