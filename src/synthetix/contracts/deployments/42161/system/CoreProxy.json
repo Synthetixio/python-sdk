@@ -2161,37 +2161,6 @@
         {
           "indexed": false,
           "internalType": "uint256",
-          "name": "feeAmount",
-          "type": "uint256"
-        }
-      ],
-      "name": "IssuanceFeePaid",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "uint128",
-          "name": "accountId",
-          "type": "uint128"
-        },
-        {
-          "indexed": true,
-          "internalType": "uint128",
-          "name": "poolId",
-          "type": "uint128"
-        },
-        {
-          "indexed": false,
-          "internalType": "address",
-          "name": "collateralType",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
           "name": "amount",
           "type": "uint256"
         },
@@ -2982,25 +2951,6 @@
         }
       ],
       "name": "MarketRegistered",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "uint128",
-          "name": "marketId",
-          "type": "uint128"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "feeAmount",
-          "type": "uint256"
-        }
-      ],
-      "name": "MarketSystemFeePaid",
       "type": "event"
     },
     {
@@ -4390,11 +4340,6 @@
       "type": "error"
     },
     {
-      "inputs": [],
-      "name": "RewardDistributorNotFound",
-      "type": "error"
-    },
-    {
       "inputs": [
         {
           "internalType": "address",
@@ -4558,6 +4503,40 @@
           "type": "address"
         }
       ],
+      "name": "claimPoolRewards",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint128",
+          "name": "accountId",
+          "type": "uint128"
+        },
+        {
+          "internalType": "uint128",
+          "name": "poolId",
+          "type": "uint128"
+        },
+        {
+          "internalType": "address",
+          "name": "collateralType",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "distributor",
+          "type": "address"
+        }
+      ],
       "name": "claimRewards",
       "outputs": [
         {
@@ -4598,7 +4577,13 @@
         }
       ],
       "name": "distributeRewards",
-      "outputs": [],
+      "outputs": [
+        {
+          "internalType": "int256",
+          "name": "",
+          "type": "int256"
+        }
+      ],
       "stateMutability": "nonpayable",
       "type": "function"
     },
@@ -4636,7 +4621,47 @@
         }
       ],
       "name": "distributeRewardsByOwner",
-      "outputs": [],
+      "outputs": [
+        {
+          "internalType": "int256",
+          "name": "",
+          "type": "int256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint128",
+          "name": "accountId",
+          "type": "uint128"
+        },
+        {
+          "internalType": "uint128",
+          "name": "poolId",
+          "type": "uint128"
+        },
+        {
+          "internalType": "address",
+          "name": "collateralType",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "distributor",
+          "type": "address"
+        }
+      ],
+      "name": "getAvailablePoolRewards",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
       "stateMutability": "nonpayable",
       "type": "function"
     },
@@ -4671,7 +4696,7 @@
           "type": "uint256"
         }
       ],
-      "stateMutability": "view",
+      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
@@ -4778,6 +4803,11 @@
           "internalType": "address[]",
           "name": "",
           "type": "address[]"
+        },
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
         }
       ],
       "stateMutability": "nonpayable",
@@ -5316,6 +5346,8 @@
     }
   ],
   "deployTxnHash": "",
+  "deployTxnBlockNumber": "",
+  "deployTimestamp": "",
   "sourceName": "",
   "contractName": "",
   "deployedOn": "invoke.upgrade_core_proxy",
