@@ -237,6 +237,7 @@ class PerpsV3(BasePerps):
             self.snx,
             self.snx.contracts["pyth_erc7412_wrapper"]["PythERC7412Wrapper"]["address"],
             price_update_data,
+            0,
             args,
         )
         value = len(market_names)
