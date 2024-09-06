@@ -26,7 +26,9 @@ def decode_erc7412_errors_error(error):
     """Decodes an Errors error"""
     error_data = decode_hex(f"0x{error[10:]}")
 
-    errors = decode(["bytes[]"], error_data)
+    errors = decode(["bytes[]"], error_data)[0]
+    errors = [ContractCustomError(data=encode_hex(e)) for e in errors]
+    errors.reverse()
 
     return errors
 
@@ -46,7 +48,7 @@ def decode_erc7412_oracle_data_required_error(snx, error):
         print("USING BACKUP output types")
         address, data = decode(output_types[:2], error_data)
         fee = 0
-        
+
     address = snx.web3.to_checksum_address(address)
 
     # decode the bytes data into the arguments for the oracle
@@ -99,22 +101,24 @@ def make_fulfillment_request(snx, address, price_update_data, fee, args):
 
 
 def handle_erc7412_error(snx, error, calls):
-    " When receiving a ERC7412 error, will return an updated list of calls with the required price updates "
+    "When receiving a ERC7412 error, will return an updated list of calls with the required price updates"
     if type(error) is ContractCustomError and error.data.startswith(SELECTOR_ERRORS):
-
         errors = decode_erc7412_errors_error(error.data)
 
         # TODO: execute in parallel
-        for sub_error in errors.reverse():
+        for sub_error in errors:
             sub_calls = handle_erc7412_error(snx, sub_error, [])
             calls = sub_calls + calls
-        
+
         return calls
-    if type(error) is ContractCustomError and (error.data.startswith(
-        SELECTOR_ORACLE_DATA_REQUIRED
-    ) or error.data.startswith(SELECTOR_ORACLE_DATA_REQUIRED_WITH_FEE)):
+    if type(error) is ContractCustomError and (
+        error.data.startswith(SELECTOR_ORACLE_DATA_REQUIRED)
+        or error.data.startswith(SELECTOR_ORACLE_DATA_REQUIRED_WITH_FEE)
+    ):
         # decode error data
-        address, feed_ids, fee, args = decode_erc7412_oracle_data_required_error(snx, error.data)
+        address, feed_ids, fee, args = decode_erc7412_oracle_data_required_error(
+            snx, error.data
+        )
         update_type = args[0]
 
         if update_type == 1:
