@@ -809,6 +809,8 @@
     }
   ],
   "deployTxnHash": "",
+  "deployTxnBlockNumber": "",
+  "deployTimestamp": "",
   "sourceName": "",
   "contractName": "",
   "deployedOn": "invoke.init_account",

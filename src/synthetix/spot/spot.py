@@ -516,6 +516,7 @@ class Spot:
         side: Literal["buy", "sell"],
         size: int,
         slippage_tolerance: float = 0,
+        min_amount_received: int = None,
         market_id: int = None,
         market_name: str = None,
         submit: bool = False,
@@ -536,6 +537,7 @@ class Spot:
         :param Literal["buy", "sell"] side: The side of the order (buy/sell).
         :param int size: The order size in ether.
         :param float slippage_tolerance: The slippage tolerance for the order as a percentage (0.01 = 1%). Default is 0.
+        :param int min_amount_received: The minimum amount to receive in ether units. This will override the slippage_tolerance.
         :param int market_id: The ID of the market.
         :param str market_name: The name of the market.
         :param bool submit: Whether to broadcast the transaction.
@@ -544,8 +546,34 @@ class Spot:
         """
         market_id, market_name = self._resolve_market(market_id, market_name)
 
-        min_amount_received = size * (1 - slippage_tolerance)
-        min_amount_received_wei = ether_to_wei(min_amount_received)
+        # first check if on Base where USDC and sUSD are 1:1
+        if (
+            self.snx.network_id in [8453, 84532]
+            and market_name == "sUSDC"
+            and min_amount_received is None
+        ):
+            # assume this is a 1:1 swap
+            min_amount_received = size
+            min_amount_received_wei = ether_to_wei(min_amount_received)
+        elif min_amount_received is None:
+            # get the asset price
+            token_symbol = self.markets_by_id[market_id]["symbol"]
+            feed_id = self.snx.pyth.price_feed_ids[token_symbol]
+
+            price_data = self.snx.pyth.get_price_from_ids([feed_id])
+            price = price_data["meta"][feed_id]["price"]
+
+            # adjust size for trade side
+            if side == "buy":
+                trade_size = size / price
+            else:
+                trade_size = size * price
+
+            # calculate the amount after slippage
+            min_amount_received = trade_size * (1 - slippage_tolerance)
+            min_amount_received_wei = ether_to_wei(min_amount_received)
+        else:
+            min_amount_received_wei = ether_to_wei(min_amount_received)
 
         size_wei = ether_to_wei(size)
 
@@ -628,6 +656,7 @@ class Spot:
         side: Literal["buy", "sell"],
         size: int,
         slippage_tolerance: float = 0,
+        min_amount_received: int = None,
         settlement_strategy_id: int = 0,
         market_id: int = None,
         market_name: str = None,
@@ -645,6 +674,7 @@ class Spot:
         :param int size: The order size in ether. If ``side`` is "buy", this is the amount
             of the synth to buy. If ``side`` is "sell", this is the amount of the synth to sell.
         :param float slippage_tolerance: The slippage tolerance for the order as a percentage (0.01 = 1%). Default is 0.
+        :param int min_amount_received: The minimum amount to receive in ether units. This will override the slippage_tolerance.
         :param int settlement_strategy_id: The settlement strategy ID. Default 2.
         :param int market_id: The ID of the market.
         :param str market_name: The name of the market.
@@ -655,17 +685,27 @@ class Spot:
         market_id, market_name = self._resolve_market(market_id, market_name)
 
         # get a price
-        feed_id = self.markets_by_id[market_id]["settlement_strategy"]["feed_id"]
-        settlement_reward = self.markets_by_id[market_id]["settlement_strategy"][
-            "settlement_reward"
-        ]
-        pyth_data = self.snx.pyth.get_price_from_ids([feed_id])
-        price = pyth_data["meta"][feed_id]["price"]
+        if min_amount_received is None:
+            feed_id = self.markets_by_id[market_id]["settlement_strategy"]["feed_id"]
+            settlement_reward = self.markets_by_id[market_id]["settlement_strategy"][
+                "settlement_reward"
+            ]
+            pyth_data = self.snx.pyth.get_price_from_ids([feed_id])
+            price = pyth_data["meta"][feed_id]["price"]
 
-        min_amount_received = (
-            size * price * (1 - slippage_tolerance) - settlement_reward
-        )
-        min_amount_received_wei = ether_to_wei(min_amount_received)
+            # adjust size for trade side
+            if side == "buy":
+                trade_size = size / price
+            else:
+                trade_size = size * price
+
+            # calculate the amount after slippage
+            min_amount_received = (
+                trade_size * (1 - slippage_tolerance) - settlement_reward
+            )
+            min_amount_received_wei = ether_to_wei(min_amount_received)
+        else:
+            min_amount_received_wei = ether_to_wei(min_amount_received)
 
         size_wei = ether_to_wei(size)
         order_type = 3 if side == "buy" else 4
