@@ -7,7 +7,9 @@ from eth_utils import encode_hex, decode_hex
 
 
 # constants
-ORACLE_DATA_REQUIRED = "0xcf2cabdf"
+SELECTOR_ORACLE_DATA_REQUIRED = "0xcf2cabdf"
+SELECTOR_ORACLE_DATA_REQUIRED_WITH_FEE = "0x0e7186fb"
+SELECTOR_ERRORS = "0x0b42fd17"
 
 
 def decode_result(contract, function_name, result):
@@ -20,14 +22,33 @@ def decode_result(contract, function_name, result):
 
 
 # ERC-7412 support
-def decode_erc7412_error(snx, error):
+def decode_erc7412_errors_error(error):
+    """Decodes an Errors error"""
+    error_data = decode_hex(f"0x{error[10:]}")
+
+    errors = decode(["bytes[]"], error_data)[0]
+    errors = [ContractCustomError(data=encode_hex(e)) for e in errors]
+    errors.reverse()
+
+    return errors
+
+
+def decode_erc7412_oracle_data_required_error(snx, error):
     """Decodes an OracleDataRequired error"""
     # remove the signature and decode the error data
     error_data = decode_hex(f"0x{error[10:]}")
 
     # decode the result
-    output_types = ["address", "bytes"]
-    address, data = decode(output_types, error_data)
+    # could be one of two types with different args
+    output_types = ["address", "bytes", "uint256"]
+    try:
+        address, data, fee = decode(output_types, error_data)
+        print("USED NORMAL output types")
+    except:
+        print("USING BACKUP output types")
+        address, data = decode(output_types[:2], error_data)
+        fee = 0
+
     address = snx.web3.to_checksum_address(address)
 
     # decode the bytes data into the arguments for the oracle
@@ -41,7 +62,7 @@ def decode_erc7412_error(snx, error):
         )
 
         feed_ids = [encode_hex(raw_feed_id) for raw_feed_id in raw_feed_ids]
-        return address, feed_ids, (update_type, staleness_tolerance, raw_feed_ids)
+        return address, feed_ids, fee, (update_type, staleness_tolerance, raw_feed_ids)
     except:
         pass
 
@@ -51,14 +72,14 @@ def decode_erc7412_error(snx, error):
 
         feed_ids = [encode_hex(raw_feed_id)]
         raw_feed_ids = [raw_feed_id]
-        return address, feed_ids, (update_type, publish_time, raw_feed_ids)
+        return address, feed_ids, fee, (update_type, publish_time, raw_feed_ids)
     except:
         pass
 
     raise Exception("Error data can not be decoded")
 
 
-def make_fulfillment_request(snx, address, price_update_data, args):
+def make_fulfillment_request(snx, address, price_update_data, fee, args):
     erc_contract = snx.web3.eth.contract(
         address=address,
         abi=snx.contracts["pyth_erc7412_wrapper"]["PythERC7412Wrapper"]["abi"],
@@ -71,7 +92,7 @@ def make_fulfillment_request(snx, address, price_update_data, args):
     )
 
     # assume 1 wei per price update
-    value = len(price_update_data) * 1
+    value = fee if fee > 0 else len(price_update_data) * 1
 
     update_tx = erc_contract.functions.fulfillOracleQuery(
         encoded_args
@@ -80,11 +101,24 @@ def make_fulfillment_request(snx, address, price_update_data, args):
 
 
 def handle_erc7412_error(snx, error, calls):
-    if type(error) is ContractCustomError and error.data.startswith(
-        ORACLE_DATA_REQUIRED
+    "When receiving a ERC7412 error, will return an updated list of calls with the required price updates"
+    if type(error) is ContractCustomError and error.data.startswith(SELECTOR_ERRORS):
+        errors = decode_erc7412_errors_error(error.data)
+
+        # TODO: execute in parallel
+        for sub_error in errors:
+            sub_calls = handle_erc7412_error(snx, sub_error, [])
+            calls = sub_calls + calls
+
+        return calls
+    if type(error) is ContractCustomError and (
+        error.data.startswith(SELECTOR_ORACLE_DATA_REQUIRED)
+        or error.data.startswith(SELECTOR_ORACLE_DATA_REQUIRED_WITH_FEE)
     ):
         # decode error data
-        address, feed_ids, args = decode_erc7412_error(snx, error.data)
+        address, feed_ids, fee, args = decode_erc7412_oracle_data_required_error(
+            snx, error.data
+        )
         update_type = args[0]
 
         if update_type == 1:
@@ -106,7 +140,7 @@ def handle_erc7412_error(snx, error, calls):
 
             # create a new request
             to, data, value = make_fulfillment_request(
-                snx, address, price_update_data, args
+                snx, address, price_update_data, fee, args
             )
         elif update_type == 2:
             # fetch the data from pyth for those feed ids
@@ -115,7 +149,7 @@ def handle_erc7412_error(snx, error, calls):
 
             # create a new request
             to, data, value = make_fulfillment_request(
-                snx, address, price_update_data, args
+                snx, address, price_update_data, fee, args
             )
         else:
             snx.logger.error(f"Unknown update type: {update_type}")
