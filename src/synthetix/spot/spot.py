@@ -127,14 +127,18 @@ class Spot:
         """
         market_id, market_name = self._resolve_market(market_id, None)
 
-        # hard-coding a catch for USDC with 6 decimals
-        if self.snx.network_id in [8453, 84532, 421614, 42161] and market_name in [
-            "sUSDC",
-            "sStataUSDC",
-        ]:
-            size_wei = format_ether(size, decimals=6)
-        else:
-            size_wei = format_ether(size)
+        # get the wrapper
+        collateral_type, _ = self.market_proxy.functions.getWrapper(market_id).call()
+
+        # make the contract
+        wrapper_contract = self.snx.web3.eth.contract(
+            address=self.snx.web3.to_checksum_address(collateral_type),
+            abi=self.snx.contracts["common"]["ERC20"]["abi"],
+        )
+        decimals = wrapper_contract.functions.decimals().call()
+
+        # format the size
+        size_wei = format_ether(size, decimals=decimals)
         return size_wei
 
     # read
