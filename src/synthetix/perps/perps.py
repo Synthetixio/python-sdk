@@ -1879,3 +1879,30 @@ class BfPerps(BasePerps):
             return tx_hash
         else:
             return tx_params
+
+    def flag(
+        self,
+        account_id: int = None,
+        market_id: int = None,
+        market_name: str = None,
+        submit: bool = False,
+    ):
+        """ """
+        market_id, market_name = self._resolve_market(market_id, market_name)
+        if account_id is None:
+            account_id = self.default_account_id
+
+        tx_params = write_erc7412(
+            self.snx,
+            self.market_proxy,
+            "flagPosition",
+            [account_id, market_id],
+        )
+        if submit:
+            tx_hash = self.snx.execute_transaction(tx_params)
+            self.logger.info(f"Flagging account {account_id} in market {market_name}")
+
+            self.logger.info(f"flagPosition tx: {tx_hash}")
+            return tx_hash
+        else:
+            return tx_params
