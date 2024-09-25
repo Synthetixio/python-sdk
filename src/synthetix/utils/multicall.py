@@ -80,38 +80,51 @@ def decode_erc7412_oracle_data_required_error(snx, error):
     raise Exception("Error data can not be decoded")
 
 
-def make_pyth_fulfillment_request(snx, address, update_type, feed_ids, price_update_data, publish_time_or_staleness, fee):
+def make_pyth_fulfillment_request(
+    snx,
+    address,
+    update_type,
+    feed_ids,
+    price_update_data,
+    publish_time_or_staleness,
+    fee,
+):
+    # log all of the inputs
     erc_contract = snx.web3.eth.contract(
         address=address,
         abi=snx.contracts["pyth_erc7412_wrapper"]["PythERC7412Wrapper"]["abi"],
     )
 
-    #update_type, publish_time_or_staleness, feed_ids = args
+    # update_type, publish_time_or_staleness, feed_ids = args
+    feed_ids = [decode_hex(f) for f in feed_ids]
     encoded_args = encode(
         ["uint8", "uint64", "bytes32[]", "bytes[]"],
         [update_type, publish_time_or_staleness, feed_ids, price_update_data],
     )
 
     # assume 1 wei per price update
-    value = fee if fee > 0 else len(price_update_data) * 1
+    value = fee if fee > 0 else len(feed_ids) * 1
 
     update_tx = erc_contract.functions.fulfillOracleQuery(
         encoded_args
     ).build_transaction({"value": value, "gas": None})
     return update_tx["to"], update_tx["data"], update_tx["value"]
 
+
 class PythVaaRequest:
     feed_ids: list[HexStr] = []
     publish_time = 0
     fee = 0
 
+
 class ERC7412Requests:
-    pyth_address = ''
+    pyth_address = ""
     pyth_latest: list[HexStr] = []
     pyth_latest_fee = 0
     pyth_vaa: list[PythVaaRequest] = []
 
-def aggregate_erc7412_price_requests(snx, error, requests = None)
+
+def aggregate_erc7412_price_requests(snx, error, requests=None):
     "Figures out all the prices that have been requested by an ERC7412 error and puts them all in aggregated requests"
     if not requests:
         requests = ERC7412Requests()
@@ -120,7 +133,9 @@ def aggregate_erc7412_price_requests(snx, error, requests = None)
 
         # TODO: execute in parallel
         for sub_error in errors:
-            aggregate_erc7412_price_requests(snx, sub_error, requests)
+            requests = aggregate_erc7412_price_requests(snx, sub_error, requests)
+
+        return requests
 
     if type(error) is ContractCustomError and (
         error.data.startswith(SELECTOR_ORACLE_DATA_REQUIRED)
@@ -128,7 +143,7 @@ def aggregate_erc7412_price_requests(snx, error, requests = None)
     ):
         # decode error data
         update_type = None
-        address = ''
+        address = ""
         feed_ids = []
         fee = 0
         args = []
@@ -175,10 +190,10 @@ def aggregate_erc7412_price_requests(snx, error, requests = None)
 
     return requests
 
+
 def handle_erc7412_error(snx, error):
     "When receiving a ERC7412 error, will return an updated list of calls with the required price updates"
     requests = aggregate_erc7412_price_requests(snx, error)
-
     calls = []
 
     if requests.pyth_latest:
@@ -201,7 +216,13 @@ def handle_erc7412_error(snx, error):
         # create a new request
         # TODO: the actual number should go here for staleness
         to, data, value = make_pyth_fulfillment_request(
-            snx, requests.pyth_address, 1, requests.pyth_latest, price_update_data, 3600, requests.pyth_latest_fee
+            snx,
+            requests.pyth_address,
+            1,
+            requests.pyth_latest,
+            price_update_data,
+            3600,
+            requests.pyth_latest_fee,
         )
 
         calls.append((to, True, value, data))
@@ -209,12 +230,20 @@ def handle_erc7412_error(snx, error):
     if requests.pyth_vaa:
         for r in requests.pyth_vaa:
             # fetch the data from pyth for those feed ids
-            pyth_data = snx.pyth.get_price_from_ids(r.feed_ids, publish_time=r.publish_time)
+            pyth_data = snx.pyth.get_price_from_ids(
+                r.feed_ids, publish_time=r.publish_time
+            )
             price_update_data = pyth_data["price_update_data"]
 
             # create a new request
             to, data, value = make_pyth_fulfillment_request(
-                snx, requests.pyth_address, 2, r.feed_ids, price_update_data, r.publish_time, r.fee
+                snx,
+                requests.pyth_address,
+                2,
+                r.feed_ids,
+                price_update_data,
+                r.publish_time,
+                r.fee,
             )
 
             calls.append((to, True, value, data))
@@ -346,4 +375,4 @@ def multicall_erc7412(
             snx.logger.debug(f"Simulation failed, decoding the error {e}")
 
             # handle the error by appending calls
-            calls = handle_erc7412_error(snx, e, calls)
+            calls = handle_erc7412_error(snx, e) + calls
