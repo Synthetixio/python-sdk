@@ -233,10 +233,10 @@ class PerpsV3(BasePerps):
         to, data, _ = make_pyth_fulfillment_request(
             self.snx,
             self.snx.contracts["pyth_erc7412_wrapper"]["PythERC7412Wrapper"]["address"],
-            1, # update type
+            1,  # update type
             feed_ids,
             price_update_data,
-            30, # staleness tolerance
+            30,  # staleness tolerance
             0,
         )
         value = len(market_names)
@@ -1799,6 +1799,52 @@ class BfPerps(BasePerps):
                     raise
 
         raise Exception("Failed to settle order after maximum attempts")
+
+    def cancel_stale_order(
+        self,
+        account_id: int = None,
+        market_id: int = None,
+        market_name: str = None,
+        submit: bool = False,
+    ):
+        """
+        Cancels and order for the specified account and market.
+
+        :param int | None account_id: The id of the account to cancel the order for. If not provided, uses the default account.
+        :param int | None market_id: The id of the market to cancel the order in.
+        :param str | None market_name: The name of the market to cancel the order in.
+        :param bool submit: If True, submit the transaction to the blockchain. If False, return the transaction parameters.
+        :return: If submit is True, returns the transaction hash. Otherwise, returns the transaction parameters.
+        :rtype: str | dict
+        """
+        market_id, market_name = self._resolve_market(market_id, market_name)
+        if account_id is None:
+            account_id = self.default_account_id
+
+        # Prepare the transaction
+        tx_params = write_erc7412(
+            self.snx,
+            self.market_proxy,
+            "cancelStaleOrder",
+            [
+                account_id,
+                market_id,
+            ],
+        )
+
+        if submit:
+            try:
+                tx_hash = self.snx.execute_transaction(tx_params)
+                self.logger.info(
+                    f"Cancelling stale order for account {account_id} in market {market_name}"
+                )
+                self.logger.info(f"cancelStaleOrder tx: {tx_hash}")
+                return tx_hash
+            except Exception as e:
+                self.logger.error(f"Failed to cancel order: {str(e)}")
+                raise
+        else:
+            return tx_params
 
     def pay_debt(
         self,
