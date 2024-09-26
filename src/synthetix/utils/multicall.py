@@ -136,7 +136,6 @@ def aggregate_erc7412_price_requests(snx, error, requests=None):
             requests = aggregate_erc7412_price_requests(snx, sub_error, requests)
 
         return requests
-
     if type(error) is ContractCustomError and (
         error.data.startswith(SELECTOR_ORACLE_DATA_REQUIRED)
         or error.data.startswith(SELECTOR_ORACLE_DATA_REQUIRED_WITH_FEE)
@@ -167,7 +166,7 @@ def aggregate_erc7412_price_requests(snx, error, requests=None):
                 vaa_request.feed_ids = feed_ids
                 vaa_request.publish_time = args[1]
                 vaa_request.fee = fee
-                requests.pyth_vaa.append(vaa_request)
+                requests.pyth_vaa = requests.pyth_vaa + [vaa_request]
             else:
                 snx.logger.error(f"Unknown update type: {update_type}")
                 raise error
@@ -196,7 +195,7 @@ def handle_erc7412_error(snx, error):
     requests = aggregate_erc7412_price_requests(snx, error)
     calls = []
 
-    if requests.pyth_latest:
+    if len(requests.pyth_latest) > 0:
         # fetch the data from pyth for those feed ids
         if not snx.is_fork:
             pyth_data = snx.pyth.get_price_from_ids(requests.pyth_latest)
@@ -227,7 +226,7 @@ def handle_erc7412_error(snx, error):
 
         calls.append((to, True, value, data))
 
-    if requests.pyth_vaa:
+    if len(requests.pyth_vaa) > 0:
         for r in requests.pyth_vaa:
             # fetch the data from pyth for those feed ids
             pyth_data = snx.pyth.get_price_from_ids(

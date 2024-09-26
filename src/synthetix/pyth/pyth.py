@@ -96,7 +96,17 @@ class Pyth:
         :return: List of price update data
         :rtype: [bytes] | None
         """
-        self.logger.info(f"Fetching Pyth data for {len(feed_ids)} markets")
+        market_names = ",".join(
+            [
+                self.symbol_lookup[feed_id]
+                for feed_id in feed_ids
+                if feed_id in self.symbol_lookup
+            ]
+        )
+        self.logger.info(
+            f"Fetching Pyth data for {len(feed_ids)} markets ({market_names}) @ {publish_time if publish_time else 'latest'}"
+        )
+
         self.logger.debug(f"Fetching data for feed ids: {feed_ids}")
 
         params = {"ids[]": feed_ids, "encoding": "hex"}
@@ -113,9 +123,7 @@ class Pyth:
                 if response.text and "Price ids not found" in response.text:
                     self.logger.info(f"Removing missing price feeds: {response.text}")
                     feed_ids = [
-                        feed_id
-                        for feed_id in feed_ids
-                        if feed_id not in response.text
+                        feed_id for feed_id in feed_ids if feed_id not in response.text
                     ]
                     return self._fetch_prices(feed_ids, publish_time=publish_time)
 
