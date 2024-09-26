@@ -7,7 +7,7 @@ from ..utils.multicall import (
     call_erc7412,
     multicall_erc7412,
     write_erc7412,
-    make_fulfillment_request,
+    make_pyth_fulfillment_request,
 )
 from .constants import DISABLED_MARKETS
 from .perps_utils import unpack_bfp_configuration, unpack_bfp_configuration_by_id
@@ -230,15 +230,14 @@ class PerpsV3(BasePerps):
             price_metadata = pyth_data["meta"]
 
         # prepare the oracle call
-        raw_feed_ids = [decode_hex(feed_id) for feed_id in feed_ids]
-        args = (1, 30, raw_feed_ids)
-
-        to, data, _ = make_fulfillment_request(
+        to, data, _ = make_pyth_fulfillment_request(
             self.snx,
             self.snx.contracts["pyth_erc7412_wrapper"]["PythERC7412Wrapper"]["address"],
+            1, # update type
+            feed_ids,
             price_update_data,
+            30, # staleness tolerance
             0,
-            args,
         )
         value = len(market_names)
 
