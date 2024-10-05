@@ -44,9 +44,7 @@ def decode_erc7412_oracle_data_required_error(snx, error):
     output_types = ["address", "bytes", "uint256"]
     try:
         address, data, fee = decode(output_types, error_data)
-        print("USED NORMAL output types")
     except:
-        print("USING BACKUP output types")
         address, data = decode(output_types[:2], error_data)
         fee = 0
 
