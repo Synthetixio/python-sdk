@@ -1093,7 +1093,7 @@
       "inputs": [
         {
           "internalType": "uint128",
-          "name": "synthMarketId",
+          "name": "collateralId",
           "type": "uint128"
         },
         {
@@ -1113,13 +1113,13 @@
     {
       "inputs": [
         {
-          "internalType": "uint256",
-          "name": "availableUsdDenominated",
-          "type": "uint256"
+          "internalType": "int256",
+          "name": "withdrawableMarginUsd",
+          "type": "int256"
         },
         {
           "internalType": "uint256",
-          "name": "requiredUsdDenominated",
+          "name": "requestedMarginUsd",
           "type": "uint256"
         }
       ],
@@ -1130,7 +1130,7 @@
       "inputs": [
         {
           "internalType": "uint128",
-          "name": "synthMarketId",
+          "name": "collateralId",
           "type": "uint128"
         },
         {
@@ -1159,6 +1159,17 @@
       "type": "error"
     },
     {
+      "inputs": [
+        {
+          "internalType": "uint128",
+          "name": "id",
+          "type": "uint128"
+        }
+      ],
+      "name": "InvalidId",
+      "type": "error"
+    },
+    {
       "inputs": [],
       "name": "KeeperCostsNotSet",
       "type": "error"
@@ -1167,7 +1178,7 @@
       "inputs": [
         {
           "internalType": "uint128",
-          "name": "synthMarketId",
+          "name": "collateralId",
           "type": "uint128"
         },
         {
@@ -1201,6 +1212,17 @@
       "type": "error"
     },
     {
+      "inputs": [
+        {
+          "internalType": "uint128",
+          "name": "accountId",
+          "type": "uint128"
+        }
+      ],
+      "name": "NonexistentDebt",
+      "type": "error"
+    },
+    {
       "inputs": [],
       "name": "OverflowUint128ToInt128",
       "type": "error"
@@ -1225,7 +1247,7 @@
       "inputs": [
         {
           "internalType": "uint128",
-          "name": "synthMarketId",
+          "name": "collateralId",
           "type": "uint128"
         }
       ],
@@ -1244,7 +1266,7 @@
         {
           "indexed": true,
           "internalType": "uint128",
-          "name": "synthMarketId",
+          "name": "collateralId",
           "type": "uint128"
         },
         {
@@ -1262,6 +1284,69 @@
       ],
       "name": "CollateralModified",
       "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint128",
+          "name": "accountId",
+          "type": "uint128"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "sender",
+          "type": "address"
+        }
+      ],
+      "name": "DebtPaid",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint128",
+          "name": "superMarketId",
+          "type": "uint128"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint128",
+          "name": "interestRate",
+          "type": "uint128"
+        }
+      ],
+      "name": "InterestRateUpdated",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint128",
+          "name": "accountId",
+          "type": "uint128"
+        }
+      ],
+      "name": "debt",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "accountDebt",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
     },
     {
       "inputs": [
@@ -1329,7 +1414,7 @@
         },
         {
           "internalType": "uint128",
-          "name": "synthMarketId",
+          "name": "collateralId",
           "type": "uint128"
         }
       ],
@@ -1464,7 +1549,7 @@
         },
         {
           "internalType": "uint128",
-          "name": "synthMarketId",
+          "name": "collateralId",
           "type": "uint128"
         },
         {
@@ -1474,6 +1559,24 @@
         }
       ],
       "name": "modifyCollateral",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint128",
+          "name": "accountId",
+          "type": "uint128"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "payDebt",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -1737,17 +1840,17 @@
     {
       "inputs": [
         {
-          "internalType": "uint256",
-          "name": "fillPrice",
-          "type": "uint256"
+          "internalType": "int256",
+          "name": "delegatedCollateral",
+          "type": "int256"
         },
         {
-          "internalType": "uint256",
-          "name": "acceptablePrice",
-          "type": "uint256"
+          "internalType": "int256",
+          "name": "newLockedCredit",
+          "type": "int256"
         }
       ],
-      "name": "AcceptablePriceExceeded",
+      "name": "ExceedsMarketCreditCapacity",
       "type": "error"
     },
     {
@@ -2293,11 +2396,16 @@
       "inputs": [
         {
           "internalType": "uint256",
-          "name": "leftover",
+          "name": "fillPrice",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "acceptablePrice",
           "type": "uint256"
         }
       ],
-      "name": "InsufficientAccountMargin",
+      "name": "AcceptablePriceExceeded",
       "type": "error"
     },
     {
@@ -2368,24 +2476,24 @@
       "inputs": [
         {
           "indexed": false,
-          "internalType": "uint256",
-          "name": "account",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
           "internalType": "uint128",
-          "name": "synthMarketId",
+          "name": "accountId",
           "type": "uint128"
         },
         {
           "indexed": false,
-          "internalType": "uint256",
+          "internalType": "int256",
           "name": "amount",
+          "type": "int256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "accountDebt",
           "type": "uint256"
         }
       ],
-      "name": "CollateralDeducted",
+      "name": "AccountCharged",
       "type": "event"
     },
     {
@@ -2937,7 +3045,45 @@
           "type": "uint128"
         }
       ],
+      "name": "AccountHasOpenPositions",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint128",
+          "name": "id",
+          "type": "uint128"
+        },
+        {
+          "internalType": "address",
+          "name": "distributor",
+          "type": "address"
+        }
+      ],
+      "name": "InvalidDistributor",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint128",
+          "name": "accountId",
+          "type": "uint128"
+        }
+      ],
       "name": "NotEligibleForLiquidation",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint128",
+          "name": "accountId",
+          "type": "uint128"
+        }
+      ],
+      "name": "NotEligibleForMarginLiquidation",
       "type": "error"
     },
     {
@@ -3012,6 +3158,31 @@
           "type": "uint128"
         },
         {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "seizedMarginValue",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "liquidationReward",
+          "type": "uint256"
+        }
+      ],
+      "name": "AccountMarginLiquidation",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint128",
+          "name": "accountId",
+          "type": "uint128"
+        },
+        {
           "indexed": true,
           "internalType": "uint128",
           "name": "marketId",
@@ -3042,6 +3213,25 @@
         }
       ],
       "name": "canLiquidate",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "isEligible",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint128",
+          "name": "accountId",
+          "type": "uint128"
+        }
+      ],
+      "name": "canLiquidateMarginOnly",
       "outputs": [
         {
           "internalType": "bool",
@@ -3112,6 +3302,25 @@
         }
       ],
       "name": "liquidateFlaggedAccounts",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "liquidationReward",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint128",
+          "name": "accountId",
+          "type": "uint128"
+        }
+      ],
+      "name": "liquidateMarginOnly",
       "outputs": [
         {
           "internalType": "uint256",
@@ -4128,6 +4337,263 @@
       "inputs": [
         {
           "internalType": "address",
+          "name": "distributor",
+          "type": "address"
+        }
+      ],
+      "name": "InvalidDistributorContract",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint128",
+          "name": "collateralId",
+          "type": "uint128"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "maxCollateralAmount",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "upperLimitDiscount",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "lowerLimitDiscount",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "discountScalar",
+          "type": "uint256"
+        }
+      ],
+      "name": "CollateralConfigurationSet",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "uint128",
+          "name": "collateralLiquidateRewardRatioD18",
+          "type": "uint128"
+        }
+      ],
+      "name": "CollateralLiquidateRewardRatioSet",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "distributor",
+          "type": "address"
+        }
+      ],
+      "name": "RewardDistributorRegistered",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint128",
+          "name": "collateralId",
+          "type": "uint128"
+        }
+      ],
+      "name": "getCollateralConfiguration",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "maxCollateralAmount",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint128",
+          "name": "collateralId",
+          "type": "uint128"
+        }
+      ],
+      "name": "getCollateralConfigurationFull",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "maxCollateralAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "upperLimitDiscount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "lowerLimitDiscount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "discountScalar",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getCollateralLiquidateRewardRatio",
+      "outputs": [
+        {
+          "internalType": "uint128",
+          "name": "collateralLiquidateRewardRatioD18",
+          "type": "uint128"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint128",
+          "name": "collateralId",
+          "type": "uint128"
+        }
+      ],
+      "name": "getRegisteredDistributor",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "distributor",
+          "type": "address"
+        },
+        {
+          "internalType": "address[]",
+          "name": "poolDelegatedCollateralTypes",
+          "type": "address[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "distributor",
+          "type": "address"
+        }
+      ],
+      "name": "isRegistered",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "token",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "distributor",
+          "type": "address"
+        },
+        {
+          "internalType": "uint128",
+          "name": "collateralId",
+          "type": "uint128"
+        },
+        {
+          "internalType": "address[]",
+          "name": "poolDelegatedCollateralTypes",
+          "type": "address[]"
+        }
+      ],
+      "name": "registerDistributor",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint128",
+          "name": "collateralId",
+          "type": "uint128"
+        },
+        {
+          "internalType": "uint256",
+          "name": "maxCollateralAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "upperLimitDiscount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "lowerLimitDiscount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "discountScalar",
+          "type": "uint256"
+        }
+      ],
+      "name": "setCollateralConfiguration",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint128",
+          "name": "collateralLiquidateRewardRatioD18",
+          "type": "uint128"
+        }
+      ],
+      "name": "setCollateralLiquidateRewardRatio",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
           "name": "invalidFeeCollector",
           "type": "address"
         }
@@ -4166,25 +4632,6 @@
       "anonymous": false,
       "inputs": [
         {
-          "indexed": true,
-          "internalType": "uint128",
-          "name": "synthMarketId",
-          "type": "uint128"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "maxCollateralAmount",
-          "type": "uint256"
-        }
-      ],
-      "name": "CollateralConfigurationSet",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
           "indexed": false,
           "internalType": "address",
           "name": "feeCollector",
@@ -4217,25 +4664,6 @@
         }
       ],
       "name": "InterestRateParametersSet",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "uint128",
-          "name": "superMarketId",
-          "type": "uint128"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint128",
-          "name": "interestRate",
-          "type": "uint128"
-        }
-      ],
-      "name": "InterestRateUpdated",
       "type": "event"
     },
     {
@@ -4319,38 +4747,6 @@
       ],
       "name": "ReferrerShareUpdated",
       "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": false,
-          "internalType": "uint128[]",
-          "name": "newSynthDeductionPriority",
-          "type": "uint128[]"
-        }
-      ],
-      "name": "SynthDeductionPrioritySet",
-      "type": "event"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint128",
-          "name": "synthMarketId",
-          "type": "uint128"
-        }
-      ],
-      "name": "getCollateralConfiguration",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "maxCollateralAmount",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
     },
     {
       "inputs": [],
@@ -4493,34 +4889,22 @@
       "type": "function"
     },
     {
-      "inputs": [],
-      "name": "getSynthDeductionPriority",
-      "outputs": [
-        {
-          "internalType": "uint128[]",
-          "name": "",
-          "type": "uint128[]"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
       "inputs": [
         {
           "internalType": "uint128",
-          "name": "synthMarketId",
+          "name": "collateralId",
           "type": "uint128"
-        },
+        }
+      ],
+      "name": "globalCollateralValue",
+      "outputs": [
         {
           "internalType": "uint256",
-          "name": "maxCollateralAmount",
+          "name": "collateralValue",
           "type": "uint256"
         }
       ],
-      "name": "setCollateralConfiguration",
-      "outputs": [],
-      "stateMutability": "nonpayable",
+      "stateMutability": "view",
       "type": "function"
     },
     {
@@ -4606,19 +4990,6 @@
       "type": "function"
     },
     {
-      "inputs": [
-        {
-          "internalType": "uint128[]",
-          "name": "newSynthDeductionPriority",
-          "type": "uint128[]"
-        }
-      ],
-      "name": "setSynthDeductionPriority",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
       "inputs": [],
       "name": "totalGlobalCollateralValue",
       "outputs": [
@@ -4671,6 +5042,8 @@
     }
   ],
   "deployTxnHash": "",
+  "deployTxnBlockNumber": "",
+  "deployTimestamp": "",
   "sourceName": "",
   "contractName": "",
   "deployedOn": "invoke.upgrade_proxy",
