@@ -233,6 +233,17 @@
     {
       "inputs": [
         {
+          "internalType": "uint128",
+          "name": "txnType",
+          "type": "uint128"
+        }
+      ],
+      "name": "InvalidTransactionTypeIndex",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
           "internalType": "bytes32",
           "name": "expected",
           "type": "bytes32"
@@ -670,6 +681,35 @@
           "internalType": "address",
           "name": "implAddress",
           "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint128",
+          "name": "marketId",
+          "type": "uint128"
+        },
+        {
+          "internalType": "uint128",
+          "name": "transactionType",
+          "type": "uint128"
+        },
+        {
+          "internalType": "enum Price.Tolerance",
+          "name": "priceTolerance",
+          "type": "uint8"
+        }
+      ],
+      "name": "indexPrice",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "price",
+          "type": "uint256"
         }
       ],
       "stateMutability": "view",
@@ -3935,8 +3975,10 @@
     }
   ],
   "deployTxnHash": "",
-  "sourceName": "",
-  "contractName": "",
+  "deployTxnBlockNumber": "",
+  "deployTimestamp": "",
+  "sourceName": "contracts/Proxy.sol",
+  "contractName": "Proxy",
   "deployedOn": "invoke.upgradeSpotMarketProxy",
   "gasUsed": 0,
   "gasCost": "0",
