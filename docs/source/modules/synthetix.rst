@@ -5,7 +5,11 @@ Synthetix
    :members:
    :private-members:
 
-.. autoclass:: synthetix.perps.Perps
+.. autoclass:: synthetix.perps.PerpsV3
+   :members:
+   :private-members:
+
+.. autoclass:: synthetix.perps.BfPerps
    :members:
    :private-members:
 
