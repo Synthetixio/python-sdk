@@ -19,6 +19,7 @@ The ``synthetix`` library provides an interface for interacting with the Synthet
    
    modules/synthetix
    modules/utils
+   modules/multicall
 
 Sample Projects
 ---------------
