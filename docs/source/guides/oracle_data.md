@@ -1,6 +1,6 @@
 # Oracle Data
 
-Synthetix V3 uses pull oracles from [Pyth](https://pyth.network/) to fetch the latest prices for assets using the [ERC-7412](https://erc7412.vercel.app/) pattern. The SDK helps handle the process of fetching the required price data for you, however this guide will help understand how the process works.
+Synthetix V3 uses pull oracles from [Pyth](https://pyth.network/) to fetch the latest prices for assets using the [ERC-7412](https://erc7412.snxdev.io/) pattern. The SDK helps handle the process of fetching the required price data for you, however this guide will help understand how the process works.
 
 ## ERC-7412 Overview
 
