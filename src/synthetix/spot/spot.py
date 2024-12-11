@@ -7,7 +7,6 @@ from .constants import DISABLED_MARKETS
 from web3.constants import ADDRESS_ZERO
 from typing import Literal
 import time
-import requests
 
 
 class Spot:

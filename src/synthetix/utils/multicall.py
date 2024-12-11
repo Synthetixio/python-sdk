@@ -1,6 +1,4 @@
 from eth_typing import HexStr
-import requests
-import base64
 from web3.exceptions import ContractCustomError
 from web3._utils.abi import get_abi_output_types
 from eth_abi import decode, encode
@@ -44,7 +42,8 @@ def decode_erc7412_oracle_data_required_error(snx, error):
     output_types = ["address", "bytes", "uint256"]
     try:
         address, data, fee = decode(output_types, error_data)
-    except:
+    except Exception as e:
+        snx.logger.debug(f"Error decoding OracleDataRequired error: {e}")
         address, data = decode(output_types[:2], error_data)
         fee = 0
 
@@ -62,8 +61,8 @@ def decode_erc7412_oracle_data_required_error(snx, error):
 
         feed_ids = [encode_hex(raw_feed_id) for raw_feed_id in raw_feed_ids]
         return address, feed_ids, fee, (update_type, staleness_tolerance, raw_feed_ids)
-    except:
-        pass
+    except Exception as e:
+        snx.logger.debug(f"Error decoding OracleDataRequired error: {e}")
 
     try:
         output_types_oracle = ["uint8", "uint64", "bytes32"]
@@ -72,8 +71,8 @@ def decode_erc7412_oracle_data_required_error(snx, error):
         feed_ids = [encode_hex(raw_feed_id)]
         raw_feed_ids = [raw_feed_id]
         return address, feed_ids, fee, (update_type, publish_time, raw_feed_ids)
-    except:
-        pass
+    except Exception as e:
+        snx.logger.debug(f"Error decoding OracleDataRequired error: {e}")
 
     raise Exception("Error data can not be decoded")
 
@@ -149,8 +148,8 @@ def aggregate_erc7412_price_requests(snx, error, requests=None):
                 snx, error.data
             )
             update_type = args[0]
-        except:
-            pass
+        except Exception as e:
+            snx.logger.debug(f"Error decoding OracleDataRequired error: {e}")
 
         if update_type:
             requests.pyth_address = address
@@ -174,15 +173,16 @@ def aggregate_erc7412_price_requests(snx, error, requests=None):
                 "message" in error.args[0]
                 and "nonce" in error.args[0]["message"].lower()
             )
-        except:
+        except Exception as e:
+            snx.logger.debug(f"Error: {e}")
             is_nonce_error = False
 
         if is_nonce_error:
-            snx.logger.debug(f"Error is related to nonce, resetting nonce")
+            snx.logger.debug("Error is related to nonce, resetting nonce")
             snx.nonce = snx.web3.eth.get_transaction_count(snx.address)
             return requests
         else:
-            snx.logger.debug(f"Error is not related to oracle data")
+            snx.logger.debug("Error is not related to oracle data")
             raise error
 
     return requests

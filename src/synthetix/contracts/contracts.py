@@ -1,6 +1,5 @@
 import os
 import json
-import glob
 import zlib
 import requests
 from web3 import Web3

@@ -1,7 +1,7 @@
 """Modules for interacting with Synthetix Perps."""
 
 import time
-from eth_utils import encode_hex, decode_hex
+from eth_utils import encode_hex
 from ..utils import ether_to_wei, wei_to_ether
 from ..utils.multicall import (
     call_erc7412,
@@ -1157,10 +1157,8 @@ class PerpsV3(BasePerps):
         elif expiration_time < now_time:
             raise ValueError(f"Order has expired for account {account_id}")
         else:
-            self.logger.info(f"Order is ready to be settled")
+            self.logger.info("Order is ready to be settled")
 
-        # get fresh prices to provide to the oracle
-        market_name = self._resolve_market(order["market_id"], None)[1]
         # prepare the transaction
         tx_tries = 0
         while tx_tries < max_tx_tries:
@@ -1741,9 +1739,9 @@ class BfPerps(BasePerps):
         min_publish_delay = self.market_meta[market_id]["system_config"][
             "pyth_publish_time_min"
         ]
-        max_publish_delay = self.market_meta[market_id]["system_config"][
-            "pyth_publish_time_max"
-        ]
+        # max_publish_delay = self.market_meta[market_id]["system_config"][
+        #     "pyth_publish_time_max"
+        # ]
 
         commitment_time = order["commitment_time"]
         publish_time = commitment_time + min_publish_delay
