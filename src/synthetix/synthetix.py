@@ -5,7 +5,6 @@ from web3 import Web3
 from web3.constants import ADDRESS_ZERO
 from web3.types import TxParams
 from .constants import (
-    DEFAULT_NETWORK_ID,
     DEFAULT_TRACKING_CODE,
     DEFAULT_SLIPPAGE,
     DEFAULT_GAS_MULTIPLIER,
@@ -13,7 +12,6 @@ from .constants import (
     DEFAULT_GQL_ENDPOINT_RATES,
     DEFAULT_PRICE_SERVICE_ENDPOINT,
     DEFAULT_REFERRER,
-    DEFAULT_TRACKING_CODE,
 )
 from .utils import wei_to_ether, ether_to_wei
 from .contracts import load_contracts
@@ -296,12 +294,11 @@ class Synthetix:
                     marketdata_contract.functions.allProxiedMarketSummaries().call()
                 )
             except Exception as e:
+                self.logger.error(f"Error loading markets: {e}")
                 allmarketsdata = []
 
             markets = {
-                market[2]
-                .decode("utf-8")
-                .strip("\x00")[1:-4]: {
+                market[2].decode("utf-8").strip("\x00")[1:-4]: {
                     "market_address": market[0],
                     "asset": market[1].decode("utf-8").strip("\x00"),
                     "key": market[2],
@@ -349,11 +346,13 @@ class Synthetix:
         # load multicall contract
         if (
             "system" in self.contracts
-            and "trusted_multicall_forwarder" in self.contracts["system"]
+            and "oracle_manager" in self.contracts["system"]
+            and "trusted_multicall_forwarder"
+            in self.contracts["system"]["oracle_manager"]
         ):
-            mc_definition = self.contracts["system"]["trusted_multicall_forwarder"][
-                "TrustedMulticallForwarder"
-            ]
+            mc_definition = self.contracts["system"]["oracle_manager"][
+                "trusted_multicall_forwarder"
+            ]["TrustedMulticallForwarder"]
             mc_address = w3.to_checksum_address(mc_definition["address"])
 
             multicall = w3.eth.contract(mc_address, abi=mc_definition["abi"])
