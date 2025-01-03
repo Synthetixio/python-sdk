@@ -354,7 +354,15 @@ class Synthetix:
                 "trusted_multicall_forwarder"
             ]["TrustedMulticallForwarder"]
             mc_address = w3.to_checksum_address(mc_definition["address"])
-
+            multicall = w3.eth.contract(mc_address, abi=mc_definition["abi"])
+        elif (
+            "system" in self.contracts
+            and "trusted_multicall_forwarder" in self.contracts["system"]
+        ):
+            mc_definition = self.contracts["system"]["trusted_multicall_forwarder"][
+                "TrustedMulticallForwarder"
+            ]
+            mc_address = w3.to_checksum_address(mc_definition["address"])
             multicall = w3.eth.contract(mc_address, abi=mc_definition["abi"])
         else:
             multicall = None
