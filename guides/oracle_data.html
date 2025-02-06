@@ -1,0 +1,178 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Oracle Data &mdash; Synthetix  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Synthetix" href="../modules/synthetix.html" />
+    <link rel="prev" title="Advanced Perps Trading" href="advanced_perps.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Synthetix
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guides</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="advanced_usage.html">Advanced Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="trade_perps.html">Trade Perps</a></li>
+<li class="toctree-l1"><a class="reference internal" href="advanced_perps.html">Advanced Perps Trading</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Oracle Data</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#erc-7412-overview">ERC-7412 Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#erc-7412-in-synthetix">ERC-7412 in Synthetix</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#sdk-integration">SDK Integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#caching-oracle-data">Caching Oracle Data</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../modules/synthetix.html">Synthetix</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../modules/utils.html">Utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../modules/multicall.html">Multicall</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Synthetix</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Oracle Data</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/guides/oracle_data.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="oracle-data">
+<h1>Oracle Data<a class="headerlink" href="#oracle-data" title="Link to this heading"></a></h1>
+<p>Synthetix V3 uses pull oracles from <a class="reference external" href="https://pyth.network/">Pyth</a> to fetch the latest prices for assets using the <a class="reference external" href="https://erc7412.snxdev.io/">ERC-7412</a> pattern. The SDK helps handle the process of fetching the required price data for you, however this guide will help understand how the process works.</p>
+<section id="erc-7412-overview">
+<h2>ERC-7412 Overview<a class="headerlink" href="#erc-7412-overview" title="Link to this heading"></a></h2>
+<p>ERC-7412 is a standard that defines how a smart contract can prompt the user to fetch some offchain data and provide it in their transaction. The flow looks like this:</p>
+<ol class="arabic simple">
+<li><p>The user calls a function on the smart contract (e.g. <code class="docutils literal notranslate"><span class="pre">getMarketSummary</span></code>)</p></li>
+<li><p>The call fails, providing the user with information about what data they need to provide</p></li>
+<li><p>The user fetches the data from an offchain source and creates a multicall transaction: <code class="docutils literal notranslate"><span class="pre">[fullfillOracleQuery,</span> <span class="pre">getMarketSummary]</span></code></p></li>
+<li><p>The call succeeds after updating the oracle data, then calling the smart contract function again</p></li>
+</ol>
+</section>
+<section id="erc-7412-in-synthetix">
+<h2>ERC-7412 in Synthetix<a class="headerlink" href="#erc-7412-in-synthetix" title="Link to this heading"></a></h2>
+<p>Synthetix V3 uses the ERC-7412 pattern to ensure that transactions only succeed when the contracts have access to price data within a certain tolerance. For example, some view functions require that prices are under 60 minutes old, otherwise they are considered stale. For more critical operations like order settlement on the perps markets, the contracts may require a price for a specific timestamp.</p>
+<p>For the best user experience, it is recommended that users fetch this data “optimistically” before calling a smart contract function. This will ensure that the transaction uses the most recent data and avoids running into reverts during transaction simulation.</p>
+</section>
+<section id="sdk-integration">
+<h2>SDK Integration<a class="headerlink" href="#sdk-integration" title="Link to this heading"></a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">synthetix</span></code> library will handle this logic for you, including optimistic fetching of oracle data. When you call a function that is expected to require some oracle data, the SDK will automatically fetch the required data and include it in a multicall. If the contract requires additional oracle data, the ERC-7412 pattern will be used to fetch the data and prepare a transaction.</p>
+<p>To better understand this process, we can look at the <code class="docutils literal notranslate"><span class="pre">snx.perps.get_market_summaries()</span></code> function. This function will fetch information about all of the available perps markets, including the open interest, funding rate, price, skew, and more. The function will optimistically fetch prices for all markets before requesting the market summary. You can see this in action by calling the function and inspecting the logs.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">_</span><span class="p">,</span> <span class="n">markets_by_name</span> <span class="o">=</span> <span class="n">snx</span><span class="o">.</span><span class="n">perps</span><span class="o">.</span><span class="n">get_markets</span><span class="p">()</span>
+<span class="go">2024-05-01 15:55:10,714 - INFO - Fetching Pyth data for 32 markets</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">markets_by_name</span><span class="p">)</span>
+<span class="go">{</span>
+<span class="go">    &#39;ETH&#39;: {</span>
+<span class="go">        &#39;market_id&#39;: 100,</span>
+<span class="go">        &#39;feed_id&#39;: &#39;0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace&#39;,</span>
+<span class="go">        ...</span>
+<span class="go">    },</span>
+<span class="go">    &#39;BTC&#39;: {</span>
+<span class="go">        ...</span>
+<span class="go">    },</span>
+<span class="go">}</span>
+</pre></div>
+</div>
+<p>As you can see from the logs, the SDK fetched prices for all available markets from a Pyth node before requesting the market summaries.</p>
+</section>
+<section id="caching-oracle-data">
+<h2>Caching Oracle Data<a class="headerlink" href="#caching-oracle-data" title="Link to this heading"></a></h2>
+<p>For situations that require fresh prices but not a specific timestamp, the SDK will cache price data and reuse it for subsequent calls. This is useful for reducing the number of calls made to Pyth nodes. There is a “time to live” setting that determines how long the data is cached before it is considered stale. If you want to always fetch fresh data, you can set the <code class="docutils literal notranslate"><span class="pre">pyth_cache_ttl</span></code> setting to <code class="docutils literal notranslate"><span class="pre">0</span></code>. Otherwise, it represents the number of seconds that the data is considered fresh.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">snx</span> <span class="o">=</span> <span class="n">Synthetix</span><span class="p">(</span>
+<span class="go">    provider_url=provider_url,</span>
+<span class="go">    pyth_cache_ttl=0, # Always fetch fresh data</span>
+<span class="go">)</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="n">snx</span> <span class="o">=</span> <span class="n">Synthetix</span><span class="p">(</span>
+<span class="go">    provider_url=provider_url,</span>
+<span class="go">    pyth_cache_ttl=5, # Cache price data for 5 seconds</span>
+<span class="go">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="advanced_perps.html" class="btn btn-neutral float-left" title="Advanced Perps Trading" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../modules/synthetix.html" class="btn btn-neutral float-right" title="Synthetix" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Synthetix DAO.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

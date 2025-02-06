@@ -1,0 +1,165 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Advanced Usage &mdash; Synthetix  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Trade Perps" href="trade_perps.html" />
+    <link rel="prev" title="Quickstart" href="quickstart.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Synthetix
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guides</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Advanced Usage</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#introduction">Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#contracts">Contracts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#fetching-cannon-deployments">Fetching Cannon Deployments</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="trade_perps.html">Trade Perps</a></li>
+<li class="toctree-l1"><a class="reference internal" href="advanced_perps.html">Advanced Perps Trading</a></li>
+<li class="toctree-l1"><a class="reference internal" href="oracle_data.html">Oracle Data</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../modules/synthetix.html">Synthetix</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../modules/utils.html">Utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../modules/multicall.html">Multicall</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Synthetix</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Advanced Usage</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/guides/advanced_usage.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="advanced-usage">
+<h1>Advanced Usage<a class="headerlink" href="#advanced-usage" title="Link to this heading"></a></h1>
+<section id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Link to this heading"></a></h2>
+<p>This guide will help you understand more advanced concepts for interacting with Synthetix V3 using the <code class="docutils literal notranslate"><span class="pre">synthetix</span></code> library. Check the sidebar for the various topics covered in this guide. If you’re just getting started, it is recommended to read the <a class="reference internal" href="quickstart.html"><span class="std std-doc">quickstart</span></a> guide first.</p>
+</section>
+<section id="contracts">
+<h2>Contracts<a class="headerlink" href="#contracts" title="Link to this heading"></a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">synthetix</span></code> library provides functions with more simple inputs for interacting with Synthetix V3 contracts. However, you can also interact with the contracts directly using the <code class="docutils literal notranslate"><span class="pre">web3.py</span></code> library. This can be useful for more advanced use cases, debugging, or to access functions that haven’t been implemented in a module yet.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">contracts</span></code> module stores contract addresses and ABIs:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># look up the PerpsMarketProxy contract</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">snx</span><span class="o">.</span><span class="n">contracts</span><span class="p">[</span><span class="s1">&#39;PerpsMarketProxy&#39;</span><span class="p">]</span>
+<span class="p">{</span>
+    <span class="s1">&#39;address&#39;</span><span class="p">:</span> <span class="s1">&#39;0xf53Ca60F031FAf0E347D44FbaA4870da68250c8d&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;abi&#39;</span><span class="p">:</span> <span class="p">{</span><span class="o">...</span><span class="p">},</span>
+    <span class="s1">&#39;contract&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">web3</span> <span class="n">contract</span> <span class="nb">object</span><span class="o">&gt;</span>
+<span class="p">}</span>
+
+<span class="c1"># call a function on the contract</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">perps_market_proxy</span> <span class="o">=</span> <span class="n">snx</span><span class="o">.</span><span class="n">contracts</span><span class="p">[</span><span class="s1">&#39;PerpsMarketProxy&#39;</span><span class="p">][</span><span class="s1">&#39;contract&#39;</span><span class="p">]</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">perps_market_proxy</span><span class="o">.</span><span class="n">functions</span><span class="o">.</span><span class="n">getMarkets</span><span class="p">()</span><span class="o">.</span><span class="n">call</span><span class="p">()</span>
+<span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="fetching-cannon-deployments">
+<h2>Fetching Cannon Deployments<a class="headerlink" href="#fetching-cannon-deployments" title="Link to this heading"></a></h2>
+<p>Synthetix manages smart contract deployments using <a class="reference external" href="https://usecannon.com/">Cannon</a>. During the deployment process, new contract ABIs and addresses will be published to Cannon, however the “hard-coded” versions in the <code class="docutils literal notranslate"><span class="pre">synthetix</span></code> library will not be updated. Note that the <code class="docutils literal notranslate"><span class="pre">synthetix</span></code> library only includes the most commonly used contracts. For other contracts, fetch the addresses and ABIs from Cannon. This can be done during initialization by providing a <code class="docutils literal notranslate"><span class="pre">cannon_config</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">snx</span> <span class="o">=</span> <span class="n">Synthetix</span><span class="p">(</span>
+<span class="go">    provider_url=provider_url,</span>
+<span class="go">    cannon_config={</span>
+<span class="go">        &#39;package&#39;: &#39;synthetix-omnibus&#39;,</span>
+<span class="go">        &#39;version&#39;: &#39;12&#39;,</span>
+<span class="go">        &#39;preset&#39;: &#39;andromeda&#39;</span>
+<span class="go">    })</span>
+</pre></div>
+</div>
+<p>This will connect to the Cannon registry onchain and IPFS to fetch the contracts for the specified package, version, and preset. You can then access the contracts for all imported packages using the <code class="docutils literal notranslate"><span class="pre">contracts</span></code> attribute:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">snx</span><span class="o">.</span><span class="n">contracts</span><span class="p">[</span><span class="s2">&quot;packages&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+<span class="go">dict_keys([&#39;perps_gas_oracle_node&#39;, &#39;pyth_erc7412_wrapper&#39;, &#39;system&#39;, ...])</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="quickstart.html" class="btn btn-neutral float-left" title="Quickstart" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="trade_perps.html" class="btn btn-neutral float-right" title="Trade Perps" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Synthetix DAO.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

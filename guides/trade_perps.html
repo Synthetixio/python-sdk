@@ -1,0 +1,284 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trade Perps &mdash; Synthetix  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Advanced Perps Trading" href="advanced_perps.html" />
+    <link rel="prev" title="Advanced Usage" href="advanced_usage.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Synthetix
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guides</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="advanced_usage.html">Advanced Usage</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Trade Perps</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#setting-up">Setting Up</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#initializing-the-client">Initializing the Client</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#creating-an-account">Creating an Account</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#managing-account-margin">Managing Account Margin</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#submitting-an-order">Submitting an Order</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#settling-an-order">Settling an order</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#checking-your-position">Checking Your Position</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#conclusion">Conclusion</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="advanced_perps.html">Advanced Perps Trading</a></li>
+<li class="toctree-l1"><a class="reference internal" href="oracle_data.html">Oracle Data</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../modules/synthetix.html">Synthetix</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../modules/utils.html">Utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../modules/multicall.html">Multicall</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Synthetix</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Trade Perps</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/guides/trade_perps.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="trade-perps">
+<h1>Trade Perps<a class="headerlink" href="#trade-perps" title="Link to this heading"></a></h1>
+<p>This guide will help you get started trading Synthetix Perps. If you complete the steps in this guide you will be able to:</p>
+<ol class="arabic simple">
+<li><p>Initialize the Synthetix client</p></li>
+<li><p>Create an account</p></li>
+<li><p>Manage your account margin</p></li>
+<li><p>Make trades</p></li>
+<li><p>Monitor your positions</p></li>
+</ol>
+<section id="setting-up">
+<h2>Setting Up<a class="headerlink" href="#setting-up" title="Link to this heading"></a></h2>
+<p>First, ensure you have the latest version of <code class="docutils literal notranslate"><span class="pre">synthetix</span></code> installed in your environment. Execute the following command in your terminal:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>--upgrade<span class="w"> </span>synthetix
+</pre></div>
+</div>
+<p>If you need additional help installing the library, refer to the quickstart guide.</p>
+<section id="initializing-the-client">
+<h3>Initializing the Client<a class="headerlink" href="#initializing-the-client" title="Link to this heading"></a></h3>
+<p>Initialize the client using the following code:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">synthetix</span><span class="w"> </span><span class="kn">import</span> <span class="n">Synthetix</span>
+
+<span class="n">snx</span> <span class="o">=</span> <span class="n">Synthetix</span><span class="p">(</span>
+    <span class="n">provider_rpc</span><span class="o">=</span><span class="s2">&quot;https://base.llamarpc.com&quot;</span><span class="p">,</span>
+    <span class="n">private_key</span><span class="o">=</span><span class="s2">&quot;&lt;your private key&gt;&quot;</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>To avoid storing these secrets directly in your scripts, you can use a <code class="docutils literal notranslate"><span class="pre">.env</span></code> file and the <code class="docutils literal notranslate"><span class="pre">load_dotenv</span></code> library. Install it using the following command:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>python-dotenv
+</pre></div>
+</div>
+<p>Next, create a <code class="docutils literal notranslate"><span class="pre">.env</span></code> file in your project directory and add the following lines:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">PROVIDER_RPC</span><span class="o">=</span><span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">base</span><span class="o">.</span><span class="n">llamarpc</span><span class="o">.</span><span class="n">com</span>
+<span class="n">PRIVATE_KEY</span><span class="o">=&lt;</span><span class="n">your</span> <span class="n">private</span> <span class="n">key</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>Finally, initialize the client with the following code:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">synthetix</span><span class="w"> </span><span class="kn">import</span> <span class="n">Synthetix</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dotenv</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_dotenv</span>
+
+<span class="n">load_dotenv</span><span class="p">()</span>
+
+<span class="n">snx</span> <span class="o">=</span> <span class="n">Synthetix</span><span class="p">(</span>
+    <span class="n">provider_rpc</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;PROVIDER_RPC&quot;</span><span class="p">),</span>
+    <span class="n">private_key</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;PRIVATE_KEY&quot;</span><span class="p">)</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="creating-an-account">
+<h3>Creating an Account<a class="headerlink" href="#creating-an-account" title="Link to this heading"></a></h3>
+<p>To begin, you’ll need to create an account. Each perps account is minted as an NFT to your address. The account will be used to track your margin balances and open positions. Here’s how you can create an account:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">account_tx</span> <span class="o">=</span> <span class="n">snx</span><span class="o">.</span><span class="n">perps</span><span class="o">.</span><span class="n">create_account</span><span class="p">(</span><span class="n">submit</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The newly created account will be used as the default for all future transactions.</p>
+</section>
+</section>
+<section id="managing-account-margin">
+<h2>Managing Account Margin<a class="headerlink" href="#managing-account-margin" title="Link to this heading"></a></h2>
+<p>Before you can make trades, you’ll need to deposit collateral into your account. Here’s how you can check the current balances in your perps account, and in your wallet:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">snx</span><span class="o">.</span><span class="n">perps</span><span class="o">.</span><span class="n">get_collateral_balances</span><span class="p">()</span>
+<span class="go">{&#39;sUSD&#39;: 0.0}</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="n">snx</span><span class="o">.</span><span class="n">get_susd_balance</span><span class="p">()</span>
+<span class="go">{&#39;balance&#39;: 1000.0}</span>
+</pre></div>
+</div>
+<p>In this example you can see the wallet has 1000 sUSD, but the perps account has no collateral balances. Let’s deposit 100 sUSD into the account, but first we need to make sure to approve sUSD transfers to the perps contract:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">perps_address</span> <span class="o">=</span> <span class="n">snx</span><span class="o">.</span><span class="n">perps</span><span class="o">.</span><span class="n">market_proxy</span><span class="o">.</span><span class="n">address</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">approve_tx</span> <span class="o">=</span> <span class="n">snx</span><span class="o">.</span><span class="n">spot</span><span class="o">.</span><span class="n">approve</span><span class="p">(</span><span class="n">perps_address</span><span class="p">,</span> <span class="n">market_name</span><span class="o">=</span><span class="s1">&#39;sUSD&#39;</span><span class="p">,</span> <span class="n">submit</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Then you can deposit the sUSD into the perps account:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">deposit_tx</span> <span class="o">=</span> <span class="n">snx</span><span class="o">.</span><span class="n">perps</span><span class="o">.</span><span class="n">modify_collateral</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="n">market_name</span><span class="o">=</span><span class="s1">&#39;sUSD&#39;</span><span class="p">,</span> <span class="n">submit</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Check your balance again to confirm the successful deposit:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">snx</span><span class="o">.</span><span class="n">perps</span><span class="o">.</span><span class="n">get_collateral_balances</span><span class="p">()</span>
+<span class="go">{&#39;sUSD&#39;: 100.0}</span>
+</pre></div>
+</div>
+</section>
+<section id="submitting-an-order">
+<h2>Submitting an Order<a class="headerlink" href="#submitting-an-order" title="Link to this heading"></a></h2>
+<p>All trades on Synthetix perps are executed in two steps: first, the user commits an order; then, following a delay, the order is executed. Orders are filled at the price at execution time.</p>
+<p>Commit an order:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">snx</span><span class="o">.</span><span class="n">perps</span><span class="o">.</span><span class="n">commit_order</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">market_name</span><span class="o">=</span><span class="s1">&#39;ETH&#39;</span><span class="p">,</span> <span class="n">submit</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>After an order is submitted, you can check its status:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">order</span> <span class="o">=</span> <span class="n">snx</span><span class="o">.</span><span class="n">perps</span><span class="o">.</span><span class="n">get_order</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">order</span>
+<span class="go">{</span>
+<span class="go">    &#39;market_id&#39;: 100,</span>
+<span class="go">    &#39;account_id&#39;: 1,</span>
+<span class="go">    &#39;commitment_time&#39;: 1697215535,</span>
+<span class="go">    &#39;size_delta&#39;: 0.1,</span>
+<span class="go">    &#39;settlement_strategy_id&#39;: 1, </span>
+<span class="go">    &#39;acceptable_price&#39;: 1533.6071692221237,</span>
+<span class="go">    &#39;settlement_strategy&#39;: {</span>
+<span class="go">        &#39;settlement_delay&#39;: 2,</span>
+<span class="go">        &#39;commitment_price_delay&#39;: 2,</span>
+<span class="go">        &#39;settlement_window_duration&#39;: 60</span>
+<span class="go">    }</span>
+<span class="go">    ...</span>
+<span class="go">}</span>
+</pre></div>
+</div>
+<p>Note:</p>
+<ul class="simple">
+<li><p>The <code class="docutils literal notranslate"><span class="pre">commitment_time</span></code> represents the unix timestamp when this order is was committed.</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">settlement_strategy</span></code> contains the parameters defining when the order can be executed, and when it expires.</p></li>
+<li><p>The order can be settled <code class="docutils literal notranslate"><span class="pre">settlement_delay</span></code> seconds after the order is committed.</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">size_delta</span></code> is set to 0 after the order is executed. If it shows 0, check the position to confirm it was filled.</p></li>
+<li><p>You don’t need to specify the market name when checking the order status, because accounts are limited to 1 open order at a time.</p></li>
+</ul>
+</section>
+<section id="settling-an-order">
+<h2>Settling an order<a class="headerlink" href="#settling-an-order" title="Link to this heading"></a></h2>
+<p>In most cases, you should expect an order to be settled by a keeper, who will call <code class="docutils literal notranslate"><span class="pre">settleOrder</span></code> for you. However, if your orders are expiring you can call the function yourself:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">settle_tx</span> <span class="o">=</span> <span class="n">snx</span><span class="o">.</span><span class="n">perps</span><span class="o">.</span><span class="n">settle_order</span><span class="p">(</span><span class="n">submit</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This will print logs as the required price data is fetched in order to settle the order. You can tell an order has settled two ways:</p>
+<ul class="simple">
+<li><p>The <code class="docutils literal notranslate"><span class="pre">size_delta</span></code> on <code class="docutils literal notranslate"><span class="pre">snx.perps.get_order()</span></code> is reset to 0.</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">position_size</span></code> on <code class="docutils literal notranslate"><span class="pre">snx.perps.get_open_positions()</span></code> has updated for the market you are trading.</p></li>
+</ul>
+<section id="checking-your-position">
+<h3>Checking Your Position<a class="headerlink" href="#checking-your-position" title="Link to this heading"></a></h3>
+<p>After an order is executed, you can check your position using <code class="docutils literal notranslate"><span class="pre">get_open_positions</span></code>. This function will fetch all positions with nonzero sizes. If you have no open positions, it will return an empty dictionary:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">positions</span> <span class="o">=</span> <span class="n">snx</span><span class="o">.</span><span class="n">perps</span><span class="o">.</span><span class="n">get_open_positions</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">positions</span>
+<span class="go">{</span>
+<span class="go">    &#39;ETH&#39;: {</span>
+<span class="go">        &#39;market_id&#39;: 100,</span>
+<span class="go">        &#39;market_name&#39;: &#39;ETH&#39;,</span>
+<span class="go">        &#39;pnl&#39;: 1.52,</span>
+<span class="go">        &#39;accrued_funding&#39;: 0.002245,</span>
+<span class="go">        &#39;position_size&#39;: 0.1</span>
+<span class="go">    }</span>
+<span class="go">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="conclusion">
+<h2>Conclusion<a class="headerlink" href="#conclusion" title="Link to this heading"></a></h2>
+<p>Congratulations! You have now mastered the basics of trading Synthetix perps. To see the full API reference for the perps module, check out the full <a class="reference external" href="https://synthetixio.github.io/python-sdk/modules/synthetix.html">API Reference</a> section of the docs.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="advanced_usage.html" class="btn btn-neutral float-left" title="Advanced Usage" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="advanced_perps.html" class="btn btn-neutral float-right" title="Advanced Perps Trading" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Synthetix DAO.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

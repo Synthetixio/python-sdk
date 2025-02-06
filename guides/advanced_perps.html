@@ -1,0 +1,229 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Advanced Perps Trading &mdash; Synthetix  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Oracle Data" href="oracle_data.html" />
+    <link rel="prev" title="Trade Perps" href="trade_perps.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Synthetix
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guides</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="advanced_usage.html">Advanced Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="trade_perps.html">Trade Perps</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Advanced Perps Trading</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#introduction">Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#managing-multiple-accounts">Managing Multiple Accounts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#fetching-order-quotes">Fetching Order Quotes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#liquidations">Liquidations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#order-settlement">Order Settlement</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="oracle_data.html">Oracle Data</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../modules/synthetix.html">Synthetix</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../modules/utils.html">Utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../modules/multicall.html">Multicall</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Synthetix</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Advanced Perps Trading</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/guides/advanced_perps.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="advanced-perps-trading">
+<h1>Advanced Perps Trading<a class="headerlink" href="#advanced-perps-trading" title="Link to this heading"></a></h1>
+<section id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Link to this heading"></a></h2>
+<p>This guide will help you understand more advanced concepts related to trading Synthetix Perps using the <code class="docutils literal notranslate"><span class="pre">synthetix</span></code> library. Check the sidebar for the various topics covered in this guide. If you’re just getting started, it is recommended to read the <a class="reference internal" href="trade_perps.html"><span class="std std-doc">Trade Perps</span></a> guide first.</p>
+</section>
+<section id="managing-multiple-accounts">
+<h2>Managing Multiple Accounts<a class="headerlink" href="#managing-multiple-accounts" title="Link to this heading"></a></h2>
+<p>Synthetix V3 allows you to hold multiple accounts which each maintain their own balances and positions. Since all positions inside an account use the same collateral, it can be useful to manage multiple accounts to separate different trading strategies or risk profiles. A trader can even simulate “isolated margin” by using separate accounts for each position.</p>
+<p>Your accounts are stored in the <code class="docutils literal notranslate"><span class="pre">account_ids</span></code> attribute, and can be refreshed using <code class="docutils literal notranslate"><span class="pre">get_accounts()</span></code>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># view all accounts</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">snx</span><span class="o">.</span><span class="n">perps</span><span class="o">.</span><span class="n">account_ids</span><span class="p">)</span>
+
+<span class="c1"># refresh accounts</span>
+<span class="n">snx</span><span class="o">.</span><span class="n">perps</span><span class="o">.</span><span class="n">get_accounts</span><span class="p">()</span>
+
+<span class="c1"># create an account</span>
+<span class="n">snx</span><span class="o">.</span><span class="n">perps</span><span class="o">.</span><span class="n">create_account</span><span class="p">(</span><span class="n">submit</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The default account is set at <code class="docutils literal notranslate"><span class="pre">snx.perps.default_account_id</span></code>. If no account is specified during some function calls, the default account will be used.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">snx</span><span class="o">.</span><span class="n">perps</span><span class="o">.</span><span class="n">account_ids</span><span class="p">)</span>
+<span class="go">[1, 2]</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">snx</span><span class="o">.</span><span class="n">perps</span><span class="o">.</span><span class="n">default_account_id</span><span class="p">)</span>
+<span class="go">1</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="n">snx</span><span class="o">.</span><span class="n">perps</span><span class="o">.</span><span class="n">get_margin_info</span><span class="p">()</span>             <span class="c1"># this will use account 1</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">snx</span><span class="o">.</span><span class="n">perps</span><span class="o">.</span><span class="n">get_margin_info</span><span class="p">(</span><span class="n">account_id</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span> <span class="c1"># this will use account 2</span>
+</pre></div>
+</div>
+<p>To replicate isolated margin, you can use separate accounts for each position. This way, the margin and pnl of each position are isolated from each other. In this example, we will deposit 500 snxUSD to account 1 and 2, and open a position on different markets using different accounts. If one position fails to meet the margin requirements and gets liquidated, the other position will not be affected.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">snx</span><span class="o">.</span><span class="n">perps</span><span class="o">.</span><span class="n">modify_collateral</span><span class="p">(</span><span class="mi">500</span><span class="p">,</span> <span class="n">account_id</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">submit</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">snx</span><span class="o">.</span><span class="n">perps</span><span class="o">.</span><span class="n">modify_collateral</span><span class="p">(</span><span class="mi">500</span><span class="p">,</span> <span class="n">account_id</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">submit</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="n">snx</span><span class="o">.</span><span class="n">perps</span><span class="o">.</span><span class="n">commit_order</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">market_name</span><span class="o">=</span><span class="s2">&quot;ETH&quot;</span><span class="p">,</span> <span class="n">account_id</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">submit</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">snx</span><span class="o">.</span><span class="n">perps</span><span class="o">.</span><span class="n">commit_order</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">market_name</span><span class="o">=</span><span class="s2">&quot;BTC&quot;</span><span class="p">,</span> <span class="n">account_id</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">submit</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="fetching-order-quotes">
+<h2>Fetching Order Quotes<a class="headerlink" href="#fetching-order-quotes" title="Link to this heading"></a></h2>
+<p>Synthetix perps using a vAMM model, where orders are subject to price impact based on the size of the order. A premium or discount is applied to the index price based on the current skew of the market. For example, if a market is skewed long, there will be a premium applied to the index price, and vice versa.</p>
+<p>When placing an order, you can fetch a quote to see the estimated fill price of the order. This fill price is an estimate based on the current index price, current skew, and the size of the order. The quote will also show exchange and settlement fees, and the estimated margin required for a position of that size.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">snx</span><span class="o">.</span><span class="n">perps</span><span class="o">.</span><span class="n">get_quote</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">market_name</span><span class="o">=</span><span class="s2">&quot;ETH&quot;</span><span class="p">)</span>
+<span class="go">{</span>
+<span class="go">    &#39;order_size&#39;: 1,</span>
+<span class="go">    &#39;index_price&#39;: 2995.72,</span>
+<span class="go">    &#39;fill_price&#39;: 2995.75,</span>
+<span class="go">    &#39;required_margin&#39;: 116.49,</span>
+<span class="go">    &#39;order_fees&#39;: 0.11649,</span>
+<span class="go">    &#39;settlement_reward_cost&#39;: 1.00137346</span>
+<span class="go">}</span>
+</pre></div>
+</div>
+</section>
+<section id="liquidations">
+<h2>Liquidations<a class="headerlink" href="#liquidations" title="Link to this heading"></a></h2>
+<p>Liquidations occur when an account fails to meet the margin requirements given the size of their positions. When an account is liquidated, their positions are all closed and their collateral is lost. Liquidations will usually be triggered by keepers who are incentivized to liquidate accounts that fall below the maintenance margin requirement. You can check your margin balance and requirements using <code class="docutils literal notranslate"><span class="pre">get_margin_info()</span></code>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">snx</span><span class="o">.</span><span class="n">perps</span><span class="o">.</span><span class="n">get_margin_info</span><span class="p">()</span>
+<span class="go">{</span>
+<span class="go">    &#39;total_collateral_value&#39;: 98.38,</span>
+<span class="go">    &#39;available_margin&#39;: 98.39,</span>
+<span class="go">    &#39;withdrawable_margin&#39;: 12.804,</span>
+<span class="go">    &#39;initial_margin_requirement&#39;: 85.59,</span>
+<span class="go">    &#39;maintenance_margin_requirement&#39;: 64.02,</span>
+<span class="go">    &#39;max_liquidation_reward&#39;: 5.634</span>
+<span class="go">}</span>
+</pre></div>
+</div>
+<p>If your <code class="docutils literal notranslate"><span class="pre">available_margin</span></code> falls below the <code class="docutils literal notranslate"><span class="pre">maintenance_margin_requirement</span></code>, your account is at risk of liquidation. You can also check the status of an account using <code class="docutils literal notranslate"><span class="pre">can_liquidate</span></code> and <code class="docutils literal notranslate"><span class="pre">can_liquidates</span></code>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">snx</span><span class="o">.</span><span class="n">perps</span><span class="o">.</span><span class="n">can_liquidate</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="go">False</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="n">snx</span><span class="o">.</span><span class="n">perps</span><span class="o">.</span><span class="n">can_liquidates</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
+<span class="go">[(1, False), (2, False)]</span>
+</pre></div>
+</div>
+</section>
+<section id="order-settlement">
+<h2>Order Settlement<a class="headerlink" href="#order-settlement" title="Link to this heading"></a></h2>
+<p>Orders are usually settled onchain by a keeper, but you can also ensure your orders are settled by calling <code class="docutils literal notranslate"><span class="pre">settle_order</span></code>. This will check your order and settle it if it is ready to be settled. This function checks the order status before submission, so if an order has been settled by someone else, it will log this and not attempt to settle the order.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">snx</span><span class="o">.</span><span class="n">perps</span><span class="o">.</span><span class="n">settle_order</span><span class="p">()</span> <span class="c1"># settle order for the default account</span>
+<span class="go">INFO     synthetix.synthetix:perps.py:1038 Waiting 0.3958 seconds to settle order</span>
+<span class="go">INFO     synthetix.synthetix:pyth.py:99 Fetching Pyth data for 1 markets</span>
+<span class="go">INFO     synthetix.synthetix:perps.py:1064 Settling order for account 1701411834604692328273631687329873105994</span>
+<span class="go">INFO     synthetix.synthetix:perps.py:1065 settle tx: 0xB9153dbd4160f48f3259d0567fd75508afe8fcaa53ff328313a9654f10182742</span>
+<span class="go">INFO     synthetix.synthetix:perps.py:1073 Order settlement successful for account 1701411834604692328273631687329873105994</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="n">snx</span><span class="o">.</span><span class="n">perps</span><span class="o">.</span><span class="n">settle_order</span><span class="p">()</span> <span class="c1"># keeper settles order</span>
+<span class="go">INFO     synthetix.synthetix:perps.py:1038 Order is ready to be settled</span>
+<span class="go">INFO     synthetix.synthetix:pyth.py:99 Fetching Pyth data for 1 markets</span>
+<span class="go">INFO     synthetix.synthetix:perps.py:1064 Settling order for account 1701411834604692328273631687329873105994</span>
+<span class="go">INFO     synthetix.synthetix:perps.py:1073 Keeper settled ETH order committed by 1701411834604692328273631687329873105994</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="n">snx</span><span class="o">.</span><span class="n">perps</span><span class="o">.</span><span class="n">settle_order</span><span class="p">(</span><span class="n">max_tx_tries</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">tx_delay</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span> <span class="c1"># increase retries and delay</span>
+</pre></div>
+</div>
+<p>Keep in mind the following:</p>
+<ul class="simple">
+<li><p>In some cases a decentralized keeper will submit their transaction in the same block as you. If this happens, your transaction will fail but your order will be settled.</p></li>
+<li><p>You may see some <code class="docutils literal notranslate"><span class="pre">ERROR</span></code> logs during order settlement. Since the order requires data from an offchain provider, sometimes this data is not available in time for the transaction to be submitted. This is normal and the order will be retried. You can use the <code class="docutils literal notranslate"><span class="pre">max_tx_tries</span></code> and <code class="docutils literal notranslate"><span class="pre">tx_delay</span></code> parameters to increase the number of retries and delay between retries.</p></li>
+<li><p>Orders expire after a specified duration. The function will throw an error if an order is part the expiration, or if the order has already been settled.</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="trade_perps.html" class="btn btn-neutral float-left" title="Trade Perps" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="oracle_data.html" class="btn btn-neutral float-right" title="Oracle Data" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Synthetix DAO.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
