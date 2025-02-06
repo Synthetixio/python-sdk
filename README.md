@@ -43,3 +43,11 @@ pip install -e ./src
 ```
 
 Using this method, you'll have the package installed in an 'editable mode'. This means you can easily modify the code and test your changes without the hassle of reinstalling the package every time.
+
+## Releases
+
+Releases are manually triggered on this repository. To create a new release, follow these steps:
+1. Bump the version in `src/setup.py`
+2. Create a new tag with the version number
+3. Publish a release on GitHub with the tag
+4. Monitor the Github Action triggered by the release
